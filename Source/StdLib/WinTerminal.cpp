@@ -26,7 +26,8 @@ int WinTerminal::Read(char *Buffer, int cbLength)
 {
 	DWORD ReadCount;
 
-	ReadFile(GetStdHandle(STD_INPUT_HANDLE), Buffer, cbLength, & ReadCount, nullptr);
+	ReadFile(GetStdHandle(STD_INPUT_HANDLE), Buffer, cbLength-1, & ReadCount, nullptr);
+	Buffer[ReadCount] = 0;
 	
 	return ReadCount;
 }

@@ -195,4 +195,41 @@ val db 003h
 	ret
 FireInt ENDP
 
+;extern "C" void CallService(uint32_t ServiceAddress, Registers *Result);
+CallService PROC C
+	; Set up esi to have the address of the results
+	push ebp
+	mov ebp, esp
+
+	pushad
+
+	mov esi, [ebp + 12]
+
+	;mov edi, [esi +  0]; EDI
+	;mov esi, [esi +  4]; ESI
+	;mov ebp, [esi +  8]; EBP
+	;mov esp, [esi + 12]; ESP
+	mov ebx, [esi + 16]; EBX
+	mov edx, [esi + 20]; EDX
+	mov ecx, [esi + 24]; ECX
+	mov eax, [esi + 28]; EAX
+
+	push cs
+	call dword ptr [ebp + 8]	
+
+	mov [esi +  0], edi ; EDI
+	mov [esi +  4], esi ; ESI
+	mov [esi +  8], ebp ; EBP
+	mov [esi + 12], esp ; ESP
+	mov [esi + 16], ebx ; EBX
+	mov [esi + 20], edx ; EDX
+	mov [esi + 24], ecx ; ECX
+	mov [esi + 28], eax ; EAX
+
+	popad
+	pop ebp
+	ret
+
+CallService ENDP
+
 END

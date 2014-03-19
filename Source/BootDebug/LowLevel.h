@@ -94,6 +94,8 @@ extern "C"
 	void ReadCPUID(uint32_t Value, uint32_t Value2, Registers *Result);
 
 	void FireInt(uint32_t IntNum, Registers *Result);
+
+	void CallService(uint32_t ServiceAddress, Registers *Result);
 };
 
 

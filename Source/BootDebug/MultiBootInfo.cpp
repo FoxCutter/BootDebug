@@ -65,10 +65,10 @@ bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 	//if((BootHeader->Flags & MulitBoot::AOutSymbols) == MulitBoot::AOutSymbols)
 	//if((BootHeader->Flags & MulitBoot::ELFSymbols) == MulitBoot::ELFSymbols)
 
+	MemoryMapLength = 0;
 	if((BootHeader->Flags & MulitBoot::MemoryMapInfo) == MulitBoot::MemoryMapInfo)
 	{
 		intptr_t Base = 0;		
-		MemoryMapLength = 0;
 
 		while(Base < (intptr_t) BootHeader->MemMap_Length && MemoryMapLength < MemoryMapMaxLength)
 		{
@@ -122,6 +122,8 @@ bool MultiBootInfo::LoadMult2Boot1Info(void *Data)
 	unsigned char *End = (unsigned char *)Data + BootHeader->Size;
 	Pos += sizeof(MulitBoot2::Boot_Header);
 
+	MemoryMapLength = 0;
+
 	while(Pos < End)
 	{
         while ((int)Pos % 8 != 0)
@@ -169,7 +171,6 @@ bool MultiBootInfo::LoadMult2Boot1Info(void *Data)
 			case MulitBoot2::MemoryMap:
 			{
 				MulitBoot2::Boot_MemoryMap* Entry = (MulitBoot2::Boot_MemoryMap *)Pos;
-				MemoryMapLength = 0;
 				
 				intptr_t Base = sizeof(MulitBoot2::Boot_MemoryMap);
 				

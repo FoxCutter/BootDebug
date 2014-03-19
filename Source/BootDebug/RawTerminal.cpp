@@ -2,11 +2,6 @@
 #include "RawTerminal.h"
 #include "LowLevel.h"
 
-extern char KBBuffer[];
-extern uint8_t KBBufferFirst;
-extern uint8_t KBBufferLast;
-
-
 RawTerminal::RawTerminal(uint32_t ScreenBufferOffest)
 {
 	m_Row = 25;
@@ -90,18 +85,7 @@ int RawTerminal::Write(const char *szData, int cbLength)
 	return 0;
 }
 
-char NextChar()
-{
-	while(KBBufferFirst == KBBufferLast);
-	
-	char value = KBBuffer[KBBufferFirst];
-		
-	KBBufferFirst++;
-	if(KBBufferFirst == 32)
-		KBBufferFirst = 0;
-
-	return value;
-}
+char FetchKeyboardBuffer();
 
 int RawTerminal::Read(char *Buffer, int cbLength)
 {
@@ -111,16 +95,16 @@ int RawTerminal::Read(char *Buffer, int cbLength)
 
 	do
 	{
-		char Next = NextChar();
+		char Next = FetchKeyboardBuffer();
 
 		Write(&Next, 1);
-
-		if(Next == 10 || Next == 13)
-			break;
 
 		Buffer[Pos] = Next;
 		Pos++;
 		Buffer[Pos] = 0;
+
+		if(Next == 10 || Next == 13)
+			break;
 
 		if(cbLength == Pos)
 			break;
@@ -128,16 +112,4 @@ int RawTerminal::Read(char *Buffer, int cbLength)
 	while(!Done);
 	
 	return Pos;
-	
-	//static int count = 0;
-
-	//if(count == 0x10)
-	//	Buffer[0] = 'q';
-	//else
-	//	Buffer[0] = 'd';
-	//Buffer[1] = '\0';
-
-	//count++;
-
-	//return 1;
 }

@@ -113,17 +113,20 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ACPI.cpp" />
     <ClCompile Include="BootHeader.cpp" />
     <ClCompile Include="GDT.cpp" />
     <ClCompile Include="IDT.cpp" />
     <ClCompile Include="InterruptControler.cpp" />
     <ClCompile Include="MultiBootInfo.cpp" />
+    <ClCompile Include="PCIBIOS.cpp" />
     <ClCompile Include="RawMemory.cpp" />
     <ClCompile Include="RawStartup.cpp" />
     <ClCompile Include="RawTerminal.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ACPI.h" />
     <ClInclude Include="GDT.h" />
     <ClInclude Include="IDT.h" />
     <ClInclude Include="InterruptControler.h" />
@@ -131,6 +134,7 @@
     <ClInclude Include="MultiBoot.h" />
     <ClInclude Include="MultiBoot2.h" />
     <ClInclude Include="MultiBootInfo.h" />
+    <ClInclude Include="PCIBIOS.h" />
     <ClInclude Include="RawMemory.h" />
     <ClInclude Include="RawTerminal.h" />
   </ItemGroup>

@@ -1,10 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "..\StdLib\argcargv.h"
 
 #include "RawTerminal.h"
+#include "LowLevel.h"
 
 void PrintMemory(void *Address, int Length);
 
@@ -275,15 +277,13 @@ void main(int argc, char *argv[])
 
 		int ArgCount = _ConvertCommandLineToArgcArgv(Input);
 
-		switch(_ppszArgv[0][0])
+		switch(toupper(_ppszArgv[0][0]))
 		{
 			case 'Q':
-			case 'q':
 				Done = true;
 				break;
 
 			case 'D':
-			case 'd':
 				{
 					if(ArgCount > 1)
 					{
@@ -309,7 +309,6 @@ void main(int argc, char *argv[])
 				}
 				break;
 
-			case 's':
 			case 'S':
 				{
 					if(ArgCount < 4)
@@ -356,8 +355,7 @@ void main(int argc, char *argv[])
 				}
 				break;
 
-			case 'I':
-			case 'i':
+			case 'N':
 				{
 					if(ArgCount < 2)
 					{
@@ -365,7 +363,7 @@ void main(int argc, char *argv[])
 						break;
 					}
 
-					if(_ppszArgv[1][0] == 'M' && _ppszArgv[1][1] == 'P')
+					if(toupper(_ppszArgv[1][0]) == 'M' && toupper(_ppszArgv[1][1]) == 'P')
 					{
 						PrintMPInfo();
 					}
@@ -378,8 +376,75 @@ void main(int argc, char *argv[])
 				break;
 
 			case 'F':
-			case 'f':
 				break;
+
+			case 'E':
+				{
+
+				}
+				break;
+
+			case 'I':
+				{
+					if(ArgCount < 2)
+					{
+						puts("Invalid arguments");
+						break;
+					}
+
+					uint32_t Port, Res;
+					ParseHex(_ppszArgv[1], Port);
+
+					switch(toupper(_ppszArgv[0][1]))
+					{
+						case 'B':
+							Res = InPortb(Port);
+							printf("%02X\n", Res);
+							break;
+
+						case 'W':
+							Res = InPortw(Port);
+							printf("%04X\n", Res);
+							break;
+
+						default:
+						case 'D':
+							Res = InPortd(Port);
+							printf("%08X\n", Res);
+							break;
+					}
+				}
+				break;
+
+			case 'O':
+				{
+					if(ArgCount < 3)
+					{
+						puts("Invalid arguments");
+						break;
+					}
+
+					uint32_t Port, Val;
+					ParseHex(_ppszArgv[1], Port);
+					ParseHex(_ppszArgv[2], Val);
+					switch(toupper(_ppszArgv[0][1]))
+					{
+						case 'B':
+							OutPortb(Port, Val);
+							break;
+
+						case 'W':
+							OutPortw(Port, Val);
+							break;
+
+						default:
+						case 'D':
+							OutPortd(Port, Val);
+							break;
+					}
+				}
+				break;
+
 
 			case '?':
 				break;

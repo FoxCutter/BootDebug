@@ -42,6 +42,12 @@
     <ClCompile Include="IDT.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ACPI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PCIBIOS.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RawTerminal.h">
@@ -69,6 +75,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MultiBootInfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ACPI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PCIBIOS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

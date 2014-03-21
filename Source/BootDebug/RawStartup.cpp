@@ -12,6 +12,9 @@
 #include "GDT.h"
 #include "IDT.h"
 
+#include "ACPI.h"
+#include "PCIBIOS.h"
+
 #include "..\StdLib\initterm.h"
 
 void SystemTrap(InterruptContext * Context)
@@ -107,9 +110,9 @@ unsigned char kbdus_Shift[128] =
 
 InterruptControler m_InterruptControler;
 
-char KBBuffer[32];
-uint8_t KBBufferFirst = 0;
-uint8_t KBBufferLast = 0;
+volatile char KBBuffer[32];
+volatile uint8_t KBBufferFirst = 0;
+volatile uint8_t KBBufferLast = 0;
 
 uint16_t KeyState = 0;
 
@@ -143,7 +146,6 @@ void InsertKeyboardBuffer(char Key)
 char FetchKeyboardBuffer()
 {
 	while(KBBufferFirst == KBBufferLast);
-	
 	char value = KBBuffer[KBBufferFirst];
 		
 	KBBufferFirst++;
@@ -208,54 +210,16 @@ void IRQInterrupt(InterruptContext * Context)
 	m_InterruptControler.ClearIRQ(m_InterruptControler.MapIntToIRQ(Context->InterruptNumber));
 }
 
-uint32_t FindMemory(uint32_t Start, uint32_t Count, char *Search)
-{
-	int SearchLength = strlen(Search);
-	if(SearchLength == 0)
-		return UINT32_MAX;
-
-	char *Data = (char *)Start;
-
-	int SeachState = 0;
-
-	for(int Pos = 0; Pos != Count; Pos++)
-	{
-		if(Data[Pos] == Search[SeachState])
-		{
-			SeachState ++;
-			if(SeachState == SearchLength)
-			{
-				return Start + Pos - SearchLength + 1;
-			}
-		}
-		else
-		{
-			SeachState = 0;
-		}
-	}
-
-	return UINT32_MAX;
-}
-
-struct BIOSServiceDirectory
-{
-	uint32_t	Magic;
-	uint32_t	EntryPoint;
-	uint8_t		HeaderVersion;
-	uint8_t		HeaderLength; // in Paragraphs
-	uint8_t		Checksum;
-	uint8_t		Reserved[5];
-};
-
-
 void main(int argc, char *argv[]);
 MultiBootInfo MBReader;
+
 extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 {
 	// At this point we are officially alive, but we're still a long ways away from being up and running.
 
 	// The terminal for the moment is fairly easy.
 	RawTerminal TextTerm(0xB8000);
+	TextTerm.Clear();
 	CurrentTerminal = &TextTerm;
 
 	// Parse the MultiBoot info
@@ -304,27 +268,21 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	
 	ASM_STI;
 	
-	// Okay, at this point the system is up and running as best as it can be expected to be. 
-	//uint32_t Bios32Adder = FindMemory(0xE0000, 0x20000, "_32_");
-	//
-	//BIOSServiceDirectory * Bios32Dir = (BIOSServiceDirectory *)Bios32Adder;
-	//printf("%08X, %08X\n", Bios32Adder, Bios32Dir->EntryPoint);
-	//
-	//Registers Reg;
-	//Reg.EAX = 0x49435024;
-	//Reg.ECX = 0;
-	//Reg.EBX = 0;
-	//Reg.EDX = 0;
-	//printf("A:%08X B:%08X C:%08X D:%08X\n", Reg.EAX, Reg.EBX, Reg.ECX, Reg.EDX);
+	//PCIBIOS PCIBios32;
+	//PCIBios32.Initilize();
 
-	//CallService(Bios32Dir->EntryPoint, &Reg);
-	//
-	//printf("A:%08X B:%08X C:%08X D:%08X\n", Reg.EAX, Reg.EBX, Reg.ECX, Reg.EDX);
+	//Registers Reg;
+	//ReadCPUID(0, 0, &Reg);
+
+	//printf("CPUID EAX:%08X EBX:%08X ECX:%08X EDX:%08X\n", Reg.EAX, Reg.EBX, Reg.ECX, Reg.EDX);
+	
+	//ACPI ACPIObject;
+	//ACPIObject.Initilize();
 
 	// Step 6: Start the full kernel
 	const char * CommandLine = MBReader.CommandLine;
 
-	printf("%08x\n", Address);
+	//printf("%08x\n", Address);
 	
 	//_ConvertCommandLineToArgcArgv(
 	char * argv[2];

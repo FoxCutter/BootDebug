@@ -10,8 +10,12 @@ public:
 	RawTerminal(uint32_t ScreenBufferOffest);
 	~RawTerminal(void);
 
+	int WriteAt(const char *szData, int cbLength, int Row, int Col);
+	void SetCursor(int Row, int Col);
 	virtual int Write(const char *szData, int cbLength);
 	virtual int Read(char *Buffer, int cbLength);
+
+	void Clear();
 
 private:
 	
@@ -22,6 +26,6 @@ private:
 	int m_CurrentRow;
 	int m_CurrentCol;
 
-	int m_CurrentRowStart;
+	//int m_CurrentRowStart;
 };
 

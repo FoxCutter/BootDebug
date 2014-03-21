@@ -55,7 +55,7 @@ public:
 
 	void SetInterupt(unsigned int  IntNum, InterruptCallbackPtr CallBack);
 
-	// This version is only used if you want to chance it from a Gate (Clears IF) to a trap (Doesn't Clear IF)
+	// This version is only used if you want to change it from a Gate (Clears IF) to a trap (Doesn't Clear IF)
 	void SetInterupt(unsigned int  IntNum, InterruptCallbackPtr CallBack, uint8_t Type);
 	
 	IDT::IDTPtr SetActive();

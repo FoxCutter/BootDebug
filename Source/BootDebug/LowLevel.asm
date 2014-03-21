@@ -126,34 +126,69 @@ WriteCR4 ENDP
 
 ;extern "C" void ReadCPUID(uint32_t Value, uint32_t Value2, Registers *Result);
 ReadCPUID PROC C
-	; Set up esi to have the address of the results
 	push ebp
 	mov ebp, esp
 
-	push esi
 	push ebx
+	push esi
+	push edi
 
 	mov eax, [ebp + 8]
 	mov ecx, [ebp + 12]
-	mov esi, [ebp + 16]
+	
+	mov ebp, [ebp + 16]
 
 	cpuid
 
-	mov [esi +  0], edi ; EDI
-	mov [esi +  4], esi ; ESI
-	mov [esi +  8], ebp ; EBP
-	mov [esi + 12], esp ; ESP
-	mov [esi + 16], ebx ; EBX
-	mov [esi + 20], edx ; EDX
-	mov [esi + 24], ecx ; ECX
-	mov [esi + 28], eax ; EAX
+	mov [ebp +  0], eax ; EAX
+	mov [ebp +  4], ebx ; EBX
+	mov [ebp +  8], ecx ; ECX
+	mov [ebp + 12], edx ; EDX
+	mov [ebp + 16], esi ; ESI
+	mov [ebp + 20], edi ; EDI
 
-	pop ebx
+	pushfd
+	pop eax
+	mov [ebp + 24], eax ; EFlags
+
+	pop edi
 	pop esi
+	pop ebx
 	
 	pop ebp
 	ret
 ReadCPUID ENDP
+
+;extern "C" uint64_t ReadMSR(uint32_t Register);
+ReadMSR PROC C
+	push ebp
+	mov ebp, esp
+
+	mov ecx, [ebp + 8]
+
+	RDMSR
+	
+	; RDMSR returns the data as edx:eax	but the 64 bit values are returned in eax:edx, so we swap them.
+	xchg eax, edx
+
+	pop ebp
+	ret
+ReadMSR ENDP
+
+;extern "C" void WriteMSR(uint32_t Register, uint64_t Value);
+WriteMSR PROC C
+	push ebp
+	mov ebp, esp
+
+	mov edx, [ebp + 16]
+	mov eax, [ebp + 12]
+	mov ecx, [ebp + 8]
+
+	WRMSR
+	
+	pop ebp
+	ret
+WriteMSR ENDP
 
 ;extern "C" void FireInt(uint32_t IntNum, Registers *Result);
 FireInt PROC C
@@ -164,31 +199,35 @@ FireInt PROC C
 	pushad
 
 	mov al, byte ptr [ebp + 8]
-	mov esi, [ebp + 12]
 
 	; just for fun we are going to modify our own code!
 	mov byte ptr [val], al
 
-	;mov edi, [esi +  0]; EDI
-	;mov esi, [esi +  4]; ESI
-	;mov ebp, [esi +  8]; EBP
-	;mov esp, [esi + 12]; ESP
-	mov ebx, [esi + 16]; EBX
-	mov edx, [esi + 20]; EDX
-	mov ecx, [esi + 24]; ECX
-	mov eax, [esi + 28]; EAX
-	
+	mov ebp, [ebp + 12]
+
+	mov eax, [ebp +  0]; EAX
+	mov ebx, [ebp +  4]; EBX
+	mov ecx, [ebp +  8]; ECX
+	mov edx, [ebp + 12]; EDX
+	mov esi, [ebp + 16]; ESI
+	mov edi, [ebp + 20]; EDI
+
+	;push [esi +  24]; EFlags
+	;popfd
+
 	db 0CDh
 val db 003h
 
-	mov [esi +  0], edi ; EDI
-	mov [esi +  4], esi ; ESI
-	mov [esi +  8], ebp ; EBP
-	mov [esi + 12], esp ; ESP
-	mov [esi + 16], ebx ; EBX
-	mov [esi + 20], edx ; EDX
-	mov [esi + 24], ecx ; ECX
-	mov [esi + 28], eax ; EAX
+	mov [ebp +  0], eax ; EAX
+	mov [ebp +  4], ebx ; EBX
+	mov [ebp +  8], ecx ; ECX
+	mov [ebp + 12], edx ; EDX
+	mov [ebp + 16], esi ; ESI
+	mov [ebp + 20], edi ; EDI
+
+	pushfd
+	pop eax
+	mov [ebp + 24], eax ; EFlags
 
 	popad
 	pop ebp
@@ -197,34 +236,43 @@ FireInt ENDP
 
 ;extern "C" void CallService(uint32_t ServiceAddress, Registers *Result);
 CallService PROC C
-	; Set up esi to have the address of the results
 	push ebp
 	mov ebp, esp
 
 	pushad
 
-	mov esi, [ebp + 12]
+	push ebp
 
-	;mov edi, [esi +  0]; EDI
-	;mov esi, [esi +  4]; ESI
-	;mov ebp, [esi +  8]; EBP
-	;mov esp, [esi + 12]; ESP
-	mov ebx, [esi + 16]; EBX
-	mov edx, [esi + 20]; EDX
-	mov ecx, [esi + 24]; ECX
-	mov eax, [esi + 28]; EAX
+	mov ebp, [ebp + 12]
 
+	mov eax, [ebp +  0]; EAX
+	mov ebx, [ebp +  4]; EBX
+	mov ecx, [ebp +  8]; ECX
+	mov edx, [ebp + 12]; EDX
+	mov esi, [ebp + 16]; ESI
+	mov edi, [ebp + 20]; EDI
+
+	;push [esi +  24]; EFlags
+	;popfd
+
+	pop ebp
+
+	; This is supposed to be a far call
 	push cs
 	call dword ptr [ebp + 8]	
 
-	mov [esi +  0], edi ; EDI
-	mov [esi +  4], esi ; ESI
-	mov [esi +  8], ebp ; EBP
-	mov [esi + 12], esp ; ESP
-	mov [esi + 16], ebx ; EBX
-	mov [esi + 20], edx ; EDX
-	mov [esi + 24], ecx ; ECX
-	mov [esi + 28], eax ; EAX
+	mov ebp, [ebp + 12]
+	
+	mov [ebp +  0], eax ; EAX
+	mov [ebp +  4], ebx ; EBX
+	mov [ebp +  8], ecx ; ECX
+	mov [ebp + 12], edx ; EDX
+	mov [ebp + 16], esi ; ESI
+	mov [ebp + 20], edi ; EDI
+
+	pushfd
+	pop eax
+	mov [ebp + 24], eax ; EFlags
 
 	popad
 	pop ebp

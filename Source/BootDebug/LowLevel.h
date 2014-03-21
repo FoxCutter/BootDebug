@@ -57,17 +57,53 @@ struct InterruptContext
 
 struct Registers
 {
-	// In the order that pushad puts them on the stack
-	uint32_t EDI;
-	uint32_t ESI;
-	uint32_t EBP;
-	uint32_t ESP;
+	union 
+	{
+		uint32_t EAX;
+		struct
+		{
+			uint8_t AL;
+			uint8_t AH;
+		};
+	};
 
-	uint32_t EBX;
-	uint32_t EDX;
-	uint32_t ECX;
-	uint32_t EAX;
+	union 
+	{
+		uint32_t EBX;
+		struct
+		{
+			uint8_t BL;
+			uint8_t BH;
+		};
+	};
+
+	union 
+	{
+		uint32_t ECX;
+		struct
+		{
+			uint8_t CL;
+			uint8_t CH;
+		};
+	};
+
+	union 
+	{
+		uint32_t EDX;
+		struct
+		{
+			uint8_t DL;
+			uint8_t DH;
+		};
+	};
+
+	uint32_t ESI;
+	uint32_t EDI;
+
+	uint32_t EFlags;
 };
+
+#define CARRY_FLAG		0x0001
 
 extern "C"
 {
@@ -92,6 +128,9 @@ extern "C"
 	void WriteCR4(uint32_t Value);
 
 	void ReadCPUID(uint32_t Value, uint32_t Value2, Registers *Result);
+
+	uint64_t ReadMSR(uint32_t Register);
+	void WriteMSR(uint32_t Register, uint64_t Value);
 
 	void FireInt(uint32_t IntNum, Registers *Result);
 

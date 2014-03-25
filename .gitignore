@@ -233,3 +233,7 @@ $RECYCLE.BIN/
 #*.out
 #*.app
 
+/Tools/LibPass.txt
+/Tools/Core.lib
+/Tools/Cored.lib
+/Tools/LibOut.txt

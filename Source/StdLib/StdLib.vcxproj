@@ -70,7 +70,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NDEBUG;_LIB</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
       <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>

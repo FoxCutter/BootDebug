@@ -276,8 +276,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	//printf("CPUID EAX:%08X EBX:%08X ECX:%08X EDX:%08X\n", Reg.EAX, Reg.EBX, Reg.ECX, Reg.EDX);
 	
-	//ACPI ACPIObject;
-	//ACPIObject.Initilize();
+	ACPI ACPIObject;
+	ACPIObject.Initilize();
 
 	// Step 6: Start the full kernel
 	const char * CommandLine = MBReader.CommandLine;

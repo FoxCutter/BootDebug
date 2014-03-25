@@ -170,11 +170,11 @@
 
 #define HAVE_STDARG_H 1
 #define HAVE_STDLIB_H 1
-//#define HAVE_UNSIGNED_LONG_LONG_INT 1
-//#define HAVE_INTMAX_T 1
-//#define HAVE_UINTMAX_T 1
-//#define intmax_t long long 
-//#define uintmax_t unsigned long long
+#define HAVE_UNSIGNED_LONG_LONG_INT 1
+#define HAVE_INTMAX_T 1
+#define HAVE_UINTMAX_T 1
+#define intmax_t long long 
+#define uintmax_t unsigned long long
 
 // Keeps Visual Studio from complaining about using the vprintf functions
 #define _CRT_SECURE_NO_WARNINGS 1

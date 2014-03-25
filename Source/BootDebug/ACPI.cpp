@@ -17,8 +17,7 @@ namespace ACPIData
 		uint8_t		Revision;
 		uint32_t	RSDTAddress;
 		uint32_t	Length;
-		uint32_t	XSDTAddressLow;
-		uint32_t	XSDTAddressHigh;
+		uint64_t	XSDTAddress;
 		uint8_t		ExtendedChecksum;
 		uint8_t		Reserved[3];
 	};
@@ -219,6 +218,8 @@ bool ACPI::Initilize()
 	
 	if(!ValidateChecksum(RSDP, RSDP->Length))
 		return false;
+
+	//printf("RSDT%08X, X:%016llX\n", RSDP->RSDTAddress, RSDP->XSDTAddress);
 
 	ACPIData::RSDTTable *RSDTTable = reinterpret_cast<ACPIData::RSDTTable *>(RSDP->RSDTAddress);
 	int EntryCount = (RSDTTable->Length - sizeof(ACPIData::DescriptionHeader)) / 4;

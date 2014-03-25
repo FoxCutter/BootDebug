@@ -6,6 +6,11 @@
 
 MultiBootInfo::MultiBootInfo(void)
 {
+	MemoryLow = MemoryLow = 0;
+	BootDevice = BootPartition[0] = BootPartition[1] = BootPartition[2] = UINT32_MAX;
+	CommandLine = BootLoader = nullptr;
+	MemoryMapLength = 0;
+
 }
 
 MultiBootInfo::~MultiBootInfo(void)
@@ -32,18 +37,22 @@ bool MultiBootInfo::LoadMultiBootInfo(uint32_t Signature, void *Data)
 
 bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 {
+	Type = Version1;
+	
 	// Right now our main job is to pillage out all the information we can from the header
 	MulitBoot::Boot_Header * BootHeader = (MulitBoot::Boot_Header *)Data;
 	
-	//printf("Multiboot %08X\n", Data);
-
 	if((BootHeader->Flags & MulitBoot::MemoryInfo) == MulitBoot::MemoryInfo)
 	{
-		//printf(" Basic Memory: %08X, %08x\n", BootHeader->Memory_Lower, BootHeader->Memory_Upper);
+		MemoryLow = BootHeader->Memory_Lower;
+		MemoryHigh = BootHeader->Memory_Upper;
 	}
 	if((BootHeader->Flags & MulitBoot::BootDeviceInfo) == MulitBoot::BootDeviceInfo)
 	{
-		//printf(" Boot Device:  %08X\n", BootHeader->BootDevice);
+		BootDevice = (BootHeader->BootDevice & 0x000000FF);
+		BootPartition[0] = (BootHeader->BootDevice & 0x0000FF00) >> 8;
+		BootPartition[1] = (BootHeader->BootDevice & 0x00FF0000) >> 16;
+		BootPartition[2] = (BootHeader->BootDevice & 0xFF000000) >> 24;
 	}
 	if((BootHeader->Flags & MulitBoot::CommandLineInfo) == MulitBoot::CommandLineInfo)
 	{
@@ -61,9 +70,15 @@ bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 		//printf(" Mods\n");
 	}
 
+	/* 
 	// We don't care about symbols
-	//if((BootHeader->Flags & MulitBoot::AOutSymbols) == MulitBoot::AOutSymbols)
-	//if((BootHeader->Flags & MulitBoot::ELFSymbols) == MulitBoot::ELFSymbols)
+	if((BootHeader->Flags & MulitBoot::AOutSymbols) == MulitBoot::AOutSymbols)
+	{
+	}
+	if((BootHeader->Flags & MulitBoot::ELFSymbols) == MulitBoot::ELFSymbols)
+	{
+	} 
+	*/
 
 	MemoryMapLength = 0;
 	if((BootHeader->Flags & MulitBoot::MemoryMapInfo) == MulitBoot::MemoryMapInfo)
@@ -76,28 +91,31 @@ bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 			Base += sizeof(uint32_t);
 
 			MemoryMap[MemoryMapLength] = (MemoryMapEntry *)(BootHeader->MemMap_Address + Base);
+			printf("Mem: %016llX - %016llX\n", MemoryMap[MemoryMapLength]->BaseAddress, MemoryMap[MemoryMapLength]->BaseAddress + MemoryMap[MemoryMapLength]->Length -1);
 
 			Base += *Size;
 
 			MemoryMapLength++;
 		}
 	}
+	/*
+	// These never seem to come up, and don't exist in MB2
 	if((BootHeader->Flags & MulitBoot::DriveInfo) == MulitBoot::DriveInfo)
 	{
-		//printf(" Drive Info\n");
 	}
 	if((BootHeader->Flags & MulitBoot::ConfigTable) == MulitBoot::ConfigTable)
 	{
-		//printf(" Config Table\n");
 	}
+	*/
+
 	if((BootHeader->Flags & MulitBoot::BootLoaderName) == MulitBoot::BootLoaderName)
 	{
-		//printf(" Boot Loader Name: %s\n", BootHeader->BootLoaderName);
+		BootLoader = reinterpret_cast<char *>(BootHeader->BootLoaderName);
 	}
 	if((BootHeader->Flags & MulitBoot::ApmTable) == MulitBoot::ApmTable)
 	{
 		//MulitBoot::Boot_APMTAble * Entry = (MulitBoot::Boot_APMTAble *)BootHeader->APMTable;
-		//
+		
 		//printf(" APM Table: V: %04X, CS: %04X, CL: %04X, CO: %08X\n", Entry->Version, Entry->CodeSeg, Entry->CodeSegLength, Entry->Offset);
 	}
 	if((BootHeader->Flags & MulitBoot::VBEInfo) == MulitBoot::VBEInfo)
@@ -109,6 +127,7 @@ bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 		//printf(" Frame Buffer Info\n");
 		//printf("  Addr:%08X, P:%04X, W:%04X, H:%04X BPP:%02X\n", (unsigned int)BootHeader->FrameBuffer_Address, BootHeader->FrameBuffer_Pitch, BootHeader->FrameBuffer_Width, BootHeader->FrameBuffer_Height, BootHeader->FrameBuffer_BPP);
 		//printf("  Type: %02X\n", BootHeader->FrameBuffer_Type);
+		//printf("  Pallet: A%08X C%04X\n", BootHeader->PalletInfo.Address, BootHeader->PalletInfo.NumColors);
 	}
 
 	return true;
@@ -116,6 +135,8 @@ bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 
 bool MultiBootInfo::LoadMult2Boot1Info(void *Data)
 {
+	Type = Version2;
+
 	MulitBoot2::Boot_Header * BootHeader = (MulitBoot2::Boot_Header *)Data;
 
 	unsigned char *Pos = (unsigned char *)Data;
@@ -143,7 +164,7 @@ bool MultiBootInfo::LoadMult2Boot1Info(void *Data)
 			case MulitBoot2::BootLoaderName:
 			{
 				MulitBoot2::Boot_BootLoaderName * Entry = (MulitBoot2::Boot_BootLoaderName *)Pos;
-				//printf(" Boot Loader: %s\n", Entry->String);
+				BootLoader = Entry->String;
 				break;
 			}
 
@@ -157,14 +178,20 @@ bool MultiBootInfo::LoadMult2Boot1Info(void *Data)
 			case MulitBoot2::BasicMemory:
 			{
 				MulitBoot2::Boot_BasicMemory* Entry = (MulitBoot2::Boot_BasicMemory *)Pos;
-				//printf(" Basic Memory: %08X, %08x\n", Entry->Lower, Entry->Upper);
+				MemoryLow = Entry->Lower;
+				MemoryHigh = Entry->Upper;
 				break;
 			}
 
 			case MulitBoot2::BIOSBootDevice:
 			{
 				MulitBoot2::Boot_BIOSBootDevice* Entry = (MulitBoot2::Boot_BIOSBootDevice *)Pos;
-				//printf(" Boot Dev: %04X/%04x/%04x\n", Entry->BiosDev, Entry->Partition, Entry->SubPartition);
+
+				BootDevice = Entry->BiosDev;
+				BootPartition[0] = Entry->Partition;
+				BootPartition[1] = Entry->SubPartition;
+				BootPartition[2] = UINT32_MAX;
+
 				break;
 			}
 

@@ -178,10 +178,8 @@ namespace MulitBoot2
 
 	struct MemoryMapEntry
 	{
-		uint32_t BaseAddressLow;
-		uint32_t BaseAddressHigh;
-		uint32_t LengthLow;
-		uint32_t LengthHigh;
+		uint32_t BaseAddress;
+		uint32_t Length;
 		uint32_t Type;
 		uint32_t Reserved;
 	};

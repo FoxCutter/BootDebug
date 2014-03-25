@@ -67,18 +67,22 @@ namespace DiskTools
 
                 // Get the rest of the string
                 Ret.FilePath = InputPath.Substring(End + 1);
-
-                Ret.Folder = Path.GetDirectoryName(Ret.FilePath);
-                Ret.File = Path.GetFileName(Ret.FilePath);
-
-                if (Ret.Folder == null)
-                    Ret.Folder = @"\";
             }
+            else
+            {
+                Ret.FilePath = InputPath;
+            }
+
+            Ret.Folder = Path.GetDirectoryName(Ret.FilePath);
+            Ret.File = Path.GetFileName(Ret.FilePath);
+
+            if (Ret.Folder == null)
+                Ret.Folder = @"\";
 
             return Ret;
         }
 
-        bool PrintDirectory(DiscUtils.DiscDirectoryInfo DirInfo, bool Recurse)
+        bool PrintDirectory(DiscUtils.DiscDirectoryInfo DirInfo, string Pattern, bool Recurse)
         {
             if(!DirInfo.Exists)
             {
@@ -86,8 +90,8 @@ namespace DiskTools
                 return false;
             }
 
-            List<DiscUtils.DiscFileSystemInfo> FolderList = new List<DiscUtils.DiscFileSystemInfo>( DirInfo.GetDirectories());
-            FolderList.AddRange(DirInfo.GetFiles());
+            List<DiscUtils.DiscFileSystemInfo> FolderList = new List<DiscUtils.DiscFileSystemInfo>( DirInfo.GetDirectories(Pattern));
+            FolderList.AddRange(DirInfo.GetFiles(Pattern));
             FolderList.Sort((LHS, RHS) =>
             {
                 return LHS.Name.CompareTo(RHS.Name);
@@ -122,7 +126,7 @@ namespace DiskTools
                 {
                     if ((Entry.Attributes & FileAttributes.Directory) == FileAttributes.Directory)
                     {
-                        if (!PrintDirectory((DiscUtils.DiscDirectoryInfo)Entry, true))
+                        if (!PrintDirectory((DiscUtils.DiscDirectoryInfo)Entry, Pattern, true))
                             return false;
                     }
                 }
@@ -188,60 +192,99 @@ namespace DiskTools
                 Console.WriteLine("Signature  {0}", CurrentDisk.Signature.ToString("X"));
                 Console.WriteLine("Sectors    {0}", CurrentDisk.Geometry.TotalSectors.ToString("0,0"));
 
-                if (CurrentDisk.Partitions == null)
+                if (CurrentDisk.DiskTypeInfo.CanBeHardDisk == true)
                 {
-                    Console.WriteLine("Partitions 0");
-                    return 0;
-                }
-
-                Console.WriteLine("Partitions {0}", CurrentDisk.Partitions.Count);
-
-                for(int x = 0; x < CurrentDisk.Partitions.Count; x++)
-                {
-                    long TotalSize = CurrentDisk.Partitions[x].SectorCount * CurrentDisk.BlockSize;
-
-                    Console.WriteLine();
-                    Console.WriteLine("Partition ID  (hd{0})", x);
-                    Console.WriteLine("Type          {0} [0x{1}]", CurrentDisk.Partitions[x].TypeAsString, CurrentDisk.Partitions[x].BiosType.ToString("X2"));
-                    Console.WriteLine("First Sector  {0}", CurrentDisk.Partitions[x].FirstSector.ToString("0,0"));
-                    Console.WriteLine("Last Sector   {0}", CurrentDisk.Partitions[x].LastSector.ToString("0,0"));
-                    Console.WriteLine("Total Sectors {0}", CurrentDisk.Partitions[x].SectorCount.ToString("0,0"));
-                    Console.WriteLine("Size          {0} bytes", TotalSize.ToString("0,0"));
-
-                    DiscUtils.FileSystemInfo[] FileSystemInfo = DiscUtils.FileSystemManager.DetectDefaultFileSystems(CurrentDisk.Partitions[x].Open());
-                    foreach (var Info in FileSystemInfo)
+                    if (CurrentDisk.Partitions == null)
                     {
-                        Console.WriteLine("Name          {0}", Info.Name);
-                        Console.WriteLine("Description   {0}", Info.Description);
-                        //DiscUtils.DiscFileSystem FileSystem = Info.Open(CurrentDisk.Partitions[x].Open());
+                        Console.WriteLine("Partitions 0");
+                        return 0;
                     }
 
-                    //DiscUtils.DiscFileSystem FS = DiscUtils.DiscFileSystem.
+                    Console.WriteLine("Partitions {0}", CurrentDisk.Partitions.Count);
+
+                    for (int x = 0; x < CurrentDisk.Partitions.Count; x++)
+                    {
+                        long TotalSize = CurrentDisk.Partitions[x].SectorCount * CurrentDisk.BlockSize;
+
+                        Console.WriteLine();
+                        Console.WriteLine("Partition ID  (hd{0})", x);
+                        Console.WriteLine("Type          {0} [0x{1}]", CurrentDisk.Partitions[x].TypeAsString, CurrentDisk.Partitions[x].BiosType.ToString("X2"));
+                        Console.WriteLine("First Sector  {0}", CurrentDisk.Partitions[x].FirstSector.ToString("0,0"));
+                        Console.WriteLine("Last Sector   {0}", CurrentDisk.Partitions[x].LastSector.ToString("0,0"));
+                        Console.WriteLine("Total Sectors {0}", CurrentDisk.Partitions[x].SectorCount.ToString("0,0"));
+                        Console.WriteLine("Size          {0} bytes", TotalSize.ToString("0,0"));
+
+                        DiscUtils.FileSystemInfo[] FileSystemInfo = DiscUtils.FileSystemManager.DetectDefaultFileSystems(CurrentDisk.Partitions[x].Open());
+                        foreach (var Info in FileSystemInfo)
+                        {
+                            Console.WriteLine("Name          {0}", Info.Name);
+                            Console.WriteLine("Description   {0}", Info.Description);
+                        }
+
+                    }
+                }
+                else
+                {
+                    DiscUtils.FileSystemInfo[] FileSystemInfo = DiscUtils.FileSystemManager.DetectDefaultFileSystems(CurrentDisk.Content);
+                    foreach (var Info in FileSystemInfo)
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("Partition ID  (hd0)");
+                        Console.WriteLine("Name          {0}", Info.Name);
+                        Console.WriteLine("Description   {0}", Info.Description);                        
+                    }
                 }
             }
 
             else if (Command == CommandType.Dir)
             {
-                PathInfo PI = default(PathInfo);
+                PathInfo PI;
+
                 PI.Partition = -1;
+                PI.FilePath = "";
+                PI.File = "";
+                PI.Folder = "";
+
                 if (args.Length > 2)
                     PI = ParseImagePath(args[2]);
 
-                if (CurrentDisk.Partitions == null || CurrentDisk.Partitions.Count <= PI.Partition || PI.Partition == -1)
+                if (string.IsNullOrEmpty(PI.File))
+                    PI.File = "*.*";
+                
+                DiscUtils.FileSystemInfo[] FileSystemInfo = null;
+
+                if (CurrentDisk.DiskTypeInfo.CanBeHardDisk)
                 {
-                    Console.WriteLine("ERROR: Unknown Partition {0}", args[2]);
-                    return -1;
+                    if (CurrentDisk.Partitions == null || CurrentDisk.Partitions.Count <= PI.Partition)
+                    {
+                        Console.WriteLine("ERROR: Unknown Partition {0}", args[2]);
+                        return -1;
+                    }
+
+                    FileSystemInfo = DiscUtils.FileSystemManager.DetectDefaultFileSystems(CurrentDisk.Partitions[PI.Partition].Open());
+
+                    foreach (var Info in FileSystemInfo)
+                    {
+                        DiscUtils.DiscFileSystem FileSystem = Info.Open(CurrentDisk.Partitions[PI.Partition].Open());
+                        var DirInfo = FileSystem.GetDirectoryInfo(PI.Folder);
+
+                        PrintDirectory(DirInfo, PI.File, false);
+                    }
+                }
+                else
+                {
+                    FileSystemInfo = DiscUtils.FileSystemManager.DetectDefaultFileSystems(CurrentDisk.Content);
+
+                    foreach (var Info in FileSystemInfo)
+                    {
+                        DiscUtils.DiscFileSystem FileSystem = Info.Open(CurrentDisk.Content);
+                        var DirInfo = FileSystem.GetDirectoryInfo(PI.Folder);
+
+                        PrintDirectory(DirInfo, PI.File, false);
+                    }
                 }
 
-                DiscUtils.FileSystemInfo[] FileSystemInfo = DiscUtils.FileSystemManager.DetectDefaultFileSystems(CurrentDisk.Partitions[PI.Partition].Open());
 
-                foreach (var Info in FileSystemInfo)
-                {
-                    DiscUtils.DiscFileSystem FileSystem = Info.Open(CurrentDisk.Partitions[PI.Partition].Open());
-                    var DirInfo = FileSystem.GetDirectoryInfo(PI.Folder);
-
-                    PrintDirectory(DirInfo, false);
-                }
             }
 
             else if (Command == CommandType.Copy)

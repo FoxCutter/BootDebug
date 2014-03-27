@@ -91,7 +91,7 @@ bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 			Base += sizeof(uint32_t);
 
 			MemoryMap[MemoryMapLength] = (MemoryMapEntry *)(BootHeader->MemMap_Address + Base);
-			printf("Mem: %016llX - %016llX\n", MemoryMap[MemoryMapLength]->BaseAddress, MemoryMap[MemoryMapLength]->BaseAddress + MemoryMap[MemoryMapLength]->Length -1);
+			//printf("Mem: %016llX - %016llX, %02X\n", MemoryMap[MemoryMapLength]->BaseAddress, MemoryMap[MemoryMapLength]->BaseAddress + MemoryMap[MemoryMapLength]->Length -1, MemoryMap[MemoryMapLength]->Type);
 
 			Base += *Size;
 

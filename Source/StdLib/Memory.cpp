@@ -79,3 +79,18 @@ extern "C" void * __cdecl memset (void *dst, int val, size_t count)
 
         return(start);
 }
+
+#pragma function(memcmp)
+int __cdecl memcmp(const void * _Buf1, const void * _Buf2, size_t _Size)
+{
+	const char * Buf1 = reinterpret_cast<const char *>(_Buf1);
+	const char * Buf2 = reinterpret_cast<const char *>(_Buf2);
+
+	for(size_t x = 0; x < _Size; x++)
+	{
+		if(Buf1[x] - Buf2[x] != 0)
+			return Buf1[x] - Buf2[x];
+	}
+	
+	return 0;
+}

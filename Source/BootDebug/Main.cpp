@@ -3,12 +3,14 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "Utility.h"
+
 #include "..\StdLib\argcargv.h"
 
+#include "PCI.h"
+#include "MPConfig.h"
 #include "RawTerminal.h"
 #include "LowLevel.h"
-
-void PrintMemory(void *Address, int Length);
 
 bool ParseHex(char *String, uint32_t &Value)
 {
@@ -96,176 +98,14 @@ char * TrimString(char *String)
 	return String;
 }
 
-uint32_t SeachMemory(uint32_t Start, uint32_t Count, char *Search)
-{
-	int SearchLength = strlen(Search);
-	if(SearchLength == 0)
-		return UINT32_MAX;
-
-	char *Data = (char *)Start;
-
-	int SeachState = 0;
-
-	for(int Pos = 0; Pos != Count; Pos++)
-	{
-		if(Data[Pos] == Search[SeachState])
-		{
-			SeachState ++;
-			if(SeachState == SearchLength)
-			{
-				return Start + Pos - SearchLength + 1;
-			}
-		}
-		else
-		{
-			SeachState = 0;
-		}
-	}
-
-	return UINT32_MAX;
-}
-
-#pragma pack(push, 1)
-struct MPPointerStruct
-{
-	uint8_t Signature[4];
-	uint32_t DataAddress;
-	uint8_t Length;
-	uint8_t Rev;
-	uint8_t Checksum;
-	uint8_t MPFeature[5];
-};
-
-struct MPConfigHeader
-{
-	uint8_t Signature[4];
-	uint16_t BaseTableLegth;
-	uint8_t Rev;
-	uint8_t Checksum;
-	uint8_t OEMID[8];
-	uint8_t ProductID[12];
-	uint32_t OEMTablePointer;
-	uint16_t OEMTableSize;
-	uint16_t EntryCount;
-	uint32_t LAPICAddress;
-	uint16_t ExtendedTableLength;
-	uint8_t ExtendedTableChecksum;
-	uint8_t Reserved;
-};
-
-enum MPConfigEntryType
-{
-	MPCE_Processor = 0,
-	MPCE_BUS = 1,
-	MPCE_IOAPIC = 2,
-	MPCE_IOInterupt = 3,
-	MPCE_LocalInterrupt = 4,
-};
-
-struct MPConfigTableProcessorEntry
-{
-	uint8_t Type;
-	uint8_t LAPIC_ID;
-	uint8_t LAPIC_Ver;
-	uint8_t Flags;
-
-	uint32_t CPUSignature;
-	uint32_t FeatureFlags;
-	uint32_t Reserved[2];
-};
-
-struct MPConfigTableBusEntry
-{
-	uint8_t Type;
-	uint8_t Bus_ID;
-	uint8_t BusType[6];
-};
-
-struct MPConfigTableIOAPCIEntry
-{
-	uint8_t Type;
-	uint8_t Bus_ID;
-	uint8_t LAPIC_Ver;
-	uint8_t Flags;
-
-	uint32_t IOAPICAddress;
-};
-
-struct MPConfigTableInteruptEntry
-{
-	uint8_t Type;
-	uint8_t IntType;
-	uint16_t Flags;
-	uint8_t SourceBusID;
-	uint8_t SourceBusIRQ;
-	uint8_t DestIOAPICID;
-	uint8_t DestIOAPICINT;
-};
-
-#pragma pack(pop)
-
-MPPointerStruct *FindMPPointer(uint32_t Address, uint32_t Length)
-{
-	while(true)
-	{
-		uint32_t Loc = SeachMemory(Address, Length, "_MP_");
-
-		if(Loc == UINT32_MAX)
-			break;
-
-		MPPointerStruct *Ret = (MPPointerStruct *)Loc;
-		char * Check = (char *)Loc;
-		char Val = 0;
-		for(int x = 0; x < 16 * Ret->Length; x++)
-		{
-			Val += Check[x];
-		}
-
-		if(Val == 0)
-			return Ret;
-
-		Loc += 4;
-						
-		Length = Length - (Loc - Address);
-		Address = Loc;
-	}
-
-	return nullptr;
-}
-
-void PrintMPInfo()
-{
-	MPPointerStruct * MPPointer = nullptr;
-
-	// First off we need to find the MP data.
-	// a. In the first kilobyte of Extended BIOS Data Area (EBDA), or
-	uint32_t FPAddress = *(uint16_t *)(0x040E);
-	FPAddress = FPAddress << 4;
-	if(FPAddress != 0)
-	{
-		MPPointer = FindMPPointer(FPAddress, 1024);
-	}
-
-	// c. In the BIOS ROM address space between 0F0000h and 0FFFFFh.
-	if(MPPointer == nullptr)
-		MPPointer = FindMPPointer(0xF0000, 0x10000);
-
-	if(MPPointer == nullptr)
-	{
-		printf("Unable to find MP table\n");
-		return;
-	}
-
-	MPConfigHeader* MPConfig = (MPConfigHeader *) MPPointer->DataAddress;
-	printf("LAPIC %08X\n", MPConfig->LAPICAddress);
-	printf("Entry Count %04X\n", MPConfig->EntryCount);
-}
-
 void main(int argc, char *argv[])
 {
 	char InputBuffer[1024];
 	bool Done = false;
 
+	PCI PCIBus;
+	MPConfig MPData;
+	
 	uint32_t DumpAddress = 0x100000;
 
 	do
@@ -304,7 +144,22 @@ void main(int argc, char *argv[])
 						}
 					}
 
-					PrintMemory((void *)DumpAddress, Length);
+					switch(toupper(_ppszArgv[0][1]))
+					{
+						default:	
+						case 'B':
+							PrintBytes((void *)DumpAddress, Length);
+							break;
+
+						case 'W':
+							PrintWords((void *)DumpAddress, Length);
+							break;
+
+						case 'D':
+							PrintDWords((void *)DumpAddress, Length);
+							break;
+					}
+
 					DumpAddress += Length;
 				}
 				break;
@@ -365,7 +220,41 @@ void main(int argc, char *argv[])
 
 					if(toupper(_ppszArgv[1][0]) == 'M' && toupper(_ppszArgv[1][1]) == 'P')
 					{
-						PrintMPInfo();
+						MPData.Initilize();
+					}
+					else if(toupper(_ppszArgv[1][0]) == 'P' && toupper(_ppszArgv[1][1]) == 'C' && toupper(_ppszArgv[1][2]) == 'I')
+					{
+						if(ArgCount < 3)
+						{
+							PCIBus.EnumerateBus(0);
+						}
+						else if(ArgCount == 3)
+						{
+							uint32_t DeviceID = 0;
+							ParseHex(_ppszArgv[2], DeviceID);
+							PCIBus.DumpDevice(DeviceID);
+						}
+						else if(ArgCount == 4)
+						{
+							uint32_t DeviceID = 0;
+							uint32_t Register = 0;
+							ParseHex(_ppszArgv[2], DeviceID);
+							ParseHex(_ppszArgv[3], Register);
+							uint32_t Value = PCIBus.ReadRegister(DeviceID, Register);
+
+							printf(" %08X\n", Value);
+						}
+						else if(ArgCount >= 5)
+						{
+							uint32_t DeviceID = 0;
+							uint32_t Register = 0;
+							uint32_t Value = 0;
+							ParseHex(_ppszArgv[2], DeviceID);
+							ParseHex(_ppszArgv[3], Register);
+							ParseHex(_ppszArgv[4], Value);
+
+							PCIBus.SetRegister(DeviceID, Register, Value);
+						}
 					}
 					else
 					{
@@ -456,73 +345,4 @@ void main(int argc, char *argv[])
 	} while (!Done);
 
 	return;
-}
-
-
-void PrintMemory(void *Address, int Length)
-{
-	int Pos = 0;
-	int Count = 16;
-
-	unsigned char * Base = (unsigned char *)((int)Address & 0xFFFFFFF0);
-	
-	Length += (int)Address & 0x0000000F;
-
-	while(Pos < Length)
-	{
-        int WriteLength = 0;
-		
-		if (Length - Pos < Count)
-            Count = Length - Pos;
-
-		printf("%0.8X:", Base + Pos);
-		WriteLength += 9;
-
-        for (int x = 0; x < Count; x++)
-        {
-            if (x == 8)
-                printf("-");
-			else
-				printf(" ");
-
-			WriteLength++;
-
-            if((Base + Pos + x) < Address)
-			{
-				printf("  ");
-			}
-			else
-			{			
-				unsigned char Byte = *(Base + Pos + x);
-
-				printf("%2.2X", Byte);
-			}
-
-			WriteLength += 2;
-        }
-
-		for(int x = 0; x < 60 - WriteLength; x++)
-			printf(" ");
-
-		for (int x = 0; x < Count; x++)
-        {
-            if((Base + Pos + x) < Address)
-			{
-				printf(" ");
-			}
-			else
-			{			
-				unsigned char Byte = *(Base + Pos + x);
-
-				if (Byte < ' ' || Byte > 127)
-					printf(".");
-				else
-					printf("%c", Byte);
-			}
-        }
-
-        printf("\n");
-
-        Pos += Count;
-	}
 }

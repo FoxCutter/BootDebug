@@ -1,4 +1,5 @@
 #include "ACPI.h"
+#include "Utility.h"
 #include <new>
 #include <stdio.h>
 #include <string.h>
@@ -144,59 +145,6 @@ ACPI::ACPI(void)
 
 ACPI::~ACPI(void)
 {
-}
-
-uint32_t SeachMemory(uint32_t Start, uint32_t Count, const uint8_t *Search, uint32_t Alignment)
-{
-	int SearchLength = strlen(reinterpret_cast<const char *>(Search));
-	if(SearchLength == 0)
-		return UINT32_MAX;
-
-	// The starting address should be aligned
-	if(Start % Alignment != 0)
-	{
-		Count -= Start % Alignment;
-		Start = (Start + Alignment) - (Start % Alignment);
-	}
-	
-	uint8_t *Data = reinterpret_cast<uint8_t *>(Start);
-
-	int SeachState = 0;
-
-	for(size_t Pos = 0; Pos < Count; Pos += Alignment)
-	{
-		if(memcmp(Data + Pos, Search, SearchLength) == 0)
-			return Start + Pos;
-	}
-
-	return UINT32_MAX;
-}
-
-bool ValidateChecksum(void *Data, uint16_t Length)
-{
-	uint8_t Val = 0;
-	uint8_t *DataPtr = reinterpret_cast<uint8_t *>(Data);
-	for(int x = 0; x < Length; x++)
-	{
-		Val += DataPtr[x];
-	}
-
-	return Val == 0;
-}
-
-#pragma function(memcmp)
-int __cdecl memcmp(const void * _Buf1, const void * _Buf2, size_t _Size)
-{
-	const char * Buf1 = reinterpret_cast<const char *>(_Buf1);
-	const char * Buf2 = reinterpret_cast<const char *>(_Buf2);
-
-	for(size_t x = 0; x < _Size; x++)
-	{
-		if(Buf1[x] - Buf2[x] != 0)
-			return Buf1[x] - Buf2[x];
-	}
-	
-	return 0;
 }
 
 bool ACPI::Initilize()

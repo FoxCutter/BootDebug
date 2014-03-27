@@ -1,4 +1,5 @@
 #include "PCIBIOS.h"
+#include "Utility.h"
 #include <stdio.h>
 #include <string.h>
 #include "LowLevel.h"
@@ -38,9 +39,6 @@ namespace PCIBiosData
 };
 
 #pragma pack(pop)
-
-uint32_t SeachMemory(uint32_t Start, uint32_t Count, const uint8_t *Search, uint32_t Alignment);
-bool ValidateChecksum(void *Data, uint16_t Length);
 
 PCIBIOS::PCIBIOS(void)
 {

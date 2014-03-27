@@ -13,7 +13,7 @@
 #include "IDT.h"
 
 #include "ACPI.h"
-#include "PCIBIOS.h"
+#include "PCI.h"
 
 #include "..\StdLib\initterm.h"
 
@@ -227,8 +227,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	MBReader.LoadMultiBootInfo(Magic, Address);
 
 	// Get the memory subsystem working
-	// Lets just start with a good area and 16 byte blocks
-	RawMemory MemorySystem(0x20000, 0x40000, 0x10);
+	// Start at the 256 meg mark and give it 16 megs of memory with 16 byte blocks
+	RawMemory MemorySystem(0x10000000, 0x100000, 0x10);
 	MemoryMgr = &MemorySystem;
 
 	// At this point we should be able to display text and allocate memory.
@@ -268,7 +268,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	
 	ASM_STI;
 	
-	//PCIBIOS PCIBios32;
+	//PCI PCIBus;
+	//PCIBus.Initilize();
 	//PCIBios32.Initilize();
 
 	//Registers Reg;

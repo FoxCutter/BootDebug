@@ -19,6 +19,8 @@ MultiBootInfo::~MultiBootInfo(void)
 
 bool MultiBootInfo::LoadMultiBootInfo(uint32_t Signature, void *Data)
 {
+	//printf("MB Magic %08X, Address %08X\n", Signature, Data);
+	
 	if(Signature == MulitBoot::BootMagic)
 	{
 		return LoadMult1Boot1Info(Data);

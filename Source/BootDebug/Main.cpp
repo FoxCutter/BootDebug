@@ -12,6 +12,40 @@
 #include "RawTerminal.h"
 #include "LowLevel.h"
 
+bool ParseHex(char *String, uint64_t &Value)
+{
+	uint64_t RetValue = 0;
+	
+	if(String[0] == 0)
+		return true;
+
+	while(*String != 0)
+	{
+		char Data = *String;
+		
+		if(Data >= '0' && Data <= '9')
+			Data = Data - '0';
+
+		else if (Data >= 'a' && Data <= 'f')
+			Data = Data - 'a' + 10;
+
+		else if (Data >= 'A' && Data <= 'F')
+			Data = Data - 'A' + 10;
+
+		else
+			return false;
+
+		RetValue *= 0x10;
+		RetValue += Data;
+
+		String++;
+	}
+
+	Value = RetValue;
+
+	return true;
+}
+
 bool ParseHex(char *String, uint32_t &Value)
 {
 	uint32_t RetValue = 0;
@@ -218,11 +252,46 @@ void main(int argc, char *argv[])
 						break;
 					}
 
-					if(toupper(_ppszArgv[1][0]) == 'M' && toupper(_ppszArgv[1][1]) == 'P')
+					if(_stricmp("MP", _ppszArgv[1]) == 0)
 					{
 						MPData.Initilize();
 					}
-					else if(toupper(_ppszArgv[1][0]) == 'P' && toupper(_ppszArgv[1][1]) == 'C' && toupper(_ppszArgv[1][2]) == 'I')
+					else if(_stricmp("CPUID", _ppszArgv[1]) == 0)
+					{
+						Registers Res;
+						if(ArgCount < 3)
+						{
+							ReadCPUID(0, 0, &Res);
+							printf(" Signature: %4.4s%4.4s%4.4s\n", &Res.EBX, &Res.EDX, &Res.ECX);
+							printf(" Basic Leaf Count: %X\n", Res.EAX);
+
+							ReadCPUID(1, 0, &Res);
+							printf(" CPU Type %X, Family %X, Model %X, Stepping %X\n", (Res.EAX & 0xF000) >> 12, (Res.EAX & 0xF00) >> 8, (Res.EAX & 0xF0) >> 4, Res.EAX & 0x0F);
+							printf(" Brand Index: %02X\n", Res.EBX & 0xFF);
+							printf(" CLFLUSH Size: %02X\n", (Res.EBX & 0x0000FF00) >> 8);
+							printf(" Max ID: %02X\n", (Res.EBX & 0x00FF0000) >> 16);
+							printf(" Initial APIC ID: %02X\n", (Res.EBX & 0xFF000000) >> 24);
+							printf(" Features 1: %08X\n", Res.EDX);
+							printf(" Features 2: %08X\n", Res.ECX);
+						}
+						else
+						{
+							uint32_t ParamID = 0;
+							ParseHex(_ppszArgv[2], ParamID);							
+
+							uint32_t ParamID2 = 0;
+							if(ArgCount >= 4)
+							{
+								ParseHex(_ppszArgv[3], ParamID2);
+							}
+
+							
+							ReadCPUID(ParamID, ParamID2, &Res);
+							printf(" EAX: %08X, EBX: %08X, ECX: %08X, EDX: %08X\n", Res.EAX, Res.EBX, Res.ECX, Res.EDX);
+
+						}
+					}
+					else if(_stricmp("PCI", _ppszArgv[1]) == 0)
 					{
 						if(ArgCount < 3)
 						{
@@ -254,6 +323,111 @@ void main(int argc, char *argv[])
 							ParseHex(_ppszArgv[4], Value);
 
 							PCIBus.SetRegister(DeviceID, Register, Value);
+						}
+					}
+					else
+					{
+						puts("Invalid arguments");
+					}
+				}
+				
+				break;
+
+			case 'R':
+				{
+					if(ArgCount < 2)
+					{
+						puts("Invalid arguments");
+						break;
+					}
+
+					if(_stricmp("MSR", _ppszArgv[1]) == 0)
+					{
+						if(ArgCount < 3)
+						{
+							puts("Invalid arguments");
+							break;
+						}
+						else if(ArgCount == 3)
+						{
+							uint32_t Register = 0;
+							ParseHex(_ppszArgv[2], Register);
+							uint64_t Value = ReadMSR(Register);
+							printf(" %016llX\n", Value);
+						}
+						else if(ArgCount == 4)
+						{							
+							uint32_t Register = 0;
+							uint64_t Value = 0;
+							ParseHex(_ppszArgv[2], Register);
+							ParseHex(_ppszArgv[3], Value);
+							WriteMSR(Register, Value);
+						}
+					}
+					else if(_strnicmp("CR", _ppszArgv[1], 2) == 0)
+					{
+						uint32_t Value;
+						
+						bool Set = false;
+						if(ArgCount == 3)
+						{
+							ParseHex(_ppszArgv[2], Value);
+							Set = true;
+						}
+						
+						switch(_ppszArgv[1][2])
+						{
+							case '0':
+								if(Set)
+								{
+									WriteCR0(Value);
+								}
+								else
+								{
+									Value = ReadCR0();
+									printf(" %08X\n", Value);
+								}
+								break;
+
+							case '2':
+								if(Set)
+								{
+									WriteCR2(Value);
+								}
+								else
+								{
+									Value = ReadCR2();
+									printf(" %08X\n", Value);
+								}
+								break;
+
+							case '3':
+								if(Set)
+								{
+									WriteCR3(Value);
+								}
+								else
+								{
+									Value = ReadCR3();
+									printf(" %08X\n", Value);
+								}
+								break;
+
+							case '4':
+								if(Set)
+								{
+									WriteCR4(Value);
+								}
+								else
+								{
+									Value = ReadCR4();
+									printf(" %08X\n", Value);
+								}
+								break;
+
+							default:
+								puts("Invalid arguments");
+								break;
 						}
 					}
 					else
@@ -334,6 +508,28 @@ void main(int argc, char *argv[])
 				}
 				break;
 
+
+			case 'W':
+				{
+					if(ArgCount < 2)
+					{
+						puts("Invalid arguments");
+						break;
+					}
+
+					uint32_t Start, Length;
+					ParseHex(_ppszArgv[1], Start);
+					ParseHex(_ppszArgv[2], Length);
+
+					uint8_t * Data = (uint8_t *)Start;
+					for(uint32_t x = 0; x < Length; x++)
+					{
+						while ((InPortb(0x03F8 + 5) & 0x20) != 0x020);
+						OutPortb(0x03F8, Data[x]);
+					}
+					
+				}
+				break;
 
 			case '?':
 				break;

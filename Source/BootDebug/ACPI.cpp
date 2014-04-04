@@ -29,7 +29,7 @@ namespace ACPIData
 		uint8_t		RegisterBitWith;
 		uint8_t		RegisterBitOffset;
 		uint8_t		AccessSize;
-		uint16_t	Address;
+		uint64_t	Address;
 	};
 
 	struct DescriptionHeader

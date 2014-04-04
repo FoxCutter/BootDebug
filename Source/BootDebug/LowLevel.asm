@@ -169,7 +169,7 @@ ReadMSR PROC C
 	RDMSR
 	
 	; RDMSR returns the data as edx:eax	but the 64 bit values are returned in eax:edx, so we swap them.
-	xchg eax, edx
+	; xchg eax, edx
 
 	pop ebp
 	ret

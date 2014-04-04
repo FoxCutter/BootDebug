@@ -150,7 +150,7 @@ bool MPConfig::Initilize()
 				{
 					MPData::MPConfigTableIOAPCIEntry *Entry = (MPData::MPConfigTableIOAPCIEntry *)Data;
 
-					printf("I/O APCI: ID %02X, Address: %08X\n", Entry->IOAPIC_ID, Entry->IOAPICAddress);
+					printf("I/O APCI: ID %02X, Flags: %02X, Address: %08X\n", Entry->IOAPIC_ID, Entry->Flags, Entry->IOAPICAddress);
 
 					Data += 8;
 				}

@@ -21,7 +21,21 @@ void SystemTrap(InterruptContext * Context)
 {
 	if(Context->InterruptNumber == 0x0d)
 	{
-		printf("GPF Fault at: %08X\n", Context->SourceEIP);
+		// Bad MSRs through GPFs, so eat them and move on.
+		// 0F 30 WRMSR
+		// 0F 32 RDMSR
+		if(reinterpret_cast<uint16_t *>(Context->SourceEIP)[0] == 0x300F || reinterpret_cast<uint16_t *>(Context->SourceEIP)[0] == 0x320F)
+		{
+			printf("Invalid MSR [%X]\n", Context->ECX);
+			Context->EAX = 0x00000000;
+			Context->EDX = 0x00000000;
+			Context->SourceEIP += 2;
+			return;
+		}
+		else
+		{
+			printf("GPF Fault %08X at: %08X\n", Context->ErrorCode, Context->SourceEIP);
+		}
 	}
 	else
 	{	
@@ -301,3 +315,5 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	//printf("Woops!");
 }
+
+

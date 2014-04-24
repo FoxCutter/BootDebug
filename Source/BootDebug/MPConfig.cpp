@@ -104,11 +104,11 @@ bool MPConfig::Initilize()
 	uint32_t EBDABase = *(uint16_t *)(0x040E);
 	EBDABase = EBDABase << 4;
 
-	uint32_t MPPointerAddress = SeachMemory(EBDABase, 0x400, MPData::MPPointerSig, 0x10);
+	uint32_t MPPointerAddress = SeachMemory(EBDABase, 0x400, MPData::MPPointerSig, 4, 0x10);
 
 	// If that failed check the BIOS space
 	if(MPPointerAddress == UINT32_MAX)
-		MPPointerAddress = SeachMemory(0xE0000, 0x20000, MPData::MPPointerSig, 0x10);
+		MPPointerAddress = SeachMemory(0xE0000, 0x20000, MPData::MPPointerSig, 4, 0x10);
 
 	if(MPPointerAddress == UINT32_MAX)
 		return false;

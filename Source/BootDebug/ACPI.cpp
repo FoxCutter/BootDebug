@@ -153,11 +153,11 @@ bool ACPI::Initilize()
 	uint32_t EBDABase = *(uint16_t *)(0x040E);
 	EBDABase = EBDABase << 4;
 
-	uint32_t RSDPAddress = SeachMemory(EBDABase, 0x400, ACPIData::RSDPSig, 0x10);
+	uint32_t RSDPAddress = SeachMemory(EBDABase, 0x400, ACPIData::RSDPSig, 8, 0x10);
 
 	// If that failed check the BIOS space
 	if(RSDPAddress == UINT32_MAX)
-		RSDPAddress = SeachMemory(0xE0000, 0x20000, ACPIData::RSDPSig, 0x10);
+		RSDPAddress = SeachMemory(0xE0000, 0x20000, ACPIData::RSDPSig, 8, 0x10);
 
 	if(RSDPAddress == UINT32_MAX)
 		return false;

@@ -2,10 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 
-uint32_t SeachMemory(uint32_t Start, uint32_t Count, const void *Search, uint32_t Alignment)
+uint32_t SeachMemory(uint32_t Start, uint32_t Count, const void *Search, uint32_t DataLength, uint32_t Alignment)
 {
-	int SearchLength = strlen(reinterpret_cast<const char *>(Search));
-	if(SearchLength == 0)
+	if(DataLength == 0)
 		return UINT32_MAX;
 
 	// The starting address should be aligned
@@ -21,7 +20,7 @@ uint32_t SeachMemory(uint32_t Start, uint32_t Count, const void *Search, uint32_
 
 	for(size_t Pos = 0; Pos < Count; Pos += Alignment)
 	{
-		if(memcmp(Data + Pos, Search, SearchLength) == 0)
+		if(memcmp(Data + Pos, Search, DataLength) == 0)
 			return Start + Pos;
 	}
 
@@ -40,7 +39,7 @@ bool ValidateChecksum(void *Data, uint16_t Length)
 	return Val == 0;
 }
 
-void PrintBytes(void *Address, int Length)
+void PrintMemoryBlock(void *Address, int Length, uint8_t Align)
 {
 	int Pos = 0;
 	int Count = 16;
@@ -54,12 +53,12 @@ void PrintBytes(void *Address, int Length)
         int WriteLength = 0;
 		
 		if (Length - Pos < Count)
-            Count = Length - Pos;
+            Count = 16; //Length - Pos;
 
-		printf("%0.8X:", Base + Pos);
+		printf("\00307%0.8X:", Base + Pos);
 		WriteLength += 9;
 
-        for (int x = 0; x < Count; x++)
+        for (int x = 0; x < Count; x += Align)
         {
             if (x == 8)
                 printf("-");
@@ -67,38 +66,77 @@ void PrintBytes(void *Address, int Length)
 				printf(" ");
 
 			WriteLength++;
-
-            if((Base + Pos + x) < Address)
+			
+			if((Base + Pos + x) < Address || (Pos + x >= Length))
 			{
-				printf("  ");
+				printf("\00308");
 			}
 			else
 			{			
-				uint8_t Byte = *(Base + Pos + x);
-
-				printf("%2.2X", Byte);
+				printf("\00307");
 			}
 
-			WriteLength += 2;
+			if(Align == 2)
+			{
+				uint16_t Data = *(uint16_t *)(Base + Pos + x);
+
+				printf("%4.4X", Data);
+
+				WriteLength += 4;
+			}
+			else if(Align == 4)
+			{
+				uint32_t Data = *(uint32_t *)(Base + Pos + x);
+
+				printf("%8.8X", Data);
+
+				WriteLength += 8;
+			}
+			else if(Align == 8)
+			{
+				uint64_t Data = *(uint64_t *)(Base + Pos + x);
+
+				printf("%16.16llX", Data);
+
+				WriteLength += 16;
+			}
+			else
+			{
+				uint8_t Data = *(uint8_t *)(Base + Pos + x);
+
+				printf("%2.2X", Data);
+
+				WriteLength += 2;
+			}
         }
 
-		for(int x = 0; x < 60 - WriteLength; x++)
-			printf(" ");
+		if(Align == 1)
+		{
+			for(int x = 0; x < 60 - WriteLength; x++)
+				printf(" ");
+		}
+		else
+		{
+			for(int x = 0; x < 60- WriteLength - (16 / Align); x++)
+				printf(" ");
+		}
 
 		for (int x = 0; x < Count; x++)
         {
-            if((Base + Pos + x) < Address)
-			{
+			if(Align != 1 && (x % Align == 0))
 				printf(" ");
+
+			unsigned char Byte = *(Base + Pos + x);
+			if (Byte < ' ' || Byte > 127)
+				Byte = '.';
+
+            if((Base + Pos + x) < Address || (Pos + x >= Length))
+			{
+				printf("\00308%c", Byte);
 			}
 			else
 			{			
-				unsigned char Byte = *(Base + Pos + x);
-
-				if (Byte < ' ' || Byte > 127)
-					printf(".");
-				else
-					printf("%c", Byte);
+				printf("\00307%c", Byte);
 			}
         }
 
@@ -106,146 +144,24 @@ void PrintBytes(void *Address, int Length)
 
         Pos += Count;
 	}
+}
+
+void PrintBytes(void *Address, int Length)
+{
+	PrintMemoryBlock(Address, Length, 1);
 }
 
 void PrintWords(void *Address, int Length)
 {
-	int Pos = 0;
-	int Count = 16;
-
-	unsigned char * Base = (unsigned char *)((int)Address & 0xFFFFFFF0);
-	
-	Length += (int)Address & 0x0000000F;
-
-	while(Pos < Length)
-	{
-        int WriteLength = 0;
-		
-		if (Length - Pos < Count)
-            Count = Length - Pos;
-
-		printf("%0.8X:", Base + Pos);
-		WriteLength += 9;
-
-        for (int x = 0; x < Count; x += 2)
-        {
-            if (x == 8)
-                printf("-");
-			else
-				printf(" ");
-
-			WriteLength++;
-
-            if((Base + Pos + x) < Address)
-			{
-				printf("    ");
-			}
-			else
-			{			
-				uint16_t Data = *(uint16_t *)(Base + Pos + x);
-
-				printf("%04X", Data);
-			}
-
-			WriteLength += 4;
-        }
-
-		for(int x = 0; x < 52 - WriteLength; x++)
-			printf(" ");
-
-		for (int x = 0; x < Count; x++)
-        {
-            if(x % 2 == 0)
-				printf(" ");
-			
-			if((Base + Pos + x) < Address)
-			{
-				printf(" ");
-			}
-			else
-			{			
-				unsigned char Byte = *(Base + Pos + x);
-
-				if (Byte < ' ' || Byte > 127)
-					printf(".");
-				else
-					printf("%c", Byte);
-			}
-        } 
-
-        printf("\n");
-
-        Pos += Count;
-	}
+	PrintMemoryBlock(Address, Length, 2);
 }
 
 void PrintDWords(void *Address, int Length)
 {
-	int Pos = 0;
-	int Count = 16;
+	PrintMemoryBlock(Address, Length, 4);
+}
 
-	unsigned char * Base = (unsigned char *)((int)Address & 0xFFFFFFF0);
-	
-	Length += (int)Address & 0x0000000F;
-
-	while(Pos < Length)
-	{
-        int WriteLength = 0;
-		
-		if (Length - Pos < Count)
-            Count = Length - Pos;
-
-		printf("%0.8X:", Base + Pos);
-		WriteLength += 9;
-
-        for (int x = 0; x < Count; x += 4)
-        {
-            if (x == 8)
-                printf("-");
-			else
-				printf(" ");
-
-			WriteLength++;
-
-            if((Base + Pos + x) < Address)
-			{
-				printf("        ");
-			}
-			else
-			{			
-				uint32_t Data = *(uint32_t *)(Base + Pos + x);
-
-				printf("%08X", Data);
-			}
-
-			WriteLength += 8;
-        }
-
-		for(int x = 0; x < 56 - WriteLength; x++)
-			printf(" ");
-
-		for (int x = 0; x < Count; x++)
-        {
-            if(x % 4 == 0)
-				printf(" ");
-
-			if((Base + Pos + x) < Address)
-			{
-				printf(" ");
-			}
-			else
-			{			
-				unsigned char Byte = *(Base + Pos + x);
-
-				if (Byte < ' ' || Byte > 127)
-					printf(".");
-				else
-					printf("%c", Byte);
-			}
-        }
-
-        printf("\n");
-
-        Pos += Count;
-	}
+void PrintQWords(void *Address, int Length)
+{
+	PrintMemoryBlock(Address, Length, 8);
 }

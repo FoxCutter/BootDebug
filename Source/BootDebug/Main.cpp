@@ -12,15 +12,22 @@
 #include "RawTerminal.h"
 #include "LowLevel.h"
 
-bool ParseHex(char *String, uint64_t &Value)
+template <typename DataType>
+bool ParseHex(char *String, DataType &Value)
 {
-	uint64_t RetValue = 0;
+	DataType RetValue = 0;
+
+	size_t CurrentLength = 0;
+	size_t MaxLength = sizeof(DataType) * 2;	
 	
 	if(String[0] == 0)
 		return true;
 
 	while(*String != 0)
 	{
+		if(CurrentLength == MaxLength)
+			return false;
+		
 		char Data = *String;
 		
 		if(Data >= '0' && Data <= '9')
@@ -39,40 +46,7 @@ bool ParseHex(char *String, uint64_t &Value)
 		RetValue += Data;
 
 		String++;
-	}
-
-	Value = RetValue;
-
-	return true;
-}
-
-bool ParseHex(char *String, uint32_t &Value)
-{
-	uint32_t RetValue = 0;
-	
-	if(String[0] == 0)
-		return true;
-
-	while(*String != 0)
-	{
-		char Data = *String;
-		
-		if(Data >= '0' && Data <= '9')
-			Data = Data - '0';
-
-		else if (Data >= 'a' && Data <= 'f')
-			Data = Data - 'a' + 10;
-
-		else if (Data >= 'A' && Data <= 'F')
-			Data = Data - 'A' + 10;
-
-		else
-			return false;
-
-		RetValue *= 0x10;
-		RetValue += Data;
-
-		String++;
+		CurrentLength ++;
 	}
 
 	Value = RetValue;
@@ -107,6 +81,9 @@ char * TrimChar(char *String, char Value)
 
 char * TrimString(char *String)
 {
+	if(String == nullptr)
+		return nullptr;
+
 	// Remove any leading characters
 	while(*String != 0 && *String == ' ')
 		String++;
@@ -132,6 +109,140 @@ char * TrimString(char *String)
 	return String;
 }
 
+char * NextToken(char *&Input)
+{
+	if(Input == nullptr)
+		return nullptr;
+
+	if(Input[0] == 0)
+		return Input;
+
+	char * TokenStart = Input;
+	Input = nullptr;
+
+	bool InQuote = false;
+
+	while(TokenStart[0] != 0 && isspace(*TokenStart))
+		TokenStart++;
+
+	for(int x = 0; TokenStart[x] != 0; x++)
+	{
+		if(TokenStart[x] == '"')
+		{
+			if(x == 0)
+				InQuote = true;
+
+			else
+				InQuote = false;
+		}
+		else if(isspace(TokenStart[x]) && !InQuote)
+		{
+			TokenStart[x] = 0;			
+			Input = &TokenStart[x + 1];
+			break;
+		}
+	}
+
+	return TokenStart;
+}
+
+bool ParseData(char *InputData, void *Data, uint32_t &DataLength, uint32_t DataSize)
+{
+	bool Pass = true;
+	// We have a list of hex values
+	DataLength = 0;
+	char * CurrentData = NextToken(InputData);
+	while(CurrentData != nullptr)
+	{
+		switch (DataSize)
+		{
+			case 1:
+				Pass = ParseHex(CurrentData, reinterpret_cast<uint8_t *>(Data)[DataLength]);
+				break;
+
+			case 2:
+				Pass = ParseHex(CurrentData, reinterpret_cast<uint16_t *>(Data)[DataLength]);
+				break;
+
+			case 4:
+				Pass = ParseHex(CurrentData, reinterpret_cast<uint32_t *>(Data)[DataLength]);
+				break;
+
+			case 8:
+				Pass = ParseHex(CurrentData, reinterpret_cast<uint64_t *>(Data)[DataLength]);
+				break;
+		}
+
+		DataLength++;
+
+		if(Pass == false)
+		{
+			printf(" Invalid Data [%s]\n", CurrentData);	
+			return false;
+		}
+
+		CurrentData = NextToken(InputData);
+	};
+
+	return true;
+}
+
+bool ParseAddress(char *Value, uint32_t &Address)
+{
+	bool Error = false;
+	char * CurrentData = TrimString(Value);
+
+	int Modifier = 0;
+	uint32_t ParsedValue = 0;
+
+	if(CurrentData[0] == '+')
+	{
+		Modifier = 1;
+	
+		if(CurrentData[1] == 0)
+			Error = true;
+		else							
+			CurrentData++;
+	}
+	else if(CurrentData[0] == '-')
+	{
+		Modifier = 2;
+
+		if(CurrentData[1] == 0)
+			Error = true;
+		else							
+			CurrentData++;
+	} 
+						
+	if(CurrentData[0] == ':')
+	{
+		Modifier = 3;
+
+		if(CurrentData[1] != 0)
+			Error = true;
+	}
+	else if(!ParseHex(CurrentData, ParsedValue))
+	{
+		Error = true;
+	}
+
+	if(Error)
+	{		
+		return false;
+	}
+
+	if(Modifier == 0)
+		Address = ParsedValue;
+
+	else if(Modifier == 1)
+		Address = Address + ParsedValue;
+						
+	else if(Modifier == 2)
+		Address = Address - ParsedValue;
+
+	return true;
+}
+
 void main(int argc, char *argv[])
 {
 	char InputBuffer[1024];
@@ -144,122 +255,212 @@ void main(int argc, char *argv[])
 
 	do
 	{
-		printf("> ");
+		printf("\00307%08X> ", DumpAddress);
 		gets_s(InputBuffer, 1024);
 
-		char * Input= TrimString(InputBuffer);
-
-		int ArgCount = _ConvertCommandLineToArgcArgv(Input);
-
-		switch(toupper(_ppszArgv[0][0]))
+		char * Input = TrimString(InputBuffer);		
+		char *CurrentData = NextToken(Input);
+		
+		switch(toupper(CurrentData[0]))
 		{
-			case 'Q':
-				Done = true;
-				break;
-
 			case 'D':
 				{
-					if(ArgCount > 1)
-					{
-						if(!ParseHex(_ppszArgv[1], DumpAddress))
-						{
-							puts("Invalid address");
-							break;
-						}
-					}
-
+					int DumpSize = 1;
 					uint32_t Length = 0x80;
-					if(ArgCount > 2)
-					{
-						if(!ParseHex(_ppszArgv[2], Length))
-						{
-							puts("Invalid length");
-							break;
-						}
-					}
+					uint32_t Address = DumpAddress;
 
-					switch(toupper(_ppszArgv[0][1]))
+					switch(toupper(CurrentData[1]))
 					{
-						default:	
+						case 0:
 						case 'B':
-							PrintBytes((void *)DumpAddress, Length);
+							DumpSize = 1;
 							break;
-
+						
 						case 'W':
-							PrintWords((void *)DumpAddress, Length);
+							DumpSize = 2;
 							break;
 
 						case 'D':
-							PrintDWords((void *)DumpAddress, Length);
+							DumpSize = 4;
 							break;
+
+						case 'Q':
+							DumpSize = 8;
+							break;
+						
+						default:
+							printf(" Unknown Option [%c]\n", CurrentData[1]);
+							continue;
+
 					}
 
-					DumpAddress += Length;
+					CurrentData = NextToken(Input);
+					if(CurrentData != nullptr)
+					{
+						if(!ParseAddress(CurrentData, Address))
+						{
+							printf(" Invalid Address [%s]\n", CurrentData);
+							continue;
+						}
+					}
+
+					CurrentData = NextToken(Input);
+
+					if(CurrentData != nullptr)
+					{
+						if(!ParseHex(CurrentData, Length))
+						{
+							printf(" Invalid Length [%s]\n", CurrentData);
+							continue;
+						}
+					}
+
+					PrintMemoryBlock((void *)Address, Length, DumpSize);
+
+					DumpAddress = Address + Length;
 				}
 				break;
 
 			case 'S':
-				{
-					if(ArgCount < 4)
-					{
-						puts("Invalid arguments");
-						break;
-					}
+				{					
+					int DataSize = 1;
 					
-					uint32_t Start = 0;								        
-
-					if(!ParseHex(_ppszArgv[1], Start))
+					switch(toupper(CurrentData[1]))
 					{
-						puts("Invalid address");
-						break;
-					}
+						case 0:
+						case 'B':
+							DataSize = 1;
+							break;
+						
+						case 'W':
+							DataSize = 2;
+							break;
 
+						case 'D':
+							DataSize = 4;
+							break;
+
+						case 'Q':
+							DataSize = 8;
+							break;
+						
+						default:
+							printf(" Unknown Option [%c]\n", CurrentData[1]);
+							continue;
+
+					}					
+					
+					uint32_t Start = DumpAddress;
 					uint32_t Count = 0;
+					uint32_t DataLength = 0;
 
-					if(!ParseHex(_ppszArgv[2], Count))
+					CurrentData = NextToken(Input);
+					if(CurrentData == nullptr)
 					{
-						puts("Invalid count");
-						break;
+						puts(" Address Missing");
+						continue;
+					}
+					
+					if(!ParseAddress(CurrentData, Start))
+					{
+						printf(" Invalid Address [%s]\n", CurrentData);
+						continue;
 					}
 
-					char *String = _ppszArgv[3];
-					if(String[0] == '"' || String[0] == '\'')
-						String = TrimChar(String, String[0]);
+					CurrentData = NextToken(Input);
+					if(CurrentData == nullptr)
+					{
+						puts(" Length Missing");
+						continue;
+					}
+
+					if(!ParseHex(CurrentData, Count))
+					{
+						printf(" Invalid Length [%s]\n", CurrentData);
+						break;
+					}
 					
+					Input = TrimString(Input);
+
+					if(Input == nullptr || Input[0] == 0)
+					{
+						puts(" Search Data Missing");
+						break;
+
+					}
+					
+					void * Data = new uint8_t[32 * DataSize];
+
+					// We have a search string
+					if(Input[0] == '"')
+					{
+						if(DataSize != 1)
+						{
+							printf(" String Data is only valid on Byte searches.\n", Input);
+							delete Data;
+							break;
+						}						
+						else if(Input[strlen(Input) - 1] != '"')
+						{
+							printf(" Invalid String Data [%s]\n", Input);
+							delete Data;
+							break;
+						}
+
+						char * InputData = TrimChar(Input, Input[0]);
+						DataLength = strlen(InputData);
+						
+						if(DataLength > 32)
+							DataLength = 32;
+
+						memcpy(Data, InputData, DataLength);
+					}
+					else
+					{
+						if(!ParseData(Input, Data, DataLength, DataSize))
+						{
+							delete Data;
+							break;
+						}
+					}
+
 					while(true)
 					{
-						uint32_t Loc = SeachMemory(Start, Count, String);
+						uint32_t Loc = SeachMemory(Start, Count, Data, DataLength * DataSize, DataSize);
 
 						if(Loc == UINT32_MAX)
 							break;
 
-						printf("Found %08X\n", Loc);
+						PrintMemoryBlock((void *)Loc, DataLength * DataSize, DataSize);
 						
-						Loc += strlen(String);
+						Loc += DataLength * DataSize;
 						
 						Count = Count - (Loc - Start);
 						Start = Loc;
-					}
+					}					
 
+					delete Data;
 				}
 				break;
 
 			case 'N':
 				{
-					if(ArgCount < 2)
+					CurrentData = NextToken(Input);
+					if(CurrentData == nullptr)
 					{
-						puts("Invalid arguments");
-						break;
+						puts("Information Type Missing");
+						continue;
 					}
 
-					if(_stricmp("MP", _ppszArgv[1]) == 0)
+					if(_stricmp("MP", CurrentData) == 0)
 					{
 						MPData.Initilize();
 					}
-					else if(_stricmp("CPUID", _ppszArgv[1]) == 0)
+					else if(_stricmp("CPUID", CurrentData) == 0)
 					{
 						Registers Res;
-						if(ArgCount < 3)
+						CurrentData = NextToken(Input);
+						if(CurrentData == nullptr)
 						{
 							ReadCPUID(0, 0, &Res);
 							printf(" Signature: %4.4s%4.4s%4.4s\n", &Res.EBX, &Res.EDX, &Res.ECX);
@@ -277,57 +478,68 @@ void main(int argc, char *argv[])
 						else
 						{
 							uint32_t ParamID = 0;
-							ParseHex(_ppszArgv[2], ParamID);							
+							ParseHex(CurrentData, ParamID);							
 
 							uint32_t ParamID2 = 0;
-							if(ArgCount >= 4)
+							CurrentData = NextToken(Input);
+							if(CurrentData == nullptr)
 							{
-								ParseHex(_ppszArgv[3], ParamID2);
+								ParseHex(CurrentData, ParamID2);
 							}
-
 							
 							ReadCPUID(ParamID, ParamID2, &Res);
 							printf(" EAX: %08X, EBX: %08X, ECX: %08X, EDX: %08X\n", Res.EAX, Res.EBX, Res.ECX, Res.EDX);
-
 						}
 					}
-					else if(_stricmp("PCI", _ppszArgv[1]) == 0)
+					else if(_stricmp("PCI", CurrentData) == 0)
 					{
-						if(ArgCount < 3)
+						CurrentData = NextToken(Input);
+						if(CurrentData == nullptr)
 						{
 							PCIBus.EnumerateBus(0);
 						}
-						else if(ArgCount == 3)
+
+						uint32_t DeviceID = 0;
+						if(!ParseHex(CurrentData, DeviceID))
 						{
-							uint32_t DeviceID = 0;
-							ParseHex(_ppszArgv[2], DeviceID);
+							printf(" Invalid Device [%s]\n", CurrentData);
+							continue;
+						}
+
+						CurrentData = NextToken(Input);
+						if(CurrentData == nullptr)
+						{
 							PCIBus.DumpDevice(DeviceID);
+							break;
 						}
-						else if(ArgCount == 4)
+						
+						uint32_t Register = 0;
+						if(!ParseHex(CurrentData, Register))
 						{
-							uint32_t DeviceID = 0;
-							uint32_t Register = 0;
-							ParseHex(_ppszArgv[2], DeviceID);
-							ParseHex(_ppszArgv[3], Register);
+							printf(" Invalid Register [%s]\n", CurrentData);
+							continue;
+						}
+
+						CurrentData = NextToken(Input);
+						if(CurrentData == nullptr)
+						{
 							uint32_t Value = PCIBus.ReadRegister(DeviceID, Register);
-
 							printf(" %08X\n", Value);
+							break;
 						}
-						else if(ArgCount >= 5)
-						{
-							uint32_t DeviceID = 0;
-							uint32_t Register = 0;
-							uint32_t Value = 0;
-							ParseHex(_ppszArgv[2], DeviceID);
-							ParseHex(_ppszArgv[3], Register);
-							ParseHex(_ppszArgv[4], Value);
 
-							PCIBus.SetRegister(DeviceID, Register, Value);
+						uint32_t Value = 0;
+						if(!ParseHex(CurrentData, Value))
+						{
+							printf(" Invalid Value [%s]\n", CurrentData);
+							continue;
 						}
+
+						PCIBus.SetRegister(DeviceID, Register, Value);
 					}
 					else
 					{
-						puts("Invalid arguments");
+						printf("Invalid arguments [%s]\n", CurrentData);
 					}
 				}
 				
@@ -335,49 +547,90 @@ void main(int argc, char *argv[])
 
 			case 'R':
 				{
-					if(ArgCount < 2)
+					CurrentData = NextToken(Input);
+					if(CurrentData == nullptr)
 					{
-						puts("Invalid arguments");
-						break;
+						puts("Register Missing");
+						continue;
 					}
 
-					if(_stricmp("MSR", _ppszArgv[1]) == 0)
+					if(_stricmp("MSR", CurrentData) == 0)
 					{
-						if(ArgCount < 3)
+						CurrentData = NextToken(Input);
+						if(CurrentData == nullptr)
 						{
-							puts("Invalid arguments");
+							puts("MSR Register Missing");
 							break;
 						}
-						else if(ArgCount == 3)
+
+						uint32_t Register = 0;
+						if(!ParseHex(CurrentData, Register))
 						{
-							uint32_t Register = 0;
-							ParseHex(_ppszArgv[2], Register);
+							printf(" Invalid MSR Register [%s]\n", CurrentData);
+							continue;
+						}
+
+						CurrentData = NextToken(Input);
+						if(CurrentData == nullptr)
+						{
 							uint64_t Value = ReadMSR(Register);
 							printf(" %016llX\n", Value);
+							break;
 						}
-						else if(ArgCount == 4)
-						{							
-							uint32_t Register = 0;
-							uint64_t Value = 0;
-							ParseHex(_ppszArgv[2], Register);
-							ParseHex(_ppszArgv[3], Value);
-							WriteMSR(Register, Value);
-						}
-					}
-					else if(_strnicmp("CR", _ppszArgv[1], 2) == 0)
-					{
-						uint32_t Value;
-						
-						bool Set = false;
-						if(ArgCount == 3)
+
+						uint64_t Value = 0;
+						if(!ParseHex(CurrentData, Value))
 						{
-							ParseHex(_ppszArgv[2], Value);
+							printf(" Invalid Value [%s]\n", CurrentData);
+							continue;
+						}
+
+						WriteMSR(Register, Value);						
+					}
+					else if(_strnicmp("CR", CurrentData, 2) == 0)
+					{
+						uint32_t Register = 0;
+						switch(CurrentData[2])
+						{
+							case '0':
+								Register = 0;
+								break;
+
+							case '2':
+								Register = 2;
+								break;
+
+							case '3':
+								Register = 3;
+								break;
+
+							case '4':
+								Register = 4;
+								break;
+
+							default:
+								printf(" Invalid Control Register [%s]\n", CurrentData);
+								continue;
+						}
+
+						
+						uint32_t Value;					
+						bool Set = false;
+
+						CurrentData = NextToken(Input);
+						if(CurrentData != nullptr)
+						{
+							if(!ParseHex(CurrentData, Value))
+							{
+								printf(" Invalid Value [%s]\n", CurrentData);
+								continue;
+							}
 							Set = true;
 						}
 						
-						switch(_ppszArgv[1][2])
+						switch(Register)
 						{
-							case '0':
+							case 0:
 								if(Set)
 								{
 									WriteCR0(Value);
@@ -389,7 +642,7 @@ void main(int argc, char *argv[])
 								}
 								break;
 
-							case '2':
+							case 2:
 								if(Set)
 								{
 									WriteCR2(Value);
@@ -401,7 +654,7 @@ void main(int argc, char *argv[])
 								}
 								break;
 
-							case '3':
+							case 3:
 								if(Set)
 								{
 									WriteCR3(Value);
@@ -413,7 +666,7 @@ void main(int argc, char *argv[])
 								}
 								break;
 
-							case '4':
+							case 4:
 								if(Set)
 								{
 									WriteCR4(Value);
@@ -424,54 +677,189 @@ void main(int argc, char *argv[])
 									printf(" %08X\n", Value);
 								}
 								break;
-
-							default:
-								puts("Invalid arguments");
-								break;
 						}
 					}
 					else
 					{
-						puts("Invalid arguments");
+						printf("Invalid arguments [%s]\n", CurrentData);
 					}
 				}
 				
 				break;
 
 			case 'F':
+				{
+				}
 				break;
 
 			case 'E':
-				{
+				{					
+					int DataSize = 1;
+					
+					switch(toupper(CurrentData[1]))
+					{
+						case 0:
+						case 'B':
+							DataSize = 1;
+							break;
+						
+						case 'W':
+							DataSize = 2;
+							break;
 
+						case 'D':
+							DataSize = 4;
+							break;
+
+						case 'Q':
+							DataSize = 8;
+							break;
+						
+						default:
+							printf(" Unknown Option [%c]\n", CurrentData[1]);
+							continue;
+
+					}					
+					
+					uint32_t Start = DumpAddress;
+					uint32_t DataLength = 0;
+
+					CurrentData = NextToken(Input);
+					if(CurrentData == nullptr)
+					{
+						puts(" Address Missing");
+						continue;
+					}
+					
+					if(!ParseAddress(CurrentData, Start))
+					{
+						printf(" Invalid Address [%s]\n", CurrentData);
+						continue;
+					}
+
+					Input = TrimString(Input);
+
+					if(Input == nullptr || Input[0] == 0)
+					{
+						puts(" Input Data Missing");
+						break;
+
+					}					
+					void * Data = new uint8_t[32 * DataSize];
+
+					// We have an Input string
+					if(Input[0] == '"')
+					{
+						if(DataSize != 1)
+						{
+							printf(" String Data is only valid on Byte Input.\n", Input);
+							delete Data;
+							break;
+						}						
+						else if(Input[strlen(Input) - 1] != '"')
+						{
+							printf(" Invalid String Data [%s]\n", Input);
+							delete Data;
+							break;
+						}
+
+						char * InputData = TrimChar(Input, Input[0]);
+						DataLength = strlen(InputData);
+						
+						if(DataLength > 32)
+							DataLength = 32;
+
+						memcpy(Data, InputData, DataLength);
+					}
+					else
+					{
+						if(!ParseData(Input, Data, DataLength, DataSize))
+						{
+							delete Data;
+							break;
+						}
+					}
+					
+					for(uint32_t x = 0; x < DataLength; x++)
+					{
+						void *Loc = (void *)Start;
+						switch (DataSize)
+						{
+							case 1:
+								reinterpret_cast<uint8_t *>(Loc)[x] = reinterpret_cast<uint8_t *>(Data)[x];
+								break;
+
+							case 2:
+								reinterpret_cast<uint16_t *>(Loc)[x] = reinterpret_cast<uint16_t *>(Data)[x];
+								break;
+
+							case 4:
+								reinterpret_cast<uint32_t *>(Loc)[x] = reinterpret_cast<uint32_t *>(Data)[x];
+								break;
+
+							case 8:
+								reinterpret_cast<uint64_t *>(Loc)[x] = reinterpret_cast<uint64_t *>(Data)[x];
+								break;
+						}
+					}				
+
+					delete Data;
 				}
+				
 				break;
 
 			case 'I':
 				{
-					if(ArgCount < 2)
+					int DataSize = 1;
+					
+					switch(toupper(CurrentData[1]))
 					{
-						puts("Invalid arguments");
-						break;
+						case 'B':
+							DataSize = 1;
+							break;
+						
+						case 'W':
+							DataSize = 2;
+							break;
+
+						case 0:
+						case 'D':
+							DataSize = 4;
+							break;
+
+						default:
+							printf(" Unknown Option [%c]\n", CurrentData[1]);
+							continue;
+
+					}					
+
+					CurrentData = NextToken(Input);
+					if(CurrentData == nullptr)
+					{
+						puts(" Port Missing");
+						continue;
 					}
 
 					uint32_t Port, Res;
-					ParseHex(_ppszArgv[1], Port);
-
-					switch(toupper(_ppszArgv[0][1]))
+					if(!ParseHex(CurrentData, Port))
 					{
-						case 'B':
+						printf(" Invalid Port [%s]\n", CurrentData);
+						continue;
+					}
+
+					switch(DataSize)
+					{
+						case 1:
 							Res = InPortb(Port);
 							printf("%02X\n", Res);
 							break;
 
-						case 'W':
+						case 2:
 							Res = InPortw(Port);
 							printf("%04X\n", Res);
 							break;
 
-						default:
-						case 'D':
+						case 4:
 							Res = InPortd(Port);
 							printf("%08X\n", Res);
 							break;
@@ -481,27 +869,68 @@ void main(int argc, char *argv[])
 
 			case 'O':
 				{
-					if(ArgCount < 3)
-					{
-						puts("Invalid arguments");
-						break;
-					}
-
-					uint32_t Port, Val;
-					ParseHex(_ppszArgv[1], Port);
-					ParseHex(_ppszArgv[2], Val);
-					switch(toupper(_ppszArgv[0][1]))
+					int DataSize = 1;
+					
+					switch(toupper(CurrentData[1]))
 					{
 						case 'B':
-							OutPortb(Port, Val);
+							DataSize = 1;
+							break;
+						
+						case 'W':
+							DataSize = 2;
 							break;
 
-						case 'W':
-							OutPortw(Port, Val);
+						case 0:
+						case 'D':
+							DataSize = 4;
 							break;
 
 						default:
-						case 'D':
+							printf(" Unknown Option [%c]\n", CurrentData[1]);
+							continue;
+
+					}					
+
+					CurrentData = NextToken(Input);
+					if(CurrentData == nullptr)
+					{
+						puts(" Port Missing");
+						continue;
+					}
+
+					uint32_t Port;
+					if(!ParseHex(CurrentData, Port))
+					{
+						printf(" Invalid Port [%s]\n", CurrentData);
+						continue;
+					}
+
+					CurrentData = NextToken(Input);
+					if(CurrentData == nullptr)
+					{
+						puts(" Value Missing");
+						continue;
+					}
+
+					uint32_t Val;
+					if(!ParseHex(CurrentData, Val))
+					{
+						printf(" Invalid Value [%s]\n", CurrentData);
+						continue;
+					}
+
+					switch(DataSize)
+					{
+						case 1:
+							OutPortb(Port, Val);
+							break;
+
+						case 2:
+							OutPortw(Port, Val);
+							break;
+
+						case 4:
 							OutPortd(Port, Val);
 							break;
 					}
@@ -511,20 +940,38 @@ void main(int argc, char *argv[])
 
 			case 'W':
 				{
-					if(ArgCount < 2)
+					uint32_t Start, Length;
+					CurrentData = NextToken(Input);
+					if(CurrentData == nullptr)
 					{
-						puts("Invalid arguments");
-						break;
+						puts(" Start Address Missing");
+						continue;
 					}
 
-					uint32_t Start, Length;
-					ParseHex(_ppszArgv[1], Start);
-					ParseHex(_ppszArgv[2], Length);
+					if(!ParseAddress(CurrentData, Start))
+					{
+						printf(" Invalid Start Address [%s]\n", CurrentData);
+						continue;
+					}
+
+					CurrentData = NextToken(Input);
+					if(CurrentData == nullptr)
+					{
+						puts(" Length Missing");
+						continue;
+					}
+
+					if(!ParseHex(CurrentData, Length))
+					{
+						printf(" Invalid Length [%s]\n", CurrentData);
+						continue;
+					}
 
 					uint8_t * Data = (uint8_t *)Start;
 					for(uint32_t x = 0; x < Length; x++)
 					{
-						while ((InPortb(0x03F8 + 5) & 0x20) != 0x020);
+						// Spin until the ports ready
+						while ((InPortb(0x03F8 + 5) & 0x20) != 0x20);
 						OutPortb(0x03F8, Data[x]);
 					}
 					
@@ -535,7 +982,7 @@ void main(int argc, char *argv[])
 				break;
 
 			default:
-				puts("Unknown Command.");
+				printf("Unknown Command [%s]\n", CurrentData);
 				break;
 		};
 	} while (!Done);

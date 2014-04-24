@@ -51,7 +51,7 @@ PCIBIOS::~PCIBIOS(void)
 
 bool PCIBIOS::Initilize()
 {
-	uint32_t BIOS32Address = SeachMemory(0xE0000, 0x20000, PCIBiosData::BIOS32Sig, 0x10);
+	uint32_t BIOS32Address = SeachMemory(0xE0000, 0x20000, PCIBiosData::BIOS32Sig, 4, 0x10);
 
 	if(BIOS32Address == UINT32_MAX)
 		return false;

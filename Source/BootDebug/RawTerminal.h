@@ -27,6 +27,6 @@ private:
 	int m_CurrentCol;
 	unsigned short m_CurrentColor;
 
-	//int m_CurrentRowStart;
+	int m_OutputCount;
 };
 

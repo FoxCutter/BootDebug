@@ -2,16 +2,17 @@
 #include "RawTerminal.h"
 #include "LowLevel.h"
 
+char FetchKeyboardBuffer();
+
 RawTerminal::RawTerminal(uint32_t ScreenBufferOffest)
 {
 	m_Row = 25;
 	m_Cols = 80;
 	m_ScreenBuffer = (uint16_t *) ScreenBufferOffest;
-	//m_ScreenBuffer = new uint16_t[m_Row * m_Cols];
 	
 	m_CurrentRow = m_CurrentCol = 0;
 	m_CurrentColor = 0x0700;
-	//m_CurrentRowStart = m_CurrentRow * m_Cols;
+	m_OutputCount = 0;
 }
 
 
@@ -99,6 +100,8 @@ void RawTerminal::SetCursor(int Row, int Col)
     // cursor HIGH port to vga INDEX register
     OutPortb(0x3D4, 0x0E);
     OutPortb(0x3D5, (unsigned char )((CurrentPos >> 8) & 0xFF));
+
+	m_OutputCount = 0;
 }
 
 int RawTerminal::Write(const char *szData, int cbLength)
@@ -163,6 +166,7 @@ int RawTerminal::Write(const char *szData, int cbLength)
 				if(m_CurrentCol == m_Cols || szData[x] == '\n')
 				{
 					m_CurrentRow ++;
+					m_OutputCount ++;
 					m_CurrentCol = 0;
 
 					//m_CurrentRowStart = m_CurrentRow * m_Cols;
@@ -185,6 +189,19 @@ int RawTerminal::Write(const char *szData, int cbLength)
 					//m_CurrentRowStart = m_CurrentRow * m_Cols;
 					CurrentPos = (m_CurrentRow * m_Cols) + m_CurrentCol;
 				}
+
+				if(m_OutputCount == m_Row - 1)
+				{
+					WriteAt("...Paused...", 12, m_CurrentRow, m_CurrentCol);
+
+					SetCursor(m_CurrentRow, 12);
+					
+					FetchKeyboardBuffer();
+
+					WriteAt("            ", 12, m_CurrentRow, m_CurrentCol);
+
+					m_OutputCount = 0;
+				}
 			}
 		}
 	}
@@ -198,8 +215,6 @@ int RawTerminal::Write(const char *szData, int cbLength)
 
 	return 0;
 }
-
-char FetchKeyboardBuffer();
 
 int RawTerminal::Read(char *Buffer, int cbLength)
 {
@@ -247,5 +262,7 @@ int RawTerminal::Read(char *Buffer, int cbLength)
 	}
 	while(!Done);
 	
+	m_OutputCount = 0;
+
 	return Pos;
 }

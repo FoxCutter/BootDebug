@@ -10,14 +10,13 @@ struct MemoryMapEntry
 
 class MultiBootInfo
 {
-	static const int MemoryMapMaxLength = 32;
+	static const int MemoryMapMaxLength = 0xFF;
 public:
 	enum MultiBootType
 	{
 		Version1,
 		Version2,
 	};
-
 
 	MultiBootInfo(void);
 	~MultiBootInfo(void);

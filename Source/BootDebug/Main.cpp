@@ -287,7 +287,12 @@ void main(int argc, char *argv[])
 						case 'Q':
 							DumpSize = 8;
 							break;
-						
+
+						case 'S':
+							DumpSize = 0;
+							Length = 0;
+							break;
+
 						default:
 							printf(" Unknown Option [%c]\n", CurrentData[1]);
 							continue;
@@ -306,7 +311,7 @@ void main(int argc, char *argv[])
 
 					CurrentData = NextToken(Input);
 
-					if(CurrentData != nullptr)
+					if(CurrentData != nullptr && DumpSize != 0)
 					{
 						if(!ParseHex(CurrentData, Length))
 						{
@@ -315,7 +320,8 @@ void main(int argc, char *argv[])
 						}
 					}
 
-					PrintMemoryBlock((void *)Address, Length, DumpSize);
+					if(DumpSize != 0)
+						PrintMemoryBlock((void *)Address, Length, DumpSize);
 
 					DumpAddress = Address + Length;
 				}
@@ -496,7 +502,8 @@ void main(int argc, char *argv[])
 						CurrentData = NextToken(Input);
 						if(CurrentData == nullptr)
 						{
-							PCIBus.EnumerateBus(0);
+							PCIBus.Initilize();
+							break;
 						}
 
 						uint32_t DeviceID = 0;

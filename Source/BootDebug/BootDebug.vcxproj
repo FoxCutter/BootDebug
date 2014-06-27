@@ -125,6 +125,7 @@
     <ClCompile Include="InterruptControler.cpp" />
     <ClCompile Include="MPConfig.cpp" />
     <ClCompile Include="MultiBootInfo.cpp" />
+    <ClCompile Include="OpenHCI.cpp" />
     <ClCompile Include="PCI.cpp" />
     <ClCompile Include="PCIBIOS.cpp" />
     <ClCompile Include="RawMemory.cpp" />
@@ -143,6 +144,7 @@
     <ClInclude Include="MultiBoot.h" />
     <ClInclude Include="MultiBoot2.h" />
     <ClInclude Include="MultiBootInfo.h" />
+    <ClInclude Include="OpenHCI.h" />
     <ClInclude Include="PCI.h" />
     <ClInclude Include="PCIBIOS.h" />
     <ClInclude Include="RawMemory.h" />

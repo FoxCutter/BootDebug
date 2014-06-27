@@ -15,6 +15,8 @@
 #include "ACPI.h"
 #include "PCI.h"
 
+#include "OpenHCI.h"
+
 #include "..\StdLib\initterm.h"
 
 void SystemTrap(InterruptContext * Context)
@@ -220,12 +222,16 @@ void IRQInterrupt(InterruptContext * Context)
 			InsertKeyboardBuffer(Key);
 		}
 	}
+	else if(Context->InterruptNumber == 0x02B)
+	{
+		// USB
+		printf("USB Int\n");
+	}
 
 	m_InterruptControler.ClearIRQ(m_InterruptControler.MapIntToIRQ(Context->InterruptNumber));
 }
 
 void main(int argc, char *argv[]);
-MultiBootInfo MBReader;
 
 extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 {
@@ -237,7 +243,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	CurrentTerminal = &TextTerm;
 
 	// Parse the MultiBoot info
-	//MultiBootInfo MBReader;
+	MultiBootInfo MBReader;
 	MBReader.LoadMultiBootInfo(Magic, Address);
 
 	// Get the memory subsystem working
@@ -282,6 +288,14 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	
 	ASM_STI;
 	
+
+	//PCI PCIBus;
+	//uint32_t USBID = PCIBus.FindDeviceID(0x0C, 0x03, 0x10);
+
+	//OpenHCI USB;
+	//if(USBID != 0xFFFFFFFF)
+	//	USB.StartUp(USBID);
+	
 	//PCI PCIBus;
 	//PCIBus.Initilize();
 	//PCIBios32.Initilize();
@@ -291,8 +305,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	//printf("CPUID EAX:%08X EBX:%08X ECX:%08X EDX:%08X\n", Reg.EAX, Reg.EBX, Reg.ECX, Reg.EDX);
 	
-	ACPI ACPIObject;
-	ACPIObject.Initilize();
+	//ACPI ACPIObject;
+	//ACPIObject.Initilize();
 
 	// Step 6: Start the full kernel
 	const char * CommandLine = MBReader.CommandLine;

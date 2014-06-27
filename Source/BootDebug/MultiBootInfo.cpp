@@ -19,8 +19,6 @@ MultiBootInfo::~MultiBootInfo(void)
 
 bool MultiBootInfo::LoadMultiBootInfo(uint32_t Signature, void *Data)
 {
-	//printf("MB Magic %08X, Address %08X\n", Signature, Data);
-	
 	if(Signature == MulitBoot::BootMagic)
 	{
 		return LoadMult1Boot1Info(Data);
@@ -64,10 +62,10 @@ bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 	{
 		MulitBoot::Boot_Module *Entry = (MulitBoot::Boot_Module *)BootHeader->Mod_Address;
 
-		//for(int x = 0; x < BootHeader->Mod_Count; x++)
-		//{
-		//	printf("Mod S:%08X E:%08X N:%s\n", Entry[x].ModStart, Entry[x].ModEnd, Entry[x].String);
-		//}
+		for(uint32_t x = 0; x < BootHeader->Mod_Count; x++)
+		{
+			printf("Mod S:%08X E:%08X N:%s\n", Entry[x].ModStart, Entry[x].ModEnd, Entry[x].String);
+		}
 		
 		//printf(" Mods\n");
 	}
@@ -100,6 +98,7 @@ bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 			MemoryMapLength++;
 		}
 	}
+
 	/*
 	// These never seem to come up, and don't exist in MB2
 	if((BootHeader->Flags & MulitBoot::DriveInfo) == MulitBoot::DriveInfo)

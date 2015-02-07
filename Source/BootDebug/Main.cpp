@@ -7,10 +7,15 @@
 
 #include "..\StdLib\argcargv.h"
 
+#include "MMU.h"
 #include "PCI.h"
 #include "MPConfig.h"
 #include "RawTerminal.h"
 #include "LowLevel.h"
+#include "MultiBootInfo.h"
+
+MultiBootInfo * MultiBootHeader = nullptr;
+MMU * MMUManager = nullptr;
 
 template <typename DataType>
 bool ParseHex(char *String, DataType &Value)
@@ -253,6 +258,9 @@ void main(int argc, char *argv[])
 	
 	uint32_t DumpAddress = 0x100000;
 
+	uint32_t LastAddress = 0x100000;
+	uint32_t LastLength = 0x80;	
+
 	do
 	{
 		printf("\00307%08X> ", DumpAddress);
@@ -290,7 +298,7 @@ void main(int argc, char *argv[])
 
 						case 'S':
 							DumpSize = 0;
-							Length = 0;
+							Length = 128;
 							break;
 
 						default:
@@ -302,7 +310,12 @@ void main(int argc, char *argv[])
 					CurrentData = NextToken(Input);
 					if(CurrentData != nullptr)
 					{
-						if(!ParseAddress(CurrentData, Address))
+						if(CurrentData[0] == '!' && CurrentData[1] == 0)
+						{
+							Address = LastAddress;
+							Length = LastLength;
+						}
+						else if(!ParseAddress(CurrentData, Address))
 						{
 							printf(" Invalid Address [%s]\n", CurrentData);
 							continue;
@@ -311,7 +324,7 @@ void main(int argc, char *argv[])
 
 					CurrentData = NextToken(Input);
 
-					if(CurrentData != nullptr && DumpSize != 0)
+					if(CurrentData != nullptr)
 					{
 						if(!ParseHex(CurrentData, Length))
 						{
@@ -320,10 +333,36 @@ void main(int argc, char *argv[])
 						}
 					}
 
-					if(DumpSize != 0)
-						PrintMemoryBlock((void *)Address, Length, DumpSize);
+					if(DumpSize == 0)
+					{
+						printf("\00307%0.8X:", Address);
 
-					DumpAddress = Address + Length;
+						for(int x = 0; x < Length; x++)
+						{
+							uint8_t Char = *reinterpret_cast<uint8_t *>(Address);
+							Address++;
+
+							if( Char == 0)
+								break;
+
+							printf("%c", Char);
+
+						}
+						printf("\00307\n");
+					}
+					else 
+					{
+						LastAddress = Address;
+						LastLength = Length;
+
+						PrintMemoryBlock((void *)Address, Length, DumpSize);
+						Address += Length;
+					}
+					
+
+					DumpAddress = Address;
+
+					
 				}
 				break;
 
@@ -458,7 +497,11 @@ void main(int argc, char *argv[])
 						continue;
 					}
 
-					if(_stricmp("MP", CurrentData) == 0)
+					if(_stricmp("MB", CurrentData) == 0)
+					{
+						MultiBootHeader->Dump();
+					}
+					else if(_stricmp("MP", CurrentData) == 0)
 					{
 						MPData.Initilize();
 					}
@@ -531,7 +574,7 @@ void main(int argc, char *argv[])
 						if(CurrentData == nullptr)
 						{
 							uint32_t Value = PCIBus.ReadRegister(DeviceID, Register);
-							printf(" %08X\n", Value);
+							printf("%02X: %08X\n", Register & 0xFC, Value);
 							break;
 						}
 
@@ -983,6 +1026,33 @@ void main(int argc, char *argv[])
 					}
 					
 				}
+				break;
+
+			case 'X':
+				{
+					uint32_t Start = DumpAddress;
+					CurrentData = NextToken(Input);
+					if(CurrentData == nullptr)
+					{
+						puts(" Address Missing");
+						continue;
+					}
+
+					if(CurrentData[0] == '!' && CurrentData[1] == 0)
+					{
+						Start = LastAddress;
+					}
+					else if(!ParseAddress(CurrentData, Start))
+					{
+						printf(" Invalid Address [%s]\n", CurrentData);
+						continue;
+					}
+
+					LastAddress = Start;
+
+					MMUManager->PrintAddressInformation(Start);
+				}
+
 				break;
 
 			case '?':

@@ -11,6 +11,7 @@
 
 #include "GDT.h"
 #include "IDT.h"
+#include "MMU.h"
 
 #include "ACPI.h"
 #include "PCI.h"
@@ -18,6 +19,10 @@
 #include "OpenHCI.h"
 
 #include "..\StdLib\initterm.h"
+
+void main(int argc, char *argv[]);
+extern MultiBootInfo * MultiBootHeader;
+extern MMU * MMUManager;
 
 void SystemTrap(InterruptContext * Context)
 {
@@ -28,7 +33,7 @@ void SystemTrap(InterruptContext * Context)
 		// 0F 32 RDMSR
 		if(reinterpret_cast<uint16_t *>(Context->SourceEIP)[0] == 0x300F || reinterpret_cast<uint16_t *>(Context->SourceEIP)[0] == 0x320F)
 		{
-			printf("Invalid MSR [%X]\n", Context->ECX);
+			printf("\nInvalid MSR [%X]\n", Context->ECX);
 			Context->EAX = 0x00000000;
 			Context->EDX = 0x00000000;
 			Context->SourceEIP += 2;
@@ -36,12 +41,43 @@ void SystemTrap(InterruptContext * Context)
 		}
 		else
 		{
-			printf("GPF Fault %08X at: %08X\n", Context->ErrorCode, Context->SourceEIP);
+			printf("\nGPF Fault %08X at: %08X\n Error: ", Context->ErrorCode, Context->SourceEIP);
 		}
+	}
+	if(Context->InterruptNumber == 0x0e)
+	{
+		printf("\nPage Fault from: %08X\n", Context->SourceEIP);
+		uint32_t CR2 = ReadCR2();
+		printf("Address: %08X\n", CR2);
+
+		if(Context->ErrorCode & 0x01)
+			printf("page protection, ");
+		else
+			printf("non-present page, ");
+
+		if(Context->ErrorCode & 0x02)
+			printf("write, ");
+		else
+			printf("read, ");
+
+		if(Context->ErrorCode & 0x04)
+			printf("user");
+		else
+			printf("supervisor");
+
+		if(Context->ErrorCode & 0x08)
+			printf(", reserved bit");
+
+		if(Context->ErrorCode & 0x10)
+			printf(", instruction fetch");
+
+		printf(" (%08X)\n", Context->ErrorCode);
+
+		MMUManager->PrintAddressInformation(CR2);
 	}
 	else
 	{	
-		printf("System Error: %02X (%08X) at %08X\n", Context->InterruptNumber, Context->ErrorCode, Context->SourceEIP);
+		printf("\nSystem Error: %02X (%08X) at %08X\n", Context->InterruptNumber, Context->ErrorCode, Context->SourceEIP);
 	};
 
 	ASM_CLI;
@@ -231,8 +267,6 @@ void IRQInterrupt(InterruptContext * Context)
 	m_InterruptControler.ClearIRQ(m_InterruptControler.MapIntToIRQ(Context->InterruptNumber));
 }
 
-void main(int argc, char *argv[]);
-
 extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 {
 	// At this point we are officially alive, but we're still a long ways away from being up and running.
@@ -245,6 +279,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	// Parse the MultiBoot info
 	MultiBootInfo MBReader;
 	MBReader.LoadMultiBootInfo(Magic, Address);
+	MultiBootHeader = &MBReader;
 
 	// Get the memory subsystem working
 	// Start at the 256 meg mark and give it 16 megs of memory with 16 byte blocks
@@ -286,9 +321,11 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	IDTData.SetActive();
 	
+	MMU Memory;
+	MMUManager = &Memory;
+
 	ASM_STI;
 	
-
 	//PCI PCIBus;
 	//uint32_t USBID = PCIBus.FindDeviceID(0x0C, 0x03, 0x10);
 

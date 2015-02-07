@@ -2,6 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 
+void PrintLongAddress(uint64_t Address)
+{
+	printf("%08X:%08X", (uint32_t)((Address & 0xFFFFFFFF00000000) >> 32), (uint32_t)(Address & 0xFFFFFFFF));
+}
+
 uint32_t SeachMemory(uint32_t Start, uint32_t Count, const void *Search, uint32_t DataLength, uint32_t Alignment)
 {
 	if(DataLength == 0)

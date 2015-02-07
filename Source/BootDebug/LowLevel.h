@@ -16,6 +16,8 @@
 #define ASM_SIDT(p) __asm sidt [p]
 #define ASM_LIDT(p) __asm lidt [p]
 
+#define ASM_INVLPG(p) __asm invlpg [p]
+
 #define ASM_SCR(reg, val) __asm { \
 	mov eax, reg \
 	mov ecx, eax \

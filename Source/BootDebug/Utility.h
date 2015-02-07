@@ -1,6 +1,7 @@
 #include <stdint.h>
 #pragma once
 
+void PrintLongAddress(uint64_t Address);
 uint32_t SeachMemory(uint32_t Start, uint32_t Count, const void *Search, uint32_t DataLength, uint32_t Alignment = 0x01);
 bool ValidateChecksum(void *Data, uint16_t Length);
 

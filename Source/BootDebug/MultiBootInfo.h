@@ -14,14 +14,15 @@ class MultiBootInfo
 public:
 	enum MultiBootType
 	{
-		Version1,
-		Version2,
+		Version1 = 1,
+		Version2 = 2,
 	};
 
 	MultiBootInfo(void);
 	~MultiBootInfo(void);
 
 	bool LoadMultiBootInfo(uint32_t Signatrue, void *Data);
+	void Dump();
 
 	MultiBootType Type;
 
@@ -37,7 +38,7 @@ public:
 	uint32_t BootPartition[3];
 
 private:
-	bool LoadMult1Boot1Info(void *Data);
-	bool LoadMult2Boot1Info(void *Data);
+	bool LoadMultiBoot1Info(void *Data);
+	bool LoadMultiBoot2Info(void *Data);
 };
 

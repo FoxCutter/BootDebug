@@ -75,6 +75,8 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <ManifestFile />
       <AdditionalDependencies>$(ProjectDir)\..\..\Tools\Cored.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <MapFileName>$(OutDir)$(TargetName).map</MapFileName>
+      <MapExports>true</MapExports>
     </Link>
     <PostBuildEvent>
       <Command>finalbuild.bat $(OutDir)$(TargetName)$(TargetExt)</Command>
@@ -112,6 +114,7 @@
       <ManifestFile />
       <FixedBaseAddress>false</FixedBaseAddress>
       <NoEntryPoint>true</NoEntryPoint>
+      <MapFileName>$(OutDir)$(TargetName).map</MapFileName>
     </Link>
     <PostBuildEvent>
       <Command>finalbuild.bat $(OutDir)$(TargetName)$(TargetExt)</Command>
@@ -123,6 +126,7 @@
     <ClCompile Include="GDT.cpp" />
     <ClCompile Include="IDT.cpp" />
     <ClCompile Include="InterruptControler.cpp" />
+    <ClCompile Include="MMU.cpp" />
     <ClCompile Include="MPConfig.cpp" />
     <ClCompile Include="MultiBootInfo.cpp" />
     <ClCompile Include="OpenHCI.cpp" />
@@ -140,6 +144,7 @@
     <ClInclude Include="IDT.h" />
     <ClInclude Include="InterruptControler.h" />
     <ClInclude Include="LowLevel.h" />
+    <ClInclude Include="MMU.h" />
     <ClInclude Include="MPConfig.h" />
     <ClInclude Include="MultiBoot.h" />
     <ClInclude Include="MultiBoot2.h" />

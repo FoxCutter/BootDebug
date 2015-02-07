@@ -2,6 +2,8 @@
 #include "MultiBoot.h"
 #include "MultiBoot2.h"
 
+#include "Utility.h"
+
 #include <stdio.h>
 
 MultiBootInfo::MultiBootInfo(void)
@@ -21,11 +23,11 @@ bool MultiBootInfo::LoadMultiBootInfo(uint32_t Signature, void *Data)
 {
 	if(Signature == MulitBoot::BootMagic)
 	{
-		return LoadMult1Boot1Info(Data);
+		return LoadMultiBoot1Info(Data);
 	}
 	else if(Signature == MulitBoot2::BootMagic)
 	{
-		return LoadMult2Boot1Info(Data);
+		return LoadMultiBoot2Info(Data);
 	}
 	else
 	{
@@ -35,7 +37,65 @@ bool MultiBootInfo::LoadMultiBootInfo(uint32_t Signature, void *Data)
 	return true;
 }
 
-bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
+void MultiBootInfo::Dump()
+{
+	printf("MultiBoot Info\n");
+	printf("    Version: %u\n", Type);
+	printf("    Memory Info: Low %uk, High %uk\n", MemoryLow, MemoryHigh);
+	printf("    Boot Device Info: Device %02X, Partition %02X:%02X:%02X\n", BootDevice, BootPartition[0], BootPartition[1], BootPartition[2]);
+	printf("    Command Line: %s\n", CommandLine);
+	printf("    Boot Loader: %s\n", BootLoader);
+	printf("    Memory Map:\n");
+
+	printf("           Start                End               Length       Type\n");
+
+	uint64_t TotalRam = 0;
+	uint64_t TotalReserved = 0;
+	uint64_t TotalHole = 0;
+	uint64_t NextBase = 0;
+
+	for(int x = 0; x < MemoryMapLength; x++)
+	{
+		if(NextBase != MemoryMap[x]->BaseAddress)
+		{
+			printf("     ");
+			PrintLongAddress(NextBase);
+			printf(" - ");
+			PrintLongAddress(MemoryMap[x]->BaseAddress - 1);
+			printf(", ");
+			PrintLongAddress(MemoryMap[x]->BaseAddress - NextBase);
+			printf(", Hole\n");
+
+			TotalHole += MemoryMap[x]->BaseAddress - NextBase;
+		}
+		
+
+		printf("     ");
+		PrintLongAddress(MemoryMap[x]->BaseAddress);
+		printf(" - ");
+		PrintLongAddress(MemoryMap[x]->BaseAddress + MemoryMap[x]->Length - 1);
+		printf(", ");
+		PrintLongAddress(MemoryMap[x]->Length);
+		printf(", %s (%u)\n", MemoryMap[x]->Type == 1 ? "RAM" : "Reserved", MemoryMap[x]->Type);
+
+		if(MemoryMap[x]->Type == 1)
+			TotalRam += MemoryMap[x]->Length;
+		else 
+			TotalReserved += MemoryMap[x]->Length;
+
+		NextBase = MemoryMap[x]->BaseAddress + MemoryMap[x]->Length;
+	}
+	
+	printf("     Totals:\n      RAM:      ");
+	PrintLongAddress(TotalRam);
+	printf("\n      Reserved: ");
+	PrintLongAddress(TotalReserved);
+	printf("\n      Hole:     ");
+	PrintLongAddress(TotalHole);
+	printf("\n");
+}
+
+bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 {
 	Type = Version1;
 	
@@ -91,7 +151,6 @@ bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 			Base += sizeof(uint32_t);
 
 			MemoryMap[MemoryMapLength] = (MemoryMapEntry *)(BootHeader->MemMap_Address + Base);
-			//printf("Mem: %016llX - %016llX, %02X\n", MemoryMap[MemoryMapLength]->BaseAddress, MemoryMap[MemoryMapLength]->BaseAddress + MemoryMap[MemoryMapLength]->Length -1, MemoryMap[MemoryMapLength]->Type);
 
 			Base += *Size;
 
@@ -115,7 +174,7 @@ bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 	}
 	if((BootHeader->Flags & MulitBoot::ApmTable) == MulitBoot::ApmTable)
 	{
-		//MulitBoot::Boot_APMTAble * Entry = (MulitBoot::Boot_APMTAble *)BootHeader->APMTable;
+		MulitBoot::Boot_APMTAble * Entry = (MulitBoot::Boot_APMTAble *)BootHeader->APMTable;
 		
 		//printf(" APM Table: V: %04X, CS: %04X, CL: %04X, CO: %08X\n", Entry->Version, Entry->CodeSeg, Entry->CodeSegLength, Entry->Offset);
 	}
@@ -128,13 +187,13 @@ bool MultiBootInfo::LoadMult1Boot1Info(void *Data)
 		//printf(" Frame Buffer Info\n");
 		//printf("  Addr:%08X, P:%04X, W:%04X, H:%04X BPP:%02X\n", (unsigned int)BootHeader->FrameBuffer_Address, BootHeader->FrameBuffer_Pitch, BootHeader->FrameBuffer_Width, BootHeader->FrameBuffer_Height, BootHeader->FrameBuffer_BPP);
 		//printf("  Type: %02X\n", BootHeader->FrameBuffer_Type);
-		//printf("  Pallet: A%08X C%04X\n", BootHeader->PalletInfo.Address, BootHeader->PalletInfo.NumColors);
+		//printf("  Pallet: A: %08X C: %04X\n", BootHeader->PalletInfo.Address, BootHeader->PalletInfo.NumColors);
 	}
 
 	return true;
 }
 
-bool MultiBootInfo::LoadMult2Boot1Info(void *Data)
+bool MultiBootInfo::LoadMultiBoot2Info(void *Data)
 {
 	Type = Version2;
 
@@ -205,6 +264,10 @@ bool MultiBootInfo::LoadMult2Boot1Info(void *Data)
 				while(Base < (intptr_t) Entry->Size && MemoryMapLength < MemoryMapMaxLength)
 				{
 					MemoryMap[MemoryMapLength] = (MemoryMapEntry *)(Pos + Base);
+					//printf("Mem: %016llX - %016llX, %02X\n", MemoryMap[MemoryMapLength]->BaseAddress, 
+					//	                                     MemoryMap[MemoryMapLength]->BaseAddress + MemoryMap[MemoryMapLength]->Length - 1,
+					//										 MemoryMap[MemoryMapLength]->Type);
+
 					MemoryMapLength++;
 
 					Base += Entry->Entry_Size;

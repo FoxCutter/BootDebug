@@ -58,11 +58,14 @@ bool PCI::EnumerateBus(uint8_t Bus)
 		else
 		{
 			printf("PCI %06X(%02X:%02X:%02X)", CurrentDeviceID, Bus, CurrentDevice, CurrentFunction);
-			printf(": Vender %04X, Dev %04X", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
+			printf(" Dev %04X:%04X", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
 			
 			Val = ReadRegister(CurrentDeviceID, 0x08);
-			printf(", Class %02X, Sub %02X, Prog %02X", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8);
+			printf(", C %02X, S %02X, Pn  %02X", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8);
 			
+			Val = ReadRegister(CurrentDeviceID, 0x2C);
+			printf(", SV %04X, SI %04X", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
+
 			Val = ReadRegister(CurrentDeviceID, 0x0C);			
 			Val = (Val & 0x00FF0000) >> 16;
 

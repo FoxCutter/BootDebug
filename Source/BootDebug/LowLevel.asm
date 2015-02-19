@@ -96,6 +96,14 @@ ReadCR4 PROC C
 	ret
 ReadCR4 ENDP
 
+;extern "C" uint64_t ReadXCR0();
+ReadXCR0 PROC C
+	mov ecx, 0
+	XGETBV
+	ret
+ReadXCR0 ENDP
+
+
 ;extern "C" void WriteCR0(uint32_t Value);
 WriteCR0 PROC C
 	mov eax, [esp + 4]

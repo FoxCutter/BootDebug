@@ -9,6 +9,7 @@
 
 #include "MMU.h"
 #include "PCI.h"
+#include "OpenHCI.h"
 #include "MPConfig.h"
 #include "RawTerminal.h"
 #include "LowLevel.h"
@@ -16,6 +17,7 @@
 
 MultiBootInfo * MultiBootHeader = nullptr;
 MMU * MMUManager = nullptr;
+OpenHCI * USBManager = nullptr;
 
 template <typename DataType>
 bool ParseHex(char *String, DataType &Value)
@@ -192,6 +194,8 @@ bool ParseData(char *InputData, void *Data, uint32_t &DataLength, uint32_t DataS
 	return true;
 }
 
+static uint32_t LastAddress = 0x100000;
+
 bool ParseAddress(char *Value, uint32_t &Address)
 {
 	bool Error = false;
@@ -222,6 +226,14 @@ bool ParseAddress(char *Value, uint32_t &Address)
 	if(CurrentData[0] == ':')
 	{
 		Modifier = 3;
+
+		if(CurrentData[1] != 0)
+			Error = true;
+	}
+	else if(CurrentData[0] == '!')
+	{
+		Modifier = 3;
+		Address = LastAddress;
 
 		if(CurrentData[1] != 0)
 			Error = true;
@@ -257,9 +269,6 @@ void main(int argc, char *argv[])
 	MPConfig MPData;
 	
 	uint32_t DumpAddress = 0x100000;
-
-	uint32_t LastAddress = 0x100000;
-	uint32_t LastLength = 0x80;	
 
 	do
 	{
@@ -310,12 +319,7 @@ void main(int argc, char *argv[])
 					CurrentData = NextToken(Input);
 					if(CurrentData != nullptr)
 					{
-						if(CurrentData[0] == '!' && CurrentData[1] == 0)
-						{
-							Address = LastAddress;
-							Length = LastLength;
-						}
-						else if(!ParseAddress(CurrentData, Address))
+						if(!ParseAddress(CurrentData, Address))
 						{
 							printf(" Invalid Address [%s]\n", CurrentData);
 							continue;
@@ -337,7 +341,7 @@ void main(int argc, char *argv[])
 					{
 						printf("\00307%0.8X:", Address);
 
-						for(int x = 0; x < Length; x++)
+						for(uint32_t x = 0; x < Length; x++)
 						{
 							uint8_t Char = *reinterpret_cast<uint8_t *>(Address);
 							Address++;
@@ -353,7 +357,6 @@ void main(int argc, char *argv[])
 					else 
 					{
 						LastAddress = Address;
-						LastLength = Length;
 
 						PrintMemoryBlock((void *)Address, Length, DumpSize);
 						Address += Length;
@@ -469,9 +472,11 @@ void main(int argc, char *argv[])
 						}
 					}
 
+					uint32_t Pos = Start;
+
 					while(true)
 					{
-						uint32_t Loc = SeachMemory(Start, Count, Data, DataLength * DataSize, DataSize);
+						uint32_t Loc = SeachMemory(Pos, Count, Data, DataLength * DataSize, DataSize);
 
 						if(Loc == UINT32_MAX)
 							break;
@@ -480,9 +485,11 @@ void main(int argc, char *argv[])
 						
 						Loc += DataLength * DataSize;
 						
-						Count = Count - (Loc - Start);
-						Start = Loc;
+						Count = Count - (Loc - Pos);
+						Pos = Loc;
 					}					
+
+					LastAddress = Start;
 
 					delete Data;
 				}
@@ -494,10 +501,15 @@ void main(int argc, char *argv[])
 					if(CurrentData == nullptr)
 					{
 						puts("Information Type Missing");
+						puts(" Valid: MB, MP, CPUID, PCI, USB");
 						continue;
 					}
-
-					if(_stricmp("MB", CurrentData) == 0)
+					
+					if(_stricmp("USB", CurrentData) == 0)
+					{
+						USBManager->Dump();
+					}
+					else if(_stricmp("MB", CurrentData) == 0)
 					{
 						MultiBootHeader->Dump();
 					}
@@ -601,6 +613,7 @@ void main(int argc, char *argv[])
 					if(CurrentData == nullptr)
 					{
 						puts("Register Missing");
+						puts(" Valid: MSR, CR0, CR2, CR3, CR4");
 						continue;
 					}
 
@@ -853,6 +866,8 @@ void main(int argc, char *argv[])
 						}
 					}				
 
+					LastAddress = Start;
+
 					delete Data;
 				}
 				
@@ -1025,6 +1040,7 @@ void main(int argc, char *argv[])
 						OutPortb(0x03F8, Data[x]);
 					}
 					
+					LastAddress = Start;
 				}
 				break;
 
@@ -1038,11 +1054,7 @@ void main(int argc, char *argv[])
 						continue;
 					}
 
-					if(CurrentData[0] == '!' && CurrentData[1] == 0)
-					{
-						Start = LastAddress;
-					}
-					else if(!ParseAddress(CurrentData, Start))
+					if(!ParseAddress(CurrentData, Start))
 					{
 						printf(" Invalid Address [%s]\n", CurrentData);
 						continue;
@@ -1056,13 +1068,24 @@ void main(int argc, char *argv[])
 				break;
 
 			case '?':
+				puts("BootDebug Command List");
+				puts("  D[B|W|D|Q] [Address] [Length]");
+				puts("  E[B|W|D|Q] Address Data");
+				puts("  S[B|W|D|Q] Address Length Data");
+				puts("  I[B|W|D|Q] Port");
+				puts("  O[B|W|D|Q] Port Value");
+				puts("  X Address");
+				puts("  R Register [Value]");
+				puts("  N [Type]");
 				break;
 
 			default:
-				printf("Unknown Command [%s]\n", CurrentData);
+				if(CurrentData[0] != 0)
+					printf("Unknown Command [%s]\n", CurrentData);
 				break;
 		};
 	} while (!Done);
 
 	return;
 }
+

@@ -73,7 +73,18 @@ __declspec(allocate(".PDE")) PageTableEntry PTE[512];
 
 MMU::MMU(void)
 {
+	// Check we have PSE and PAE on this cpu.
+	Registers Res;
+	ReadCPUID(1, 0, &Res);
 
+	if((Res.EDX & CPUFlags::PhysicalAddressExtensions == 0) ||
+		(Res.EDX & CPUFlags::PageSizeExtensions == 0) )
+	{
+		printf("Paging unavailable\n");
+		return;
+	}
+
+	
 	//printf("%u, %u, %u, %u\n", sizeof(PageDirectoryPointerEntry), sizeof(PageDirectoryEntry), sizeof(LargePageDirectoryEntry), sizeof(PageTableEntry));
 
 	//printf("PDPTE: %08X", PDPTE);
@@ -123,7 +134,7 @@ MMU::MMU(void)
 	}
 
 
-	// Map the first 4 megs into the same 2 megs at 4 gigs
+	// Map the first 4 high megs into the same 2 megs at 4 gigs
 	PDE[0x400].Page_Address = (0x100000000) >> 21;
 	PDE[0x401].Page_Address = (0x100000000) >> 21;
 
@@ -137,11 +148,11 @@ MMU::MMU(void)
 	WriteCR3((uint32_t) PDPTE);
 
 	uint32_t Temp = ReadCR4();
-	Temp |= 0x20;
+	Temp |= CPUFlags::PhysicalAddressExtensionsEnable;
 	WriteCR4(Temp);
 
 	Temp = ReadCR0();
-	Temp |= 0x80000000;
+	Temp |= CPUFlags::PagingEnabled;
 
 	//printf("Turning on Paging!\n");
 	WriteCR0(Temp);	
@@ -154,6 +165,11 @@ MMU::~MMU(void)
 
 void MMU::PrintAddressInformation(uint32_t Address)
 {
+	if((ReadCR0() && CPUFlags::PagingEnabled) == 0)
+	{
+		printf("Paging Disabled\n");
+	}
+	
 	// Decode the address
 	printf("Virtual Address: %08X\n", Address);
 	
@@ -163,7 +179,7 @@ void MMU::PrintAddressInformation(uint32_t Address)
 	uint32_t Level1 = (Address & 0xC0000000) >> 30;
 	printf(" Level 1: Index: %X", Level1);
 
-	PageDirectoryPointerEntry *Tabel1 = PDPTE;
+	PageDirectoryPointerEntry *Tabel1 = reinterpret_cast<PageDirectoryPointerEntry *>(ReadCR3());
 	if(Tabel1[Level1].Present == false)
 	{
 		printf(", Not Present\n");

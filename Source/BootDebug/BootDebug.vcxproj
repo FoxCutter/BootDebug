@@ -154,6 +154,7 @@
     <ClInclude Include="PCIBIOS.h" />
     <ClInclude Include="RawMemory.h" />
     <ClInclude Include="RawTerminal.h" />
+    <ClInclude Include="USB.h" />
     <ClInclude Include="Utility.h" />
   </ItemGroup>
   <ItemGroup>

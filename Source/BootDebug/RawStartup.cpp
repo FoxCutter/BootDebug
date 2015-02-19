@@ -23,6 +23,7 @@
 void main(int argc, char *argv[]);
 extern MultiBootInfo * MultiBootHeader;
 extern MMU * MMUManager;
+extern OpenHCI * USBManager;
 
 void SystemTrap(InterruptContext * Context)
 {
@@ -261,7 +262,7 @@ void IRQInterrupt(InterruptContext * Context)
 	else if(Context->InterruptNumber == 0x02B)
 	{
 		// USB
-		printf("USB Int\n");
+		//printf("USB Int\n");
 	}
 
 	m_InterruptControler.ClearIRQ(m_InterruptControler.MapIntToIRQ(Context->InterruptNumber));
@@ -326,24 +327,15 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	ASM_STI;
 	
-	//PCI PCIBus;
-	//uint32_t USBID = PCIBus.FindDeviceID(0x0C, 0x03, 0x10);
+	PCI PCIBus;
+	uint32_t USBID = PCIBus.FindDeviceID(0x0C, 0x03, 0x10);
 
-	//OpenHCI USB;
-	//if(USBID != 0xFFFFFFFF)
-	//	USB.StartUp(USBID);
-	
-	//PCI PCIBus;
-	//PCIBus.Initilize();
-	//PCIBios32.Initilize();
-
-	//Registers Reg;
-	//ReadCPUID(0, 0, &Reg);
-
-	//printf("CPUID EAX:%08X EBX:%08X ECX:%08X EDX:%08X\n", Reg.EAX, Reg.EBX, Reg.ECX, Reg.EDX);
-	
-	//ACPI ACPIObject;
-	//ACPIObject.Initilize();
+	OpenHCI USB;
+	if(USBID != 0xFFFFFFFF)
+	{
+		USB.StartUp(USBID);
+		USBManager = &USB;
+	}
 
 	// Step 6: Start the full kernel
 	const char * CommandLine = MBReader.CommandLine;

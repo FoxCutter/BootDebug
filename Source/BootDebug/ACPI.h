@@ -8,5 +8,6 @@ public:
 	~ACPI(void);
 
 	bool Initilize();
+	static void Dump();
 };
 

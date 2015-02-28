@@ -221,6 +221,8 @@ namespace CPUFlags
 	};
 }
 
+#define ALIGN_32BIT		__declspec(align(32)) 
+
 #define CARRY_FLAG		0x0001
 
 extern "C"

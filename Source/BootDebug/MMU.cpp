@@ -77,14 +77,17 @@ MMU::MMU(void)
 	Registers Res;
 	ReadCPUID(1, 0, &Res);
 
-	if((Res.EDX & CPUFlags::PhysicalAddressExtensions == 0) ||
-		(Res.EDX & CPUFlags::PageSizeExtensions == 0) )
+	if(((Res.EDX & CPUFlags::PhysicalAddressExtensions) == 0) ||
+		((Res.EDX & CPUFlags::PageSizeExtensions) == 0) )
 	{
 		printf("Paging unavailable\n");
 		return;
 	}
 
 	
+	//std::vector<int> MemoryMap;
+	//MemoryMap.push_back(1);
+	//MemoryMap.push_back(2);
 	//printf("%u, %u, %u, %u\n", sizeof(PageDirectoryPointerEntry), sizeof(PageDirectoryEntry), sizeof(LargePageDirectoryEntry), sizeof(PageTableEntry));
 
 	//printf("PDPTE: %08X", PDPTE);

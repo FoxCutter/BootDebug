@@ -47,6 +47,15 @@ void __cdecl operator delete( void * p )
     free(p);
 }
 
+void * __cdecl operator new[](unsigned int s)
+{
+    return calloc(s, 1);
+}
+
+void __cdecl operator delete[]( void * p )
+{
+    free(p);
+}
 
 // -------------------
 

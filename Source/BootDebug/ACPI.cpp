@@ -56,26 +56,28 @@ namespace ACPIData
 		uint8_t		OEMID[6];
 		uint8_t		OEMTableID[8];
 		uint32_t	OEMRevision;
-		uint32_t	CreatorID;
+		uint8_t		CreatorID[4];
 		uint32_t	CreatorRevision;
 
 		//----------
 		uint32_t	Entry[1];
 	};
 
+	const uint8_t XSDTTableSig[] = "XSDT";
+
+	struct XSDTTable
+	{
+		DescriptionHeader Header;
+
+		//----------
+		uint64_t	Entry[1];
+	};
+
 	const uint8_t FADTTableSig[] = "FACP";
 
 	struct FADTTable
 	{
-		uint8_t		Signature[4];
-		uint32_t	Length;
-		uint8_t		Revision;
-		uint8_t		Checksum;
-		uint8_t		OEMID[6];
-		uint8_t		OEMTableID[8];
-		uint32_t	OEMRevision;
-		uint32_t	CreatorID;
-		uint32_t	CreatorRevision;
+		DescriptionHeader Header;
 
 		uint32_t	FACSAddress;
 		uint32_t	DSDTAddress;
@@ -205,4 +207,50 @@ bool ACPI::Initilize()
 
 
 	return false;
+}
+
+
+void ACPI::Dump()
+{
+	// First, check the 1st K of the EBDA.
+	uint32_t EBDABase = *(uint16_t *)(0x040E);
+	EBDABase = EBDABase << 4;
+
+	uint32_t RSDPAddress = SeachMemory(EBDABase, 0x400, ACPIData::RSDPSig, 8, 0x10);
+
+	// If that failed check the BIOS space
+	if(RSDPAddress == UINT32_MAX)
+		RSDPAddress = SeachMemory(0xE0000, 0x20000, ACPIData::RSDPSig, 8, 0x10);
+
+	if(RSDPAddress == UINT32_MAX)
+	{
+		printf("RSDP Data not found\n");
+		return;
+	}
+
+	ACPIData::RSDP * RSDP = reinterpret_cast<ACPIData::RSDP *>(RSDPAddress);
+	
+
+	printf("ACPI OEM: %.6s Rev %02X (%08X)\n", RSDP->OEMID, RSDP->Revision, RSDP);
+	printf(" RSDT: %08X, XSDT: ", RSDP->RSDTAddress); PrintLongAddress(RSDP->XSDTAddress); printf("\n");
+
+	ACPIData::XSDTTable *XSDTTable = reinterpret_cast<ACPIData::XSDTTable *>(RSDP->XSDTAddress);
+	int EntryCount = (XSDTTable->Header.Length - sizeof(ACPIData::DescriptionHeader)) / 8;
+
+	printf(" %08X: %.4s OEMID: %.6s Rev %02X, Entry Count %04X\n", XSDTTable, XSDTTable->Header.Signature, XSDTTable->Header.OEMID, XSDTTable->Header.OEMRevision, EntryCount);
+	
+	for(int x = 0; x < EntryCount; x++)
+	{
+		ACPIData::DescriptionHeader * Blob = reinterpret_cast<ACPIData::DescriptionHeader *>(XSDTTable->Entry[x]);
+		printf("  %08X: %.4s OEMID: %.6s Rev %02X, Length %08X\n", Blob, Blob->Signature, Blob->OEMID, Blob->OEMRevision, Blob->Length);
+		
+		if(memcmp(Blob->Signature, ACPIData::FADTTableSig, 4) == 0)
+		{
+			ACPIData::FADTTable *FADT = reinterpret_cast<ACPIData::FADTTable *>(XSDTTable->Entry[x]);
+			printf("   FACS: %08X DSDT: %08X\n", FADT->FACSAddress, FADT->DSDTAddress);
+		}
+
+	}
+	
+
 }

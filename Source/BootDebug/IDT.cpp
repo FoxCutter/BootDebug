@@ -10,7 +10,7 @@ extern "C"
 	extern uint32_t IntTable[];
 }
 
-InterruptCallbackPtr *InterruptCallbackTable = nullptr;
+InterruptData *InterruptCallbackTable = nullptr;
 
 extern "C" void HandleInterrupt(InterruptContext * Context)
 {
@@ -20,8 +20,8 @@ extern "C" void HandleInterrupt(InterruptContext * Context)
 	//printf("INT %02X -> %08X\n", Context->InterruptNumber, InterruptCallbackTable[Context->InterruptNumber]);
 	
 	// Forward the Interrupt to the correct function
-	if(InterruptCallbackTable[Context->InterruptNumber] != nullptr)
-		InterruptCallbackTable[Context->InterruptNumber](Context);
+	if(InterruptCallbackTable[Context->InterruptNumber].InterruptCallback != nullptr)
+		InterruptCallbackTable[Context->InterruptNumber].InterruptCallback(Context, InterruptCallbackTable[Context->InterruptNumber].Data);
 
 	return;
 }
@@ -32,7 +32,7 @@ IDTManager::IDTManager(uint16_t CodeSelector, uint16_t DataSelector)
 	IntCallback = (uint32_t)HandleInterrupt;
 	
 	memset(IDTTable, 0, sizeof(IDT::IDTEntry) * 256);
-	memset(InterruptCallback, 0, sizeof(intptr_t) * 256);
+	memset(InterruptCallback, 0, sizeof(InterruptData) * 256);
 
 	int Pos = 0;
 	while(IntTable[Pos] != 0)
@@ -42,15 +42,16 @@ IDTManager::IDTManager(uint16_t CodeSelector, uint16_t DataSelector)
 	}
 }
 
-void IDTManager::SetInterupt(unsigned int IntNum, InterruptCallbackPtr CallBack)
+void IDTManager::SetInterupt(unsigned int IntNum, InterruptCallbackPtr CallBack, uintptr_t *Data)
 {
 	if(IntNum > 255)
 		return;
 
-	InterruptCallback[IntNum] = CallBack;
+	InterruptCallback[IntNum].InterruptCallback = CallBack;
+	InterruptCallback[IntNum].Data = Data;
 }
 
-void IDTManager::SetInterupt(unsigned int IntNum, InterruptCallbackPtr CallBack, uint8_t Type)
+void IDTManager::SetInterupt(unsigned int IntNum, InterruptCallbackPtr CallBack, uint8_t Type, uintptr_t *Data)
 {
 	if(IntNum > 255)
 		return;
@@ -58,7 +59,9 @@ void IDTManager::SetInterupt(unsigned int IntNum, InterruptCallbackPtr CallBack,
 	// As we are directly tweaking the IDT we're going to turn off interrupts for the moment.	
 	ASM_CLI
 	{
-		InterruptCallback[IntNum] = CallBack;
+		InterruptCallback[IntNum].InterruptCallback = CallBack;
+		InterruptCallback[IntNum].Data = Data;
+
 		IDT::IDTEntry & Entry = IDTTable[IntNum];
 
 		Entry.Attributes |= ~IDT::TypeMask;

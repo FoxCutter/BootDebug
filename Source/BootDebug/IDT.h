@@ -43,20 +43,26 @@ namespace IDT
 }
 
 struct InterruptContext;
-typedef void (*InterruptCallbackPtr)(InterruptContext * Context);
+typedef void (*InterruptCallbackPtr)(InterruptContext * Context, uintptr_t * Data);
+
+struct InterruptData
+{
+	InterruptCallbackPtr InterruptCallback;
+	uintptr_t * Data;
+};
 
 class IDTManager
 {
 	IDT::IDTEntry IDTTable[256];
-	InterruptCallbackPtr InterruptCallback[256]; 
+	InterruptData InterruptCallback[256]; 
 
 public:
 	IDTManager(uint16_t CodeSelector, uint16_t DataSelector);
 
-	void SetInterupt(unsigned int  IntNum, InterruptCallbackPtr CallBack);
+	void SetInterupt(unsigned int  IntNum, InterruptCallbackPtr CallBack, uintptr_t * Data = nullptr);
 
 	// This version is only used if you want to change it from a Gate (Clears IF) to a trap (Doesn't Clear IF)
-	void SetInterupt(unsigned int  IntNum, InterruptCallbackPtr CallBack, uint8_t Type);
+	void SetInterupt(unsigned int  IntNum, InterruptCallbackPtr CallBack, uint8_t Type, uintptr_t * Data = nullptr);
 	
 	IDT::IDTPtr SetActive();
 

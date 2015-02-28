@@ -14,6 +14,7 @@
 #include "RawTerminal.h"
 #include "LowLevel.h"
 #include "MultiBootInfo.h"
+#include "ACPI.h"
 
 MultiBootInfo * MultiBootHeader = nullptr;
 MMU * MMUManager = nullptr;
@@ -505,7 +506,11 @@ void main(int argc, char *argv[])
 						continue;
 					}
 					
-					if(_stricmp("USB", CurrentData) == 0)
+					if(_stricmp("ACPI", CurrentData) == 0)
+					{
+						ACPI::Dump();
+					}
+					else if(_stricmp("USB", CurrentData) == 0)
 					{
 						USBManager->Dump();
 					}
@@ -1069,14 +1074,16 @@ void main(int argc, char *argv[])
 
 			case '?':
 				puts("BootDebug Command List");
-				puts("  D[B|W|D|Q] [Address] [Length]");
-				puts("  E[B|W|D|Q] Address Data");
-				puts("  S[B|W|D|Q] Address Length Data");
-				puts("  I[B|W|D|Q] Port");
-				puts("  O[B|W|D|Q] Port Value");
-				puts("  X Address");
-				puts("  R Register [Value]");
-				puts("  N [Type]");
+				puts(" Dump Memory           D[Size] [Address] [Length]");
+				puts(" Enter Data            E[Size] Address Data");
+				puts(" Search Memory         S[Size] Address Length Data");
+				puts(" Read from a Port      I[Size] Port");
+				puts(" Write to a Port       O[Size] Port Value");
+				puts(" Memory Information    X Address");
+				puts(" Register Information  R Register [Value]");
+				puts(" General Information   N [Type]");
+				puts("");
+				puts(" Size = B|W|D|Q: Byte, Word, DWord or QWord");
 				break;
 
 			default:

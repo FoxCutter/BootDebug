@@ -25,7 +25,7 @@ extern MultiBootInfo * MultiBootHeader;
 extern MMU * MMUManager;
 extern OpenHCI * USBManager;
 
-void SystemTrap(InterruptContext * Context)
+void SystemTrap(InterruptContext * Context, uintptr_t * Data)
 {
 	if(Context->InterruptNumber == 0x0d)
 	{
@@ -82,9 +82,8 @@ void SystemTrap(InterruptContext * Context)
 	};
 
 	ASM_CLI;
-	ASM_HLT;
 
-	for(;;);
+	for(;;) ASM_HLT;
 }
 
 unsigned char kbdus[128] =
@@ -208,64 +207,53 @@ char FetchKeyboardBuffer()
 	return value;
 }
 
-void IRQInterrupt(InterruptContext * Context)
+void KeyboardInterrupt(InterruptContext * Context, uintptr_t * Data)
 {
-	// Keyboard
-	if(Context->InterruptNumber == 0x021)
+	unsigned char scancode = InPortb(0x60);		
+	unsigned char scancode2 = 0;
+	int Escape = 0;
+
+	if(scancode == 0xE0)
 	{
-		unsigned char scancode = InPortb(0x60);		
-		unsigned char scancode2 = 0;
-		int Escape = 0;
-
-		if(scancode == 0xE0)
-		{
-			Escape = 1;
-			scancode = InPortb(0x60);
-		}
-		else if(scancode == 0xE1)
-		{
-			Escape = 2;
-			scancode = InPortb(0x60);
-			scancode2 = InPortb(0x60);
-		}
-
-		bool KeyUp = ((scancode & 0x80) == 0x80);
-		scancode = scancode & 0x7F;
-
-		if(scancode == 0x2A && Escape == 0) // LSHIFT
-		{
-			if(KeyUp)
-				KeyState &= ~LeftShift;
-			
-			else
-				KeyState |= LeftShift;
-		}
-		else if(scancode == 0x36 && Escape == 0) // RSHIFT
-		{
-			if(KeyUp)
-				KeyState &= ~RightShift;
-			
-			else
-				KeyState |= RightShift;
-		}
-		else if(!KeyUp && Escape == 0)
-		{
-			char Key = 0;
-			if(KeyState & LeftShift || KeyState & RightShift)
-				Key = kbdus_Shift[scancode];
-			else
-				Key = kbdus[scancode];
-
-			InsertKeyboardBuffer(Key);
-		}
+		Escape = 1;
+		scancode = InPortb(0x60);
 	}
-	else if(Context->InterruptNumber == 0x02B)
+	else if(scancode == 0xE1)
 	{
-		// USB
-		//printf("USB Int\n");
+		Escape = 2;
+		scancode = InPortb(0x60);
+		scancode2 = InPortb(0x60);
 	}
 
-	m_InterruptControler.ClearIRQ(m_InterruptControler.MapIntToIRQ(Context->InterruptNumber));
+	bool KeyUp = ((scancode & 0x80) == 0x80);
+	scancode = scancode & 0x7F;
+
+	if(scancode == 0x2A && Escape == 0) // LSHIFT
+	{
+		if(KeyUp)
+			KeyState &= ~LeftShift;
+			
+		else
+			KeyState |= LeftShift;
+	}
+	else if(scancode == 0x36 && Escape == 0) // RSHIFT
+	{
+		if(KeyUp)
+			KeyState &= ~RightShift;
+			
+		else
+			KeyState |= RightShift;
+	}
+	else if(!KeyUp && Escape == 0)
+	{
+		char Key = 0;
+		if(KeyState & LeftShift || KeyState & RightShift)
+			Key = kbdus_Shift[scancode];
+		else
+			Key = kbdus[scancode];
+
+		InsertKeyboardBuffer(Key);
+	}
 }
 
 extern "C" void MultiBootMain(void *Address, uint32_t Magic)
@@ -314,11 +302,9 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	// Step 3: Remap IRQs
 	m_InterruptControler.RemapIRQBase(0x20);
 
-	// Set up the handlers for IRQs
-	for(int x = 0x20; x < 0x30; x++)
-	{
-		IDTData.SetInterupt(x, IRQInterrupt);
-	}
+	m_InterruptControler.SetIDT(0x20, &IDTData);
+	m_InterruptControler.SetIRQInterrupt(0x01, KeyboardInterrupt);
+	
 
 	IDTData.SetActive();
 	
@@ -333,7 +319,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	OpenHCI USB;
 	if(USBID != 0xFFFFFFFF)
 	{
-		USB.StartUp(USBID);
+		USB.StartUp(USBID, &m_InterruptControler);
 		USBManager = &USB;
 	}
 
@@ -354,7 +340,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	
 	//printf("BYe!");
 
-	for(;;);
+	for(;;) ASM_HLT;
 
 	//printf("Woops!");
 }

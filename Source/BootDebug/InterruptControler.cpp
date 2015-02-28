@@ -1,16 +1,65 @@
 #include "InterruptControler.h"
 #include "LowLevel.h"
+#include "IDT.h"
 
+static void IRQInterrupt(InterruptContext * Context, uintptr_t * Data)
+{
+	if(Data == nullptr)
+		return;
+
+	InterruptControler * Controler = reinterpret_cast<InterruptControler *>(Data);
+
+	Controler->Interrupt(Context);
+}
 
 InterruptControler::InterruptControler(void)
 {
 	// We'll start up assuming things are where they are in 16-bit mode
 	//IRQBase1 = 0x08;
 	//IRQBase2 = 0x70;
+
+	for(int x = 0; x < 0x10; x++)
+	{
+		Mapping[x].Data = nullptr;
+		Mapping[x].InterruptCallback = nullptr;
+	}
 }
 
 InterruptControler::~InterruptControler(void)
 {
+}
+
+void InterruptControler::Interrupt(InterruptContext * Context)
+{
+	uint8_t IRQ = MapIntToIRQ(Context->InterruptNumber);
+
+	if(IRQ < 0x10)
+	{
+		if(Mapping[IRQ].InterruptCallback != nullptr)
+			Mapping[IRQ].InterruptCallback(Context, Mapping[IRQ].Data);
+	}
+
+	ClearIRQ(IRQ);
+}
+
+void InterruptControler::SetIDT(int InterruptBase, IDTManager *oIDTManager)
+{
+	m_IDTManager = oIDTManager;
+
+	// Set up the handlers for IRQs
+	for(int x = InterruptBase; x < InterruptBase + 0x10; x++)
+	{
+		m_IDTManager->SetInterupt(x, IRQInterrupt, reinterpret_cast<uintptr_t *>(this));
+	}
+}
+
+void InterruptControler::SetIRQInterrupt(uint8_t IRQ, InterruptCallbackPtr InterruptCallback, uintptr_t * Data)
+{
+	if(IRQ < 0x10)
+	{
+		Mapping[IRQ].InterruptCallback = InterruptCallback;
+		Mapping[IRQ].Data = Data;
+	}
 }
 
 uint8_t InterruptControler::MapIntToIRQ(uint8_t Int)
@@ -22,7 +71,7 @@ uint8_t InterruptControler::MapIntToIRQ(uint8_t Int)
 
 	if(Int >= IRQBase2 && Int < IRQBase2 + 8)
 	{
-		return Int - IRQBase2;
+		return (Int - IRQBase2) + 8;
 	}
 
 	return 0xFF;

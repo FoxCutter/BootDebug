@@ -1,12 +1,12 @@
 #include <stdint.h>
 #include "USB.h"
+#include "RawMemory.h"
 #pragma once
 
 #pragma pack(push, 1)
 
 namespace OpenHCIData
 {
-
 	struct HCCA
 	{
 		uint32_t InterruptTable[32];
@@ -104,8 +104,8 @@ namespace OpenHCIData
 		OwnershipChange			= 0x40000000,
 		MasterInterruptEnable	= 0x80000000,
 
-		// Well, almost all, doesn't enable the SOF interrupt as we don't need/want it.
-		EnableAllInterupts		= 0x8000007B,
+		// Well, almost all, doesn't have the SOF interrupt as we don't need/want it.
+		AllInterupts			= 0x8000007B,
 	};
 	
 	enum FrameIntervalFlags
@@ -249,19 +249,75 @@ namespace OpenHCIData
 
 #pragma pack(pop)
 
+struct InterruptContext;
+struct PipeData;
+struct TransferData;
+class InterruptControler;
+enum PipeState;
+
+typedef void (*OpenHCICallbackPtr)(uint32_t Handle, uintptr_t * Data);
+
 class OpenHCI
 {
-	volatile OpenHCIData::HCRegisters * Registers;
-	uint32_t m_DeviceID;
+	RawMemory Allocator;
 
-	bool FetchString(uint8_t Address, uint8_t ID, uint16_t Language);
-	bool DeviceRequest(uint8_t Address, USBData::USBDeviceRequest &Request, void *Buffer);
+	uint32_t m_DeviceID;
+	uint8_t m_IRQ;
+	InterruptControler *m_IntControler;
+	volatile OpenHCIData::HCRegisters * Registers;
+
+	PipeData * FreePipeHead;	
+	TransferData * FreeTransferDataHead;
+
+	PipeData * DefaultHandle;
+	PipeData * IsochronusPipeHead;
+
+	void AddEndpoint(PipeData *Base, PipeData *EndPoint);
+	void EnableEndpoint(PipeData *EndPoint);
+	void DisableEndpoint(PipeData *EndPoint, PipeState NewState);
+
+	void SpinLockEndpoint(PipeData *EndPoint);
+
+	PipeData *GetEndpoint();
+	TransferData *GetTransferData();
+
+	void FreeTransferData(TransferData *Data);
+
+	bool IsPeriodicEndpoint(PipeData *EndPoint);
+
+
+
+	bool FetchString(uint32_t Handle, uint8_t ID, uint16_t Language);
 
 public:
+	enum PipeType
+	{
+		BulkPipe,
+		InterruptPipe,
+		IsochronusPipe,
+		ControlPipe,
+	};
+
+	void Interrupt(InterruptContext * Context);
+	
 	OpenHCI(void);
 	~OpenHCI(void);
 
-	bool StartUp(uint32_t DeviceID);
+	bool StartUp(uint32_t DeviceID, InterruptControler *IntControler);
+
+	const static uint32_t DefaultDeviceHandle = 0x00000000;
+
+	uint32_t OpenPipe(uint8_t Address, uint8_t Endpoint, PipeType Type, uint16_t MaxPacketSize, uint8_t Frequency = 0xFF, OpenHCICallbackPtr Callback = nullptr, bool LowSpeed = false);
+	//uint32_t OpenPipe(uint8_t Address, uint8_t Endpoint, PipeType Type, uint16_t MaxPacketSize, bool LowSpeed = false);
+	//uint32_t OpenPeriodicPipe(uint8_t Address, uint8_t Endpoint, PipeType Type, uint16_t MaxPacketSize, uint8_t Frequency, OpenHCICallbackPtr Callback, bool LowSpeed = false);
+	bool AdjustMaxPacketSize(uint32_t Handle, uint16_t MaxPacketSize);
+	void ClosePipe(uint32_t Handle);
+	bool ReadPipe(uint32_t Handle, void *Data, size_t Length, size_t &Read);
+	bool WritePipe(uint32_t Handle, void *Data, size_t Length);
+	bool DeviceRequest(uint32_t Handle, USBData::USBDeviceRequest &Request, void *Buffer);
+	//bool ResetInterruptPipe(uint32_t Handle, Callback);
+	//bool DisableInterruptPipe(uint32_t Handle);
+	
 
 	void Dump();
 };

@@ -6,9 +6,16 @@ namespace USBData
 {
 	struct USBDeviceRequest
 	{
-		uint8_t Recipient : 5;
-		uint8_t Type : 2;
-		uint8_t Direction : 1; // False: Host to Device, True: Device to Host
+		union
+		{
+			uint8_t RequestType;
+			struct
+			{
+				uint8_t Recipient : 5;
+				uint8_t Type : 2;
+				uint8_t Direction : 1; // False: Host to Device, True: Device to Host
+			};
+		};
 
 		uint8_t Request;
 		uint16_t Value;
@@ -53,6 +60,18 @@ namespace USBData
 		Endpoint				= 5,
 		DeviceQualifier			= 6,	// USB 2
 		OtherSpeedConfiguration = 7		// USB 2
+	};
+
+	enum USBDeviceFeatures
+	{
+		// Device Features
+		DeviceRemoteWakeup		= 1,
+		TestMode				= 2,	// USB 2
+		
+		// Interface Features
+
+		// Endpoint Features
+		EndpointHalt			= 0,
 	};
 
 	struct DeviceDescriptor
@@ -175,6 +194,78 @@ namespace USBData
 		uint8_t		Reserved;
 
 	};
+}
+
+namespace USBHub
+{
+	struct HubDescriptor
+	{
+		uint8_t		Length;
+		uint8_t		DescriptorType;
+
+		uint8_t		DownStreamPorts;
+
+		uint16_t	PowerSwitchingMode : 1;
+		uint16_t	NoPowerSwitching : 1;
+		uint16_t	DeviceType : 1;
+		uint16_t	OverCurrentProtectionMode : 1;
+		uint16_t	NoOverCurrentProtection : 1;
+		uint16_t	TTThinkTime : 2;				// USB 2
+		uint16_t	PortIndicatorsSupported : 1;	// USB 2
+
+		uint8_t		PowerOnToGood;
+		uint8_t		MaxHubCurrent;
+
+		// Both the DeviceRemovable & PortPowerControlMask are variable length,
+		uint8_t		DeviceRemovablePowerControlMask[1];
+	};
+
+	enum USBHubThinkTime
+	{
+		ThinkTime8FS	= 0,
+		ThinkTime16FS	= 1,
+		ThinkTime24FS	= 2,
+		ThinkTime32FS	= 3
+	};
+
+	enum USBDeviceRequestIDs
+	{
+		GetState			= 2,		// USB 1 only
+		ClearTTBuffer		= 8,		// USB 2
+		ResetTT				= 9,		// USB 2
+		GetTTState			= 10,		// USB 2
+		StopTT				= 11,		// USB 2
+	};
+
+	enum DescriptorTypes
+	{
+		Hub					= 0x29
+	};
+
+	enum USBDeviceFeatures
+	{
+		// Hub Features
+		ClearHubLocalPower		= 0,
+		ClearHubOverCurrent		= 1,
+
+		// Port Features
+		PortConnection			= 0,
+		PortEnabled				= 1,
+		PortSuspended			= 2,
+		PortOverCurrent			= 3,
+		PortReset				= 4,
+		PortPower				= 8,
+		PortLowSpeed			= 9,
+		
+		ClearPortConnection		= 16,
+		ClearPortEnable			= 17,
+		ClearPortSuspended		= 18,
+		ClearPortOverCurrent	= 19,
+		ClearPortReset			= 20,
+		PortTest				= 21,	// USB 2
+		PortIndicator			= 22	// USB 2
+	};
+
 }
 
 #pragma pack(pop)

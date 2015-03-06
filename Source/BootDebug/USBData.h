@@ -110,7 +110,7 @@ namespace USBData
 
 		uint8_t		Reserved : 5;
 		uint8_t		RemoteWakeup : 1;
-		uint8_t		SelfPowwered : 1;
+		uint8_t		SelfPowered : 1;
 
 		uint8_t		MaxPower;
 	};
@@ -210,7 +210,7 @@ namespace USBHub
 		uint16_t	DeviceType : 1;
 		uint16_t	OverCurrentProtectionMode : 1;
 		uint16_t	NoOverCurrentProtection : 1;
-		uint16_t	TTThinkTime : 2;				// USB 2
+		uint16_t	TT_ThinkTime : 2;				// USB 2
 		uint16_t	PortIndicatorsSupported : 1;	// USB 2
 
 		uint8_t		PowerOnToGood;
@@ -266,6 +266,61 @@ namespace USBHub
 		PortIndicator			= 22	// USB 2
 	};
 
+	struct HubStatusAndChange
+	{
+		union
+		{
+			uint32_t StatusAndChanged;
+			struct
+			{
+				struct
+				{
+					uint16_t LocalPowerSource : 1;
+					uint16_t OverCurrentIndicator : 1;
+				} Status;
+
+				struct 
+				{
+					uint16_t LocalPowerStatusChange : 1;
+					uint16_t OverCurrentIndicatorChange : 1;
+				} Changed;
+			};
+		};
+	};
+
+	struct PortStatusAndChange
+	{
+		union
+		{
+			uint32_t StatusAndChanged;
+			struct
+			{
+				struct 
+				{
+					uint16_t Connection : 1;
+					uint16_t Enabled : 1;
+					uint16_t Suspended : 1;
+					uint16_t OverCurrentIndicator : 1;
+					uint16_t Reset : 1;
+					uint16_t Reserved : 3;
+					uint16_t PortPower : 1;
+					uint16_t LowSpeedDeviceAttached : 1;
+					uint16_t HighSpeedDeviceAttached : 1;	// USB 2
+					uint16_t PortTestMode : 1;				// USB 2
+					uint16_t PortIndicatorControl : 1;		// USB 2
+				} Status;
+
+				struct
+				{
+					uint16_t ConnectionChange : 1;
+					uint16_t EnabledChange : 1;
+					uint16_t SuspendedChange : 1;
+					uint16_t OverCurrentIndicatorChange : 1;
+					uint16_t ResetChange : 1;
+				} Changed;
+			};
+		};
+	};
 }
 
 #pragma pack(pop)

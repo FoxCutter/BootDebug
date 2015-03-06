@@ -63,6 +63,9 @@
     <ClCompile Include="MMU.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="EnhancedHCI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RawTerminal.h">
@@ -113,7 +116,10 @@
     <ClInclude Include="MMU.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="USB.h">
+    <ClInclude Include="EnhancedHCI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="USBData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

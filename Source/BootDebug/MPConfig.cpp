@@ -130,7 +130,7 @@ bool MPConfig::Initilize()
 				{
 					MPData::MPConfigTableProcessorEntry *Entry = (MPData::MPConfigTableProcessorEntry *)Data;
 
-					printf("Processor: ID %02X, Sig %08X, Feature %08X\n", Entry->LAPIC_ID, Entry->CPUSignature, Entry->FeatureFlags);
+					printf("Processor: ID %02X, Flags %08X, Sig %08X, Feature %08X\n", Entry->LAPIC_ID, Entry->Flags, Entry->CPUSignature, Entry->FeatureFlags);
 
 					Data += 20;
 				}
@@ -160,7 +160,7 @@ bool MPConfig::Initilize()
 				{
 					MPData::MPConfigTableInteruptEntry *Entry = (MPData::MPConfigTableInteruptEntry *)Data;
 
-					printf("I/O Int: Type %02X, Source Bus %02X, Source IRQ %02X, Dest I/O APIC: %02X, Dest Int %02X\n", Entry->Type, Entry->SourceBusID, Entry->SourceBusIRQ, Entry->DestIOAPICID, Entry->DestIOAPICINT);
+					printf("I/O Int: Type %02X, Source Bus %02X, Source IRQ %02X, Dest I/O APIC: %02X, Dest Int %02X\n", Entry->IntType, Entry->SourceBusID, Entry->SourceBusIRQ, Entry->DestIOAPICID, Entry->DestIOAPICINT);
 
 					Data += 8;
 				}
@@ -170,7 +170,7 @@ bool MPConfig::Initilize()
 				{
 					MPData::MPConfigTableInteruptEntry *Entry = (MPData::MPConfigTableInteruptEntry *)Data;
 
-					printf("Local Int: Type %02X, Source Bus %02X, Source IRQ %02X, Dest LAPIC: %02X, Dest Int %02X\n", Entry->Type, Entry->SourceBusID, Entry->SourceBusIRQ, Entry->DestIOAPICID, Entry->DestIOAPICINT);
+					printf("Local Int: Type %02X, Source Bus %02X, Source IRQ %02X, Dest LAPIC: %02X, Dest Int %02X\n", Entry->IntType, Entry->SourceBusID, Entry->SourceBusIRQ, Entry->DestIOAPICID, Entry->DestIOAPICINT);
 
 					Data += 8;
 				}

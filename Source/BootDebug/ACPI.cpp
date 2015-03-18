@@ -136,6 +136,110 @@ namespace ACPIData
 		
 	};
 
+	const uint8_t MultiACPITableSig[] = "APIC";
+
+	struct MultiACPITable
+	{
+		DescriptionHeader	Header;
+		uint32_t			LocalACPIAddress;
+		uint32_t			Flags;
+	};
+
+	struct MultiACPITableEntry
+	{
+		uint8_t		Type;
+		uint8_t		Length;
+
+		union
+		{
+			struct
+			{
+				uint8_t	ACPIProcessorID;
+				uint8_t	APICID;
+				uint32_t Flags;
+			} ProcessorLocalAPIC;
+
+			struct
+			{
+				uint8_t	IOAPICID;
+				uint8_t Reserved;
+				uint32_t IOAPCIAddress;
+				uint32_t GlobalSystemIntBase;
+			} IOAPIC;
+
+			struct
+			{
+				uint8_t	Bus;
+				uint8_t Source;
+				uint32_t GlobalSystemInt;
+				uint16_t Flags;
+			} IntSourceOverride;
+
+			struct
+			{
+				uint16_t Flags;
+				uint32_t GlobalSystemInt;
+			} NMISource;
+
+			struct
+			{
+				uint8_t		ACPIProcessorID;
+				uint16_t	Flags;
+				uint8_t		LINT;
+			} LocalAPICNMI;
+
+			struct
+			{
+				uint16_t	Reserved;
+				uint64_t	LocalAPICAddress;
+			} LocalAPICAddressOverride;
+
+			struct
+			{
+				uint8_t		IOSAPICID;
+				uint8_t		Reserved;
+				uint32_t	GlobalSystemIntBase;
+				uint64_t	IOAPCIAddress;
+			} IOSAPIC;
+
+			struct
+			{
+				uint8_t		ACPIProcessorID;
+				uint8_t		LocalSAPICID;
+				uint8_t		Reserved[3];
+				uint32_t	Flags;
+				uint32_t	ACPIProcessorUID;
+				uint8_t		ACPIProcessorUIDString[1];
+			} LocalSAPIC;
+			
+			struct
+			{
+				uint16_t	Flags;
+				uint8_t		Type;
+				uint8_t		ProcessorID;
+				uint8_t		ProcessorEID;
+				uint8_t		IOSAPICVector;
+				uint32_t	GloablSystemInt;
+				uint32_t	PlatformIntFlags;
+			} PlatfromIntSource;
+
+			struct
+			{
+				uint16_t	Reserved;
+				uint32_t	x2APICID;
+				uint32_t	Flags;
+				uint32_t	ACPIProcessorUID;
+			} ProcessorLocalx2APIC;
+
+			struct
+			{
+				uint16_t	Flags;
+				uint32_t	ACPIProcessorUID;
+				uint8_t		LINT;
+				uint8_t		Reserved[3];
+			} Localx2APICNMI;
+		};
+	};
 };
 
 #pragma pack(pop)
@@ -210,7 +314,7 @@ bool ACPI::Initilize()
 }
 
 
-void ACPI::Dump()
+void ACPI::Dump(char *Options)
 {
 	// First, check the 1st K of the EBDA.
 	uint32_t EBDABase = *(uint16_t *)(0x040E);
@@ -231,26 +335,105 @@ void ACPI::Dump()
 	ACPIData::RSDP * RSDP = reinterpret_cast<ACPIData::RSDP *>(RSDPAddress);
 	
 
-	printf("ACPI OEM: %.6s Rev %02X (%08X)\n", RSDP->OEMID, RSDP->Revision, RSDP);
-	printf(" RSDT: %08X, XSDT: ", RSDP->RSDTAddress); PrintLongAddress(RSDP->XSDTAddress); printf("\n");
-
 	ACPIData::XSDTTable *XSDTTable = reinterpret_cast<ACPIData::XSDTTable *>(RSDP->XSDTAddress);
 	int EntryCount = (XSDTTable->Header.Length - sizeof(ACPIData::DescriptionHeader)) / 8;
 
-	printf(" %08X: %.4s OEMID: %.6s Rev %02X, Entry Count %04X\n", XSDTTable, XSDTTable->Header.Signature, XSDTTable->Header.OEMID, XSDTTable->Header.OEMRevision, EntryCount);
-	
-	for(int x = 0; x < EntryCount; x++)
+	if(Options == nullptr)
 	{
-		ACPIData::DescriptionHeader * Blob = reinterpret_cast<ACPIData::DescriptionHeader *>(XSDTTable->Entry[x]);
-		printf("  %08X: %.4s OEMID: %.6s Rev %02X, Length %08X\n", Blob, Blob->Signature, Blob->OEMID, Blob->OEMRevision, Blob->Length);
-		
-		if(memcmp(Blob->Signature, ACPIData::FADTTableSig, 4) == 0)
-		{
-			ACPIData::FADTTable *FADT = reinterpret_cast<ACPIData::FADTTable *>(XSDTTable->Entry[x]);
-			printf("   FACS: %08X DSDT: %08X\n", FADT->FACSAddress, FADT->DSDTAddress);
-		}
-
-	}
+		printf("ACPI OEM: %.6s Rev %02X (%08X)\n", RSDP->OEMID, RSDP->Revision, RSDP);
+		printf(" RSDT: %08X, XSDT: ", RSDP->RSDTAddress); PrintLongAddress(RSDP->XSDTAddress); printf("\n");
+		printf(" %08X: %.4s OEMID: %.6s Rev %02X, Entry Count %04X\n", XSDTTable, XSDTTable->Header.Signature, XSDTTable->Header.OEMID, XSDTTable->Header.OEMRevision, EntryCount);
 	
+		for(int x = 0; x < EntryCount; x++)
+		{
+			ACPIData::DescriptionHeader * Blob = reinterpret_cast<ACPIData::DescriptionHeader *>(XSDTTable->Entry[x]);
+			printf("  %08X: %.4s OEMID: %.6s Rev %02X, Length %08X\n", Blob, Blob->Signature, Blob->OEMID, Blob->OEMRevision, Blob->Length);
+		
+			if(memcmp(Blob->Signature, ACPIData::FADTTableSig, 4) == 0)
+			{
+				ACPIData::FADTTable *FADT = reinterpret_cast<ACPIData::FADTTable *>(XSDTTable->Entry[x]);
+				printf("   FACS: %08X DSDT: %08X\n", FADT->FACSAddress, FADT->DSDTAddress);
+			}
+
+		}
+	} 
+	else if(_stricmp("APIC", Options) == 0)
+	{
+		for(int x = 0; x < EntryCount; x++)
+		{
+			ACPIData::DescriptionHeader * Blob = reinterpret_cast<ACPIData::DescriptionHeader *>(XSDTTable->Entry[x]);
+		
+			if(memcmp(Blob->Signature, ACPIData::MultiACPITableSig, 4) == 0)
+			{
+				ACPIData::MultiACPITable *MADT = reinterpret_cast<ACPIData::MultiACPITable *>(XSDTTable->Entry[x]);
+				printf("   Local APIC: %08X\n", MADT->LocalACPIAddress);
+				
+				uint32_t Offset = sizeof(ACPIData::MultiACPITable);
+
+
+				while(Offset < MADT->Header.Length)
+				{
+					ACPIData::MultiACPITableEntry *Entry = reinterpret_cast<ACPIData::MultiACPITableEntry *>(XSDTTable->Entry[x] + Offset);
+
+					switch(Entry->Type)
+					{
+						case 0:
+							printf("   0: ACPI Proc ID: %02X, APIC ID: %02X, Flags: %08X\n", Entry->ProcessorLocalAPIC.ACPIProcessorID, Entry->ProcessorLocalAPIC.APICID, Entry->ProcessorLocalAPIC.Flags);
+							break;
+
+						case 1:
+							printf("   1: I/O ACPI ID: %02X, I/O APIC Address: %08X, Global Int Base: %08X\n", Entry->IOAPIC.IOAPICID, Entry->IOAPIC.IOAPCIAddress, Entry->IOAPIC.GlobalSystemIntBase);
+							break;
+
+						case 2:
+							printf("   2: Bus: %02X, Source: %02X, Global Int: %08X, Flags: %04X\n", Entry->IntSourceOverride.Bus, Entry->IntSourceOverride.Source, Entry->IntSourceOverride.GlobalSystemInt, Entry->IntSourceOverride.Flags);
+							break;
+
+						case 3:
+							printf("   3: Global Int: %08X, Flags: %04X\n", Entry->NMISource.GlobalSystemInt, Entry->NMISource.Flags);
+							break;
+
+						case 4:
+							printf("   4:  ACPI Proc ID: %02X, Flags: %04X, Local APIC LINT#: %02X\n", Entry->LocalAPICNMI.ACPIProcessorID, Entry->LocalAPICNMI.Flags, Entry->LocalAPICNMI.LINT);
+							break;
+
+						case 5:
+							printf("   5:\n");
+							break;
+
+						case 6:
+							printf("   6:\n");
+							break;
+
+						case 7:
+							printf("   7:\n");
+							break;
+						case 8:
+							printf("   8:\n");
+							break;
+
+						case 9:
+							printf("   9: ACPI Proc UID: %08X, x2APIC ID: %02X, Flags: %08X\n", Entry->ProcessorLocalx2APIC.ACPIProcessorUID, Entry->ProcessorLocalx2APIC.x2APICID, Entry->ProcessorLocalx2APIC.Flags);
+							break;
+
+						case 0x0A:
+							printf("   A:  ACPI Proc UID: %08X, Flags: %04X, Local APIC LINT#: %02X\n", Entry->Localx2APICNMI.ACPIProcessorUID, Entry->Localx2APICNMI.Flags, Entry->Localx2APICNMI.LINT);
+							break;
+						
+						default:
+							printf("   %X\n", Entry->Type);
+							break;
+
+					}
+
+					Offset += Entry->Length;
+				};
+			}
+		}
+	}
+	else
+	{
+		printf("%s\n", Options);
+	}
 
 }

@@ -3,8 +3,8 @@
 
 // This header just holds a number of low level function declarations, they function themselves will more then likely be 
 // write in ASM.
-// Defines for the inline ASM so they can easily be updated/Replaced
 
+// Defines for the inline ASM so they can easily be updated/Replaced
 #define ASM_HLT __asm hlt
 
 #define ASM_CLI __asm cli
@@ -18,11 +18,9 @@
 
 #define ASM_INVLPG(p) __asm invlpg [p]
 
-#define ASM_SCR(reg, val) __asm { \
-	mov eax, reg \
-	mov ecx, eax \
-}
-#define ASM_LCR(reg) __asm mov reg, eax
+#define ASM_SCR(reg, val) __asm { __asm mov [val], reg }
+#define ASM_LCR(reg, val) __asm { __asm mov reg, [val] }
+
 
 #pragma pack(push, 1)
 struct InterruptContext

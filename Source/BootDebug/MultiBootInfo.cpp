@@ -9,8 +9,9 @@
 MultiBootInfo::MultiBootInfo(void)
 {
 	MemoryLow = MemoryLow = 0;
-	BootDevice = BootPartition[0] = BootPartition[1] = BootPartition[2] = UINT32_MAX;
+	BootDevice = BootPartition[0] = BootPartition[1] = BootPartition[2] = 0xFF;
 	CommandLine = BootLoader = nullptr;
+	MBData = nullptr;
 	MemoryMapLength = 0;
 
 }
@@ -21,6 +22,8 @@ MultiBootInfo::~MultiBootInfo(void)
 
 bool MultiBootInfo::LoadMultiBootInfo(uint32_t Signature, void *Data)
 {
+	MBData = Data;
+
 	if(Signature == MulitBoot::BootMagic)
 	{
 		return LoadMultiBoot1Info(Data);
@@ -39,7 +42,7 @@ bool MultiBootInfo::LoadMultiBootInfo(uint32_t Signature, void *Data)
 
 void MultiBootInfo::Dump()
 {
-	printf("MultiBoot Info\n");
+	printf("MultiBoot Info (%08X)\n", MBData);
 	printf("    Version: %u\n", Type);
 	printf("    Memory Info: Low %uk, High %uk\n", MemoryLow, MemoryHigh);
 	printf("    Boot Device Info: Device %02X, Partition %02X:%02X:%02X\n", BootDevice, BootPartition[0], BootPartition[1], BootPartition[2]);
@@ -109,10 +112,10 @@ bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 	}
 	if((BootHeader->Flags & MulitBoot::BootDeviceInfo) == MulitBoot::BootDeviceInfo)
 	{
-		BootDevice = (BootHeader->BootDevice & 0x000000FF);
-		BootPartition[0] = (BootHeader->BootDevice & 0x0000FF00) >> 8;
-		BootPartition[1] = (BootHeader->BootDevice & 0x00FF0000) >> 16;
-		BootPartition[2] = (BootHeader->BootDevice & 0xFF000000) >> 24;
+		BootDevice =       (BootHeader->BootDevice & 0xFF000000) >> 24;
+		BootPartition[0] = (BootHeader->BootDevice & 0x00FF0000) >> 16;
+		BootPartition[1] = (BootHeader->BootDevice & 0x0000FF00) >> 8;
+		BootPartition[2] = (BootHeader->BootDevice & 0x000000FF);
 	}
 	if((BootHeader->Flags & MulitBoot::CommandLineInfo) == MulitBoot::CommandLineInfo)
 	{
@@ -231,10 +234,10 @@ bool MultiBootInfo::LoadMultiBoot2Info(void *Data)
 			case MulitBoot2::Modules:
 			{
 				MulitBoot2::Boot_Module * Entry = (MulitBoot2::Boot_Module *)Pos;
-				printf(" Module: %s\n", Entry->String);
+				printf(" Module: %08X, %08X, %s\n", Entry->ModStart, Entry->ModEnd, Entry->String);
 				break;
 			}
-
+			 
 			case MulitBoot2::BasicMemory:
 			{
 				MulitBoot2::Boot_BasicMemory* Entry = (MulitBoot2::Boot_BasicMemory *)Pos;

@@ -36,8 +36,22 @@ namespace GDT
 
 
 		// System Types
-		TSS_32Bit = 0x1001,
-		TSS_16Bit = 0x0001,
+		//ReservedSegment		= 0x0,
+		TSS16BitSegment			= 0x1,
+		LDTSegment				= 0x2,
+		TSS16BitSegmentBusy		= 0x3,
+		CallGate16BitSegment	= 0x4,
+		TaskGateSegment			= 0x5,
+		IntGate16BitSegment		= 0x6,
+		TrapGate16BitSegment	= 0x7,
+		//ReservedSegment		= 0x8,
+		TSS32BitSegment			= 0x9,
+		//ReservedSegment		= 0xA,
+		TSS32BitSegmentBusy		= 0xB,
+		CallGate32BitSegment	= 0xC,
+		//ReservedSegment		= 0xD,
+		IntGate32BitSegment		= 0xE,
+		TrapGate32BitSegment	= 0xF,
 	};
 	
 	struct GDTEntry
@@ -56,6 +70,44 @@ namespace GDT
 		uint16_t Limit;
 		uint32_t Address;
 	};
+
+	struct TSS
+	{
+		uint32_t PreviouseLinkedTask;
+		
+		// Stacks for Privilege Level changes
+		uint32_t ESP0;
+		uint32_t SS0;
+		uint32_t ESP1;
+		uint32_t SS1;
+		uint32_t ESP2;
+		uint32_t SS2;
+
+		uint32_t CR3;
+		
+		uint32_t EIP;
+		uint32_t EFlags;
+
+		uint32_t EAX;
+		uint32_t ECX;
+		uint32_t EDX;
+		uint32_t EBX;
+
+		uint32_t ESP;
+		uint32_t EBP;
+		uint32_t ESI;
+		uint32_t EDI;
+
+		uint32_t ES;
+		uint32_t CS;
+		uint32_t SS;
+		uint32_t DS;
+		uint32_t FS;
+		uint32_t GS;
+		uint32_t LDTSelector;
+		uint16_t DebugTrapFlag;
+		uint16_t IOMapBaseAddress;
+	};
 }
 
 class GDTManager
@@ -73,10 +125,12 @@ public:
 	
 	GDT::GDTPtr SetActive(uint16_t NewCodeSelector, uint16_t NewDataSelector);
 
+	static void UpdateGDTEntry(uint16_t Selector, uint32_t Base, uint32_t Limit, uint16_t Attributes, uint8_t Type, uint8_t DPL);
+
 	void PrintSelector(uint16_t Selector);
 
 private:
-	void BuildGDTEntry(GDT::GDTEntry *Entry, uint32_t Base, uint32_t Limit, uint16_t Attributes, uint8_t Type, uint8_t DPL);
+	static void BuildGDTEntry(GDT::GDTEntry *Entry, uint32_t Base, uint32_t Limit, uint16_t Attributes, uint8_t Type, uint8_t DPL);
 
 };
 

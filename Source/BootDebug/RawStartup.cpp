@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <atomic>
 
 #include "RawTerminal.h"
 #include "RawMemory.h"
@@ -17,6 +18,7 @@
 #include "PCI.h"
 
 #include "OpenHCI.h"
+#include "Thread.h"
 
 #include "..\StdLib\initterm.h"
 
@@ -197,7 +199,11 @@ void InsertKeyboardBuffer(char Key)
 
 char FetchKeyboardBuffer()
 {
-	while(KBBufferFirst == KBBufferLast);
+	while(KBBufferFirst == KBBufferLast)
+	{
+		ASM_HLT;
+	}
+
 	char value = KBBuffer[KBBufferFirst];
 		
 	KBBufferFirst++;
@@ -256,6 +262,110 @@ void KeyboardInterrupt(InterruptContext * Context, uintptr_t * Data)
 	}
 }
 
+ThreadInformation *ThreadListHead;
+
+void IdleThread(ThreadInformation *Thread,  uintptr_t * Data)
+{
+	for(;;) ASM_HLT;
+}
+
+ThreadInformation *FindNextThread(ThreadInformation *CurrentThread)
+{
+	ThreadInformation *NextThread = CurrentThread->Next;
+	if(NextThread == nullptr)
+		NextThread = ThreadListHead;
+
+	while(NextThread != CurrentThread)
+	{
+		if(NextThread->Suspended.load() == false)
+			break;
+
+		NextThread = NextThread->Next;
+
+		if(NextThread == nullptr)
+			NextThread = ThreadListHead;
+	}
+
+	return NextThread;
+}
+
+#pragma warning(push)
+// This turns off the warning: 
+//       warning C4731: 'ClockInterrupt' : frame pointer register 'ebp' modified by inline assembly code
+// Because that's the point in this case. 
+#pragma warning(disable: 4731)
+
+void ClockInterrupt(volatile InterruptContext * Context, uintptr_t * Data)
+{
+	ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(__readfsdword(8));
+	
+	CurrentThread->TickCount++;
+	if(CurrentThread->TimeSliceCount >= CurrentThread->TimeSliceAllocation)
+	{
+		CurrentThread->TimeSliceCount = 0;
+
+		ThreadInformation *NextThread = FindNextThread(CurrentThread);
+		
+		if(NextThread == CurrentThread)
+			return;
+		
+		_asm
+		{
+			mov ebx, CurrentThread
+			mov ecx, NextThread
+			lea esi, [ebx]
+			lea edi, [ecx]
+
+			push ebp
+			mov [esi].SavedESP, esp
+			mov esp, [edi].SavedESP
+			pop ebp
+			
+			mov CurrentThread, ebx
+			mov NextThread, ecx
+
+			mov eax, 0
+			mov ebx, 0
+			mov ecx, 0
+			mov edx, 0
+			mov edi, 0
+			mov esi, 0
+		}
+
+		//NextThread->StartingData = reinterpret_cast<uintptr_t *>(0x12345678);
+
+		uint16_t OldFS;
+		ASM_SCR(fs, OldFS);
+		GDTManager::UpdateGDTEntry(OldFS, reinterpret_cast<uint32_t>(NextThread), sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 3);
+		ASM_LCR(fs, OldFS);
+	}
+	else
+	{
+		CurrentThread->TimeSliceCount++;
+	}
+}
+
+
+#pragma warning(pop)
+
+typedef void (*ThreadPtr)(ThreadInformation * Context, uintptr_t * Data);
+
+void ThreadStart()
+{
+	ASM_STI;
+	OutPortb(0x20, 0x20);
+
+	ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(__readfsdword(8));
+
+	ThreadPtr Call = reinterpret_cast<ThreadPtr>(CurrentThread->StartingPoint);
+
+	Call(CurrentThread, CurrentThread->StartingData);
+
+	while(true)
+		;
+}
+
+
 extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 {
 	// At this point we are officially alive, but we're still a long ways away from being up and running.
@@ -286,10 +396,13 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	// Step 1: Set our GDT
 	GDTManager GDTData;
 	// The NULL Segment is automatically added for us
-	uint16_t CodeSegment = GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit, GDT::CodeSegment, 0);
-	uint16_t DataSegment = GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit, GDT::DataSegment, 0);
+	uint16_t CodeSegment = GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeSegment, 0);
+	uint16_t DataSegment = GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 0);
+	uint16_t ThreadSegment = GDTData.AddGDTEntry(0, sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 3);
 	GDTData.SetActive(CodeSegment, DataSegment);
 	
+	ASM_LCR(fs, ThreadSegment);
+
 	// Step 2: Set our IDT
 	IDTManager IDTData(CodeSegment, DataSegment);
 
@@ -304,15 +417,81 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	m_InterruptControler.SetIDT(0x20, &IDTData);
 	m_InterruptControler.SetIRQInterrupt(0x01, KeyboardInterrupt);
-	
 
 	IDTData.SetActive();
 	
 	MMU Memory;
 	MMUManager = &Memory;
 
-	ASM_STI;
+	// Create the Idle Thread
+	ThreadListHead = reinterpret_cast<ThreadInformation *>(0x20000000);
+	ThreadListHead->Prev = 0;
+	ThreadListHead->Next = 0;
+
+	ThreadListHead->RealAddress = reinterpret_cast<uintptr_t *>(ThreadListHead);
+	ThreadListHead->ThreadID = reinterpret_cast<uint32_t>(ThreadListHead);// 0;
+	ThreadListHead->State = PreCreate;
+	ThreadListHead->TimeSliceCount = 0;
+	ThreadListHead->TimeSliceAllocation = 10;
+	ThreadListHead->TickCount = 0;
+
+	ThreadListHead->SavedESP = 0;
+	ThreadListHead->StackLimit = 0x8000;
+
+	ThreadListHead->StartingPoint = reinterpret_cast<uint32_t>(IdleThread); 
+	ThreadListHead->StartingData = nullptr;
+
+	ThreadListHead->Suspended = false;
 	
+	int StackSize = ThreadListHead->StackLimit / 4;
+
+	StackSize--;
+	ThreadListHead->Stack[StackSize] = reinterpret_cast<uint32_t>(ThreadStart); // IP
+
+	StackSize--;
+	ThreadListHead->Stack[StackSize] = reinterpret_cast<uint32_t>(&(ThreadListHead->Stack[StackSize + 1])); // The old BP
+	ThreadListHead->SavedESP = reinterpret_cast<uint32_t>(&(ThreadListHead->Stack[StackSize]));
+
+	StackSize -= 10;
+	ThreadListHead->Stack[StackSize] = ThreadListHead->SavedESP;
+
+	ThreadListHead->SavedESP = reinterpret_cast<uint32_t>(&(ThreadListHead->Stack[StackSize]));
+
+	ThreadInformation * MyThread = reinterpret_cast<ThreadInformation *>(reinterpret_cast<uint32_t>(ThreadListHead->Stack) + ThreadListHead->StackLimit + sizeof(ThreadInformation));
+
+	// Convert ourselves into a full thread
+	MyThread->RealAddress = reinterpret_cast<uintptr_t *>(MyThread);
+	MyThread->ThreadID = reinterpret_cast<uint32_t>(MyThread);// 1;
+	MyThread->State = Running;
+	MyThread->TimeSliceCount = 0;
+	MyThread->TimeSliceAllocation = 30;
+	MyThread->TickCount = 0;
+	MyThread->StackLimit = 0x8000;
+	
+	MyThread->StartingPoint = 0;
+	MyThread->StartingData = nullptr;
+
+	MyThread->Prev = nullptr;
+	MyThread->Next = nullptr;
+	MyThread->Suspended = false;
+
+	MyThread->InsertLast(ThreadListHead);
+
+	GDTData.UpdateGDTEntry(ThreadSegment, reinterpret_cast<uint32_t>(MyThread), sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 3);
+	ASM_LCR(fs, ThreadSegment);
+
+	// And set up the PIT for ~1.5ms 
+	int ClockSpeed = 1193180 / 650;
+	//int ClockSpeed = 0;
+
+	OutPortb(0x43, 0x34); // Channel 0, Lo/Hi, Mode 2 (Rate generator), Binary
+	OutPortb(0x40, ClockSpeed & 0xFF); // Low Byte
+	OutPortb(0x40, ClockSpeed >> 8); // High Byte
+
+	m_InterruptControler.SetIRQInterrupt(0x00, (InterruptCallbackPtr)ClockInterrupt);	
+
+	ASM_STI;
+
 	PCI PCIBus;
 	uint32_t USBID = PCIBus.FindDeviceID(0x0C, 0x03, 0x10);
 

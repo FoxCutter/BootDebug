@@ -37,6 +37,8 @@ public:
 	uint32_t BootDevice;
 	uint32_t BootPartition[3];
 
+	void *MBData;
+
 private:
 	bool LoadMultiBoot1Info(void *Data);
 	bool LoadMultiBoot2Info(void *Data);

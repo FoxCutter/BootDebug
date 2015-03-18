@@ -24,8 +24,6 @@ Common_Interrupt PROC
 	mov ax, IntData
 	mov ds, ax
 	mov es, ax
-	mov fs, ax
-	mov gs, ax
 	
 	mov eax, esp
 	push eax

@@ -17,7 +17,7 @@ GDT::GDTPtr GDTManager::SetActive(uint16_t NewCodeSelector, uint16_t NewDataSele
 	GDT::GDTPtr TablePtr;
 	
 	TablePtr.Address = (uint32_t)&GDTTable;
-	TablePtr.Limit = m_NextFreeSlot * sizeof(GDT::GDTEntry) - 1;
+	TablePtr.Limit = (m_NextFreeSlot * sizeof(GDT::GDTEntry)) - 1;
 
 	GDT::GDTPtr OldValue;
 
@@ -35,13 +35,29 @@ uint16_t GDTManager::AddGDTEntry(uint32_t Base, uint32_t Limit, uint16_t Attribu
 	if(m_NextFreeSlot == TableSize)
 		return 0;
 
-	uint16_t Selector = m_NextFreeSlot * sizeof(GDT::GDTEntry);
+	uint16_t Selector = m_NextFreeSlot << 3;
 	
 	BuildGDTEntry(&GDTTable[m_NextFreeSlot], Base, Limit, Attributes, Type, DPL);
 
 	m_NextFreeSlot ++;
 
 	return Selector;
+}
+
+
+void GDTManager::UpdateGDTEntry(uint16_t Selector, uint32_t Base, uint32_t Limit, uint16_t Attributes, uint8_t Type, uint8_t DPL)
+{
+	GDT::GDTPtr OldValue;
+	ASM_SGDT(OldValue);
+
+	int MaxSelector = (OldValue.Limit + 1) / sizeof(GDT::GDTEntry);
+	GDT::GDTEntry *Table = reinterpret_cast<GDT::GDTEntry *>(OldValue.Address);
+
+	uint16_t CleanSelector = Selector >> 3;
+	if(CleanSelector == 0 || CleanSelector >= MaxSelector)
+		return;
+	
+	BuildGDTEntry(&Table[CleanSelector], Base, Limit, Attributes, Type, DPL);
 }
 
 void GDTManager::BuildGDTEntry(GDT::GDTEntry *Entry, uint32_t Base, uint32_t Limit, uint16_t Attributes, uint8_t Type, uint8_t DPL)
@@ -63,9 +79,6 @@ void GDTManager::BuildGDTEntry(GDT::GDTEntry *Entry, uint32_t Base, uint32_t Lim
 
 	Entry->Attributes |= (Type & GDT::TypeMask);
 	Entry->Attributes |= (DPL << 4);
-
-	if(Limit != 0)
-		 Entry->Attributes |= GDT::NonSystemFlag;
 }
 
 void GDTManager::PrintSelector(uint16_t Selector)

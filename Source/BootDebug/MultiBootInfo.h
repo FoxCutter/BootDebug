@@ -37,6 +37,7 @@ public:
 	uint32_t BootDevice;
 	uint32_t BootPartition[3];
 
+	uint32_t HeaderLength;
 	void *MBData;
 
 private:

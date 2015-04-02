@@ -57,7 +57,8 @@ class IDTManager
 	InterruptData InterruptCallback[256]; 
 
 public:
-	IDTManager(uint16_t CodeSelector, uint16_t DataSelector);
+	IDTManager();
+	void SetSelectors(uint16_t CodeSelector, uint16_t DataSelector);
 
 	void SetInterupt(unsigned int  IntNum, InterruptCallbackPtr CallBack, uintptr_t * Data = nullptr);
 

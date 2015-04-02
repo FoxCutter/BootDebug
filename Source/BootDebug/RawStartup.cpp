@@ -6,6 +6,7 @@
 #include "RawTerminal.h"
 #include "RawMemory.h"
 #include "MultiBootInfo.h"
+#include "MultiBoot.h"
 
 #include "LowLevel.h"
 #include "InterruptControler.h"
@@ -19,6 +20,7 @@
 
 #include "OpenHCI.h"
 #include "Thread.h"
+#include "MemoryMap.h"
 
 #include "..\StdLib\initterm.h"
 
@@ -36,9 +38,10 @@ void SystemTrap(InterruptContext * Context, uintptr_t * Data)
 		// 0F 32 RDMSR
 		if(reinterpret_cast<uint16_t *>(Context->SourceEIP)[0] == 0x300F || reinterpret_cast<uint16_t *>(Context->SourceEIP)[0] == 0x320F)
 		{
-			printf("\nInvalid MSR [%X]\n", Context->ECX);
+			//printf("\nInvalid MSR [%X]\n", Context->ECX);
 			Context->EAX = 0x00000000;
 			Context->EDX = 0x00000000;
+			Context->SourceEFlags = Context->SourceEFlags & ~EFlags::Carry;
 			Context->SourceEIP += 2;
 			return;
 		}
@@ -297,7 +300,7 @@ ThreadInformation *FindNextThread(ThreadInformation *CurrentThread)
 
 void ClockInterrupt(volatile InterruptContext * Context, uintptr_t * Data)
 {
-	ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(__readfsdword(8));
+	ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(ReadFS(8));
 	
 	CurrentThread->TickCount++;
 	if(CurrentThread->TimeSliceCount >= CurrentThread->TimeSliceAllocation)
@@ -317,8 +320,18 @@ void ClockInterrupt(volatile InterruptContext * Context, uintptr_t * Data)
 			lea edi, [ecx]
 
 			push ebp
+
+			mov eax, cr3 
+			mov [esi].SavedCR3, eax
+			mov edx, [edi].SavedCR3
+
 			mov [esi].SavedESP, esp
 			mov esp, [edi].SavedESP
+
+			cmp eax, edx
+			je SkipCR		
+			mov cr3, edx
+		SkipCR:
 			pop ebp
 			
 			mov CurrentThread, ebx
@@ -332,12 +345,10 @@ void ClockInterrupt(volatile InterruptContext * Context, uintptr_t * Data)
 			mov esi, 0
 		}
 
-		//NextThread->StartingData = reinterpret_cast<uintptr_t *>(0x12345678);
-
 		uint16_t OldFS;
-		ASM_SCR(fs, OldFS);
+		ASM_ReadReg(fs, OldFS);
 		GDTManager::UpdateGDTEntry(OldFS, reinterpret_cast<uint32_t>(NextThread), sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 3);
-		ASM_LCR(fs, OldFS);
+		ASM_WriteReg(fs, OldFS);
 	}
 	else
 	{
@@ -353,32 +364,110 @@ typedef void (*ThreadPtr)(ThreadInformation * Context, uintptr_t * Data);
 void ThreadStart()
 {
 	ASM_STI;
-	OutPortb(0x20, 0x20);
+	//OutPortb(0x20, 0x20);
+	m_InterruptControler.ClearIRQ(0);
 
-	ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(__readfsdword(8));
+	ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(ReadFS(8));
 
 	ThreadPtr Call = reinterpret_cast<ThreadPtr>(CurrentThread->StartingPoint);
 
 	Call(CurrentThread, CurrentThread->StartingData);
 
 	while(true)
-		;
+		printf("!");
 }
 
+extern MulitBoot::Header MB1Header;
 
-extern "C" void MultiBootMain(void *Address, uint32_t Magic)
+extern SmallMemoryMap *MemoryMap;
+
+// Okay, same notes on how things are going to 'work' in the future.
+// * When we get into MultiBootMain we have a stack and the segments are good, but that's about all we have
+// * Step one will be work out a place to put the Core Complex. We will find a block of memory that is Free in the low memory. Starting with 0x10000, 
+//    then moving up by 0x10000. This will become the Core Complex
+// * The Core Complex will hold our GDT (with only a dozen or so entries), the full IDT and pointers other core structures
+// * We'll build our GDT and IDTs, and set up the pointers and reset our segments.
+// * Selector 0x50 will be set to point to the base of the Core Complex, and this will be assigned to GS.
+// * We will then build up our memory map using the info from the multiboot header
+// * Pull out everything from the Multiboot header we need/want. After that assume it's free memory.
+// * Set up the basic MMU with direct mapping, and if we have less then 1gig ram, map the ram into the right place 
+// * do a full load of the image at the 1gig line. 
+// * Set up the Kernel thread, then allow it to take over, jumping us into the relocated kernel.
+// * Full Kernel takes ownership of the Core Complex, marks the load location as free.
+// * After that we will grab some memory for the Kernel Heap, and set up the raw terminal.
+// * Create both the Monitor thread and the idle thread
+// * Start the monitor
+
+// Eventual all of this will be in the Core Complex
+SmallMemoryMap MemoryMapData;
+GDTManager GDTData;
+IDTManager IDTData;
+OpenHCI USB;
+
+struct CoreComplexObj
+{
+	CoreComplexObj *Self;
+	uint16_t CodeSegment0;
+	uint16_t DataSegment0;
+
+	uint16_t CodeSegment1;
+	uint16_t DataSegment1;
+
+	uint16_t CodeSegment2;
+	uint16_t DataSegment2;
+
+	uint16_t CodeSegment3;
+	uint16_t DataSegment3;
+
+	uint16_t FSSegment;
+	uint16_t GSSegment;
+
+	//RawMemory KernalHeap;
+
+	ThreadInformation *ThreadComplex;
+	//ProcessInformation *ProcessComplex;
+	
+	GDTManager GDTTable;
+	IDTManager IDTTable;
+
+	//ALIGN_32BIT	
+	//GDT::GDTEntry GDTTable[0x10];
+
+	//ALIGN_32BIT
+	//IDT::IDTEntry IDTTable[256];
+};
+
+GDT::TSS MyTSS;
+
+extern "C" void MultiBootMain(void *Address, uint32_t Magic) 
 {
 	// At this point we are officially alive, but we're still a long ways away from being up and running.
+	
+	SmallMemoryMap LocalMemoryMap;
+	MultiBootInfo MBReader;
+
+
+	// Parse the MultiBoot info
+	MBReader.LoadMultiBootInfo(Magic, Address);
+	MultiBootHeader = &MBReader;
+
+	// First off, lets build a map of our memory using the small map (
+
+	// Build the MemoryMap from the system memory information
+	for(int x = 0; x < MBReader.MemoryMapLength; x++)
+		LocalMemoryMap.AddMemoryEntry(MBReader.MemoryMap[x]->BaseAddress, MBReader.MemoryMap[x]->Length, static_cast<MemoryType>(MBReader.MemoryMap[x]->Type));
+
+	LocalMemoryMap.SetAllocatedMemory(0x0, 0x10000, ReservedMemory);
+	LocalMemoryMap.SetAllocatedMemory(MB1Header.load_address, MB1Header.bss_end_address - MB1Header.load_address, AllocatedMemory);
+	LocalMemoryMap.SetAllocatedMemory(reinterpret_cast<uint32_t>(Address), MBReader.HeaderLength, AllocatedMemory);
+
+	uint64_t Addr = LocalMemoryMap.AllocatePages(0, 0x10000, true);
+
 
 	// The terminal for the moment is fairly easy.
 	RawTerminal TextTerm(0xB8000);
 	TextTerm.Clear();
 	CurrentTerminal = &TextTerm;
-
-	// Parse the MultiBoot info
-	MultiBootInfo MBReader;
-	MBReader.LoadMultiBootInfo(Magic, Address);
-	MultiBootHeader = &MBReader;
 
 	// Get the memory subsystem working
 	// Start at the 256 meg mark and give it 16 megs of memory with 16 byte blocks
@@ -391,20 +480,48 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	_atexit_init();
 	_initterm();
 
+
+	MemoryMap = &LocalMemoryMap;
+
+	// Build the MemoryMap from the system memory information
+	//for(int x = 0; x < MBReader.MemoryMapLength; x++)
+		//MemoryMapData.AddMemoryEntry(MBReader.MemoryMap[x]->BaseAddress, MBReader.MemoryMap[x]->Length, static_cast<MemoryType>(MBReader.MemoryMap[x]->Type));
+
 	// So now lets try to get the rest of the world up and running.
 
 	// Step 1: Set our GDT
-	GDTManager GDTData;
 	// The NULL Segment is automatically added for us
 	uint16_t CodeSegment = GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeSegment, 0);
 	uint16_t DataSegment = GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 0);
+	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeSegment, 3);
+	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 3);
+	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeSegment, 2);
+	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 2);
+	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeSegment, 1);
+	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 1);
 	uint16_t ThreadSegment = GDTData.AddGDTEntry(0, sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 3);
+	uint16_t TaskSegment = GDTData.AddGDTEntry(reinterpret_cast<uint32_t>(&MyTSS), sizeof(GDT::TSS), GDT::Present, GDT::TSS32BitSegment, 0);
 	GDTData.SetActive(CodeSegment, DataSegment);
 	
-	ASM_LCR(fs, ThreadSegment);
+	MyTSS.EAX = 1;
+	MyTSS.EBX = 2;
+	MyTSS.ECX = 3;
+	MyTSS.EDX = 4;
+	MyTSS.CS = 0x18;
+	MyTSS.DS = 0x20;
+	MyTSS.ES = 0x20;
+	MyTSS.SS = 0x20;
+	MyTSS.FS = ThreadSegment;
+	MyTSS.GS = 0xFFFF0;
+	MyTSS.ESP0 = 0xFFFFFFFF;
+	MyTSS.SS0 = 0x10;
+	MyTSS.DebugTrapFlag = 1;
+
+	ASM_WriteReg(fs, ThreadSegment);
+	ASM_LTR(TaskSegment);
 
 	// Step 2: Set our IDT
-	IDTManager IDTData(CodeSegment, DataSegment);
+	IDTData.SetSelectors(CodeSegment, DataSegment);
 
 	// Set up the handlers for System errors
 	for(int x = 0; x < 0x20; x++)
@@ -435,6 +552,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	ThreadListHead->TimeSliceAllocation = 10;
 	ThreadListHead->TickCount = 0;
 
+	ThreadListHead->SavedCR3 = ReadCR3();
 	ThreadListHead->SavedESP = 0;
 	ThreadListHead->StackLimit = 0x8000;
 
@@ -475,10 +593,10 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	MyThread->Next = nullptr;
 	MyThread->Suspended = false;
 
-	MyThread->InsertLast(ThreadListHead);
+	ThreadListHead->InsertLast(MyThread);
 
 	GDTData.UpdateGDTEntry(ThreadSegment, reinterpret_cast<uint32_t>(MyThread), sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 3);
-	ASM_LCR(fs, ThreadSegment);
+	ASM_WriteReg(fs, ThreadSegment);
 
 	// And set up the PIT for ~1.5ms 
 	int ClockSpeed = 1193180 / 650;
@@ -495,7 +613,6 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	PCI PCIBus;
 	uint32_t USBID = PCIBus.FindDeviceID(0x0C, 0x03, 0x10);
 
-	OpenHCI USB;
 	if(USBID != 0xFFFFFFFF)
 	{
 		USB.StartUp(USBID, &m_InterruptControler);

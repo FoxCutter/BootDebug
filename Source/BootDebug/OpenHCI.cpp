@@ -502,7 +502,7 @@ bool OpenHCI::IsPeriodicEndpoint(PipeData *Handle)
 void OpenHCI::Interrupt(InterruptContext * Context)
 {
 	Registers->InterruptDisable = OpenHCIData::MasterInterruptEnable;
-	
+	printf("USB");
 	if( (Registers->InterruptStatus & OpenHCIData::UnrecoverableError) || 
 		(Registers->InterruptStatus & OpenHCIData::OwnershipChange) )
 

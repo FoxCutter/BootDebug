@@ -17,16 +17,20 @@ extern "C" void HandleInterrupt(InterruptContext * Context)
 	if(InterruptCallbackTable == nullptr)
 		return;
 	
-	//printf("INT %02X -> %08X\n", Context->InterruptNumber, InterruptCallbackTable[Context->InterruptNumber]);
-	
 	// Forward the Interrupt to the correct function
 	if(InterruptCallbackTable[Context->InterruptNumber].InterruptCallback != nullptr)
 		InterruptCallbackTable[Context->InterruptNumber].InterruptCallback(Context, InterruptCallbackTable[Context->InterruptNumber].Data);
+	else
+		printf("INT %02X ", Context->InterruptNumber);
 
 	return;
 }
 
-IDTManager::IDTManager(uint16_t CodeSelector, uint16_t DataSelector)
+IDTManager::IDTManager()
+{
+}
+
+void IDTManager::SetSelectors(uint16_t CodeSelector, uint16_t DataSelector)
 {
 	IntData = DataSelector;
 	IntCallback = (uint32_t)HandleInterrupt;

@@ -112,7 +112,7 @@ namespace GDT
 
 class GDTManager
 {
-	static const int TableSize = 10;
+	static const int TableSize = 0x10;
 	
 	GDT::GDTEntry GDTTable[TableSize];
 

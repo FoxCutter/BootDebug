@@ -132,6 +132,24 @@ WriteCR4 PROC C
 	ret
 WriteCR4 ENDP
 
+ASSUME FS:Nothing
+ASSUME GS:Nothing
+
+;extern "C" uint32_t ReadFS(uint32_t Offset);
+ReadFS PROC C
+	mov eax, [esp + 4]
+	mov eax, fs:[eax]
+	ret
+ReadFS ENDP
+
+;extern "C" uint32_t ReadGS(uint32_t Offset);
+ReadGS PROC C
+	mov eax, [esp + 4]
+	mov eax, gs:[eax]
+	ret
+ReadGS ENDP
+
+
 ;extern "C" void ReadCPUID(uint32_t Value, uint32_t Value2, Registers *Result);
 ReadCPUID PROC C
 	push ebp

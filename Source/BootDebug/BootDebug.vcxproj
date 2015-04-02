@@ -100,6 +100,7 @@
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <AdditionalIncludeDirectories>..\StdLib\</AdditionalIncludeDirectories>
+      <AssemblerOutput>NoListing</AssemblerOutput>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,6 +130,7 @@
     <ClCompile Include="GDT.cpp" />
     <ClCompile Include="IDT.cpp" />
     <ClCompile Include="InterruptControler.cpp" />
+    <ClCompile Include="MemoryMap.cpp" />
     <ClCompile Include="MMU.cpp" />
     <ClCompile Include="MPConfig.cpp" />
     <ClCompile Include="MultiBootInfo.cpp" />
@@ -148,7 +150,9 @@
     <ClInclude Include="GDT.h" />
     <ClInclude Include="IDT.h" />
     <ClInclude Include="InterruptControler.h" />
+    <ClInclude Include="ListNode.h" />
     <ClInclude Include="LowLevel.h" />
+    <ClInclude Include="MemoryMap.h" />
     <ClInclude Include="MMU.h" />
     <ClInclude Include="MPConfig.h" />
     <ClInclude Include="MultiBoot.h" />

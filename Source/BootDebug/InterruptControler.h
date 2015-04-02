@@ -23,6 +23,7 @@ class InterruptControler
 
 	uint32_t GetAPICRegister(int Reg);
 	void SetAPICRegister(int Reg, uint32_t Value);
+	void PrintAPICIntStatus(int StartIndex);
 
 public:
 	InterruptControler(void);
@@ -41,5 +42,11 @@ public:
 
 	uint8_t MapIntToIRQ(uint8_t Int);
 	uint8_t MapIRQToInt(uint8_t IRQ);
+
+	void SignalInterrupt(uint8_t Int);
+
+	void DumpPIC();
+	void DumpAPIC();
+	void DumpIOAPIC();
 };
 

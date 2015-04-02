@@ -96,6 +96,7 @@ namespace MulitBoot2
 		ConsoleFlags = 4,
 		FrameBuffer = 5,
 		Alignment = 6,
+		EFIBootServices = 7,
 	};
 
 	enum TagFlags
@@ -133,7 +134,14 @@ namespace MulitBoot2
 		FrameBufferInfo = 8,
 		ELFSymbols = 9,
 		APMTable = 10,
-		ACPI
+		EFISystemTablePtr = 11,
+		EFISystemTable64Ptr = 12,
+		SMBIOSTable = 13,
+		ACPIRSDPv1 = 14,
+		ACPIRSDPv2 = 15,
+		DHCP = 16,
+		EFIMemomryMap = 17,
+		EFIBootServicesNotTerminated = 18,
 	};
 
 	struct Boot_CommandLine
@@ -278,6 +286,41 @@ namespace MulitBoot2
 		uint16_t CodeSeg_16Length;
 		uint16_t DataSeg_16Length;
 	};
+
+	struct Boot_SMBIOSTabless
+	{
+		uint32_t Type;
+		uint32_t Size;
+		uint8_t Major;
+		uint8_t Minor;
+		uint8_t Reserved[6];
+		// tables
+	};
+
+	struct Boot_EFIPointer
+	{
+		uint32_t Type;
+		uint32_t Size;
+		uint32_t Address;
+	};
+
+	struct Boot_EFIPointer64
+	{
+		uint32_t Type;
+		uint32_t Size;
+		uint64_t Address;
+	};
+
+	struct Boot_EFIMemoryMap
+	{
+		uint32_t Type;
+		uint32_t Size;
+		uint32_t DescriptiorSize;
+		uint32_t DescriptiorVersion;
+
+		// EFI Memory Map
+	};
+	
 };
 
 #pragma pack(pop)

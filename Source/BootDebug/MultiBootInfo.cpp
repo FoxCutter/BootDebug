@@ -5,6 +5,7 @@
 #include "Utility.h"
 
 #include <stdio.h>
+#include <string.h>
 
 MultiBootInfo::MultiBootInfo(void)
 {
@@ -13,6 +14,7 @@ MultiBootInfo::MultiBootInfo(void)
 	CommandLine = BootLoader = nullptr;
 	MBData = nullptr;
 	MemoryMapLength = 0;
+	HeaderLength = 0;
 
 }
 
@@ -42,7 +44,7 @@ bool MultiBootInfo::LoadMultiBootInfo(uint32_t Signature, void *Data)
 
 void MultiBootInfo::Dump()
 {
-	printf("MultiBoot Info (%08X)\n", MBData);
+	printf("MultiBoot Info (%08X), size: %08X\n", MBData, HeaderLength);
 	printf("    Version: %u\n", Type);
 	printf("    Memory Info: Low %uk, High %uk\n", MemoryLow, MemoryHigh);
 	printf("    Boot Device Info: Device %02X, Partition %02X:%02X:%02X\n", BootDevice, BootPartition[0], BootPartition[1], BootPartition[2]);
@@ -54,47 +56,50 @@ void MultiBootInfo::Dump()
 
 	uint64_t TotalRam = 0;
 	uint64_t TotalReserved = 0;
-	uint64_t TotalHole = 0;
-	uint64_t NextBase = 0;
 
 	for(int x = 0; x < MemoryMapLength; x++)
 	{
-		if(NextBase != MemoryMap[x]->BaseAddress)
-		{
-			printf("     ");
-			PrintLongAddress(NextBase);
-			printf(" - ");
-			PrintLongAddress(MemoryMap[x]->BaseAddress - 1);
-			printf(", ");
-			PrintLongAddress(MemoryMap[x]->BaseAddress - NextBase);
-			printf(", Hole\n");
-
-			TotalHole += MemoryMap[x]->BaseAddress - NextBase;
-		}
-		
-
 		printf("     ");
 		PrintLongAddress(MemoryMap[x]->BaseAddress);
 		printf(" - ");
 		PrintLongAddress(MemoryMap[x]->BaseAddress + MemoryMap[x]->Length - 1);
 		printf(", ");
 		PrintLongAddress(MemoryMap[x]->Length);
-		printf(", %s (%u)\n", MemoryMap[x]->Type == 1 ? "RAM" : "Reserved", MemoryMap[x]->Type);
+		printf(", ");
 
-		if(MemoryMap[x]->Type == 1)
-			TotalRam += MemoryMap[x]->Length;
-		else 
-			TotalReserved += MemoryMap[x]->Length;
+		switch(MemoryMap[x]->Type)
+		{
+			case 1:
+				printf("RAM");
+				TotalRam += MemoryMap[x]->Length;
+				break;
 
-		NextBase = MemoryMap[x]->BaseAddress + MemoryMap[x]->Length;
+			default:
+			case 2:
+				printf("Reserved");
+				TotalReserved += MemoryMap[x]->Length;
+				break;
+
+			case 3:
+				printf("Recoverable");
+				TotalRam += MemoryMap[x]->Length;
+				break;
+
+			case 4:
+				printf("Hibernation");
+				TotalReserved += MemoryMap[x]->Length;
+				break;
+		}
+
+		printf(" (%u)\n", MemoryMap[x]->Type);
 	}
 	
 	printf("     Totals:\n      RAM:      ");
 	PrintLongAddress(TotalRam);
 	printf("\n      Reserved: ");
 	PrintLongAddress(TotalReserved);
-	printf("\n      Hole:     ");
-	PrintLongAddress(TotalHole);
+	printf("\n      Memory:   ");
+	PrintLongAddress(TotalRam + TotalReserved);
 	printf("\n");
 }
 
@@ -104,6 +109,9 @@ bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 	
 	// Right now our main job is to pillage out all the information we can from the header
 	MulitBoot::Boot_Header * BootHeader = (MulitBoot::Boot_Header *)Data;
+	
+	intptr_t TempAddress = 0;
+	intptr_t LastAddress = reinterpret_cast<intptr_t>(BootHeader) + sizeof(MulitBoot::Boot_Header);
 	
 	if((BootHeader->Flags & MulitBoot::MemoryInfo) == MulitBoot::MemoryInfo)
 	{
@@ -120,6 +128,11 @@ bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 	if((BootHeader->Flags & MulitBoot::CommandLineInfo) == MulitBoot::CommandLineInfo)
 	{
 		CommandLine = reinterpret_cast<char *>(BootHeader->CommandLine);
+
+		TempAddress = BootHeader->CommandLine + strlen(CommandLine);
+
+		if(TempAddress > LastAddress)
+			LastAddress = TempAddress;
 	}
 	if((BootHeader->Flags & MulitBoot::ModuleInfo) == MulitBoot::ModuleInfo)
 	{
@@ -130,19 +143,32 @@ bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 			printf("Mod S:%08X E:%08X N:%s\n", Entry[x].ModStart, Entry[x].ModEnd, Entry[x].String);
 		}
 		
+		TempAddress = BootHeader->Mod_Address + (sizeof(MulitBoot::Boot_Module) * BootHeader->Mod_Count);
+
+		if(TempAddress > LastAddress)
+			LastAddress = TempAddress;
+
 		//printf(" Mods\n");
 	}
 
-	/* 
+	 
 	// We don't care about symbols
 	if((BootHeader->Flags & MulitBoot::AOutSymbols) == MulitBoot::AOutSymbols)
 	{
+		TempAddress = BootHeader->AOutSymbolInfo.Address + BootHeader->AOutSymbolInfo.StringSize + BootHeader->AOutSymbolInfo.TabSize + BootHeader->AOutSymbolInfo.Reserved;
+
+		if(TempAddress > LastAddress)
+			LastAddress = TempAddress;
+
 	}
 	if((BootHeader->Flags & MulitBoot::ELFSymbols) == MulitBoot::ELFSymbols)
 	{
-	} 
-	*/
+		TempAddress = BootHeader->ELFScection.Address + (BootHeader->ELFScection.EntrySize * BootHeader->ELFScection.Num);
 
+		if(TempAddress > LastAddress)
+			LastAddress = TempAddress;
+	} 
+	
 	MemoryMapLength = 0;
 	if((BootHeader->Flags & MulitBoot::MemoryMapInfo) == MulitBoot::MemoryMapInfo)
 	{
@@ -159,13 +185,22 @@ bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 
 			MemoryMapLength++;
 		}
-	}
 
-	/*
-	// These never seem to come up, and don't exist in MB2
+		TempAddress = BootHeader->MemMap_Address + BootHeader->MemMap_Length;
+
+		if(TempAddress > LastAddress)
+			LastAddress = TempAddress;
+	}	
+	
 	if((BootHeader->Flags & MulitBoot::DriveInfo) == MulitBoot::DriveInfo)
 	{
+		TempAddress = BootHeader->Drives_Address + BootHeader->Drives_Length;
+
+		if(TempAddress > LastAddress)
+			LastAddress = TempAddress;
+
 	}
+	/*
 	if((BootHeader->Flags & MulitBoot::ConfigTable) == MulitBoot::ConfigTable)
 	{
 	}
@@ -174,15 +209,37 @@ bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 	if((BootHeader->Flags & MulitBoot::BootLoaderName) == MulitBoot::BootLoaderName)
 	{
 		BootLoader = reinterpret_cast<char *>(BootHeader->BootLoaderName);
+
+		TempAddress = BootHeader->BootLoaderName + strlen(BootLoader);
+
+		if(TempAddress > LastAddress)
+			LastAddress = TempAddress;
+
 	}
 	if((BootHeader->Flags & MulitBoot::ApmTable) == MulitBoot::ApmTable)
 	{
 		MulitBoot::Boot_APMTAble * Entry = (MulitBoot::Boot_APMTAble *)BootHeader->APMTable;
 		
 		//printf(" APM Table: V: %04X, CS: %04X, CL: %04X, CO: %08X\n", Entry->Version, Entry->CodeSeg, Entry->CodeSegLength, Entry->Offset);
+
+		TempAddress = BootHeader->APMTable + sizeof(MulitBoot::Boot_APMTAble);
+
+		if(TempAddress > LastAddress)
+			LastAddress = TempAddress;
+
 	}
 	if((BootHeader->Flags & MulitBoot::VBEInfo) == MulitBoot::VBEInfo)
 	{
+		TempAddress = BootHeader->VBE_ControlInfo + 512;
+
+		if(TempAddress > LastAddress)
+			LastAddress = TempAddress;
+		
+		TempAddress = BootHeader->VBE_ModeInfo + 256;
+
+		if(TempAddress > LastAddress)
+			LastAddress = TempAddress;
+
 		//printf(" VBE: Mode %04X, Seg: %04X, Offset: %04X, Length %04X\n", BootHeader->VBE_Mode, BootHeader->VBE_IntefaceSegment, BootHeader->VBE_IntefaceOffset, BootHeader->VBE_IntefaceLength);
 	}
 	if((BootHeader->Flags & MulitBoot::FrameBufferInfo) == MulitBoot::FrameBufferInfo)
@@ -193,6 +250,7 @@ bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 		//printf("  Pallet: A: %08X C: %04X\n", BootHeader->PalletInfo.Address, BootHeader->PalletInfo.NumColors);
 	}
 
+	HeaderLength = LastAddress - reinterpret_cast<intptr_t>(BootHeader);
 	return true;
 }
 
@@ -206,6 +264,8 @@ bool MultiBootInfo::LoadMultiBoot2Info(void *Data)
 	unsigned char *End = (unsigned char *)Data + BootHeader->Size;
 	Pos += sizeof(MulitBoot2::Boot_Header);
 
+	// This one is easy
+	HeaderLength = BootHeader->Size;
 	MemoryMapLength = 0;
 
 	while(Pos < End)

@@ -16,10 +16,15 @@
 #include "MultiBootInfo.h"
 #include "ACPI.h"
 #include "Thread.h"
+#include "MemoryMap.h"
+#include "InterruptControler.h"
 
 MultiBootInfo * MultiBootHeader = nullptr;
 MMU * MMUManager = nullptr;
 OpenHCI * USBManager = nullptr;
+SmallMemoryMap *MemoryMap = nullptr;
+
+extern InterruptControler m_InterruptControler;
 
 template <typename DataType>
 bool ParseHex(char *String, DataType &Value)
@@ -508,41 +513,26 @@ void main(int argc, char *argv[])
 
 					}
 					
-					if(_stricmp("IO", CurrentData) == 0)
+					if(_stricmp("APIC", CurrentData) == 0)
 					{
-						// Hack to dump I/O ACPI info
-						printf("I/O ACPI\n");
-						uint32_t volatile *Registers = reinterpret_cast<uint32_t volatile *>(0xFEC00000);
-						uint32_t Temp, Temp2;
-
-						Registers[0] = 0;
-						Temp = Registers[4];
-
-						printf(" ID: %02X\n", Temp >> 24); 
-
-						Registers[0] = 1;
-						Temp = Registers[4];
-
-						uint32_t Count = ((Temp & 0xFF0000) >> 16) + 1;
-
-						printf(" Version: %02X, Count: %04X\n", Temp & 0xFF, Count); 
-
-						for(uint32_t x = 0; x < Count; x++)
-						{
-							Registers[0] = 0x10 + (x * 2);
-							Temp = Registers[4];
-
-							Registers[0] = 0x10 + (x * 2) + 1;
-							Temp2 = Registers[4];
-
-							printf("%02X: %08X:%08X\n", x, Temp2, Temp);
-
-						}
+						m_InterruptControler.DumpAPIC();
+					}
+					else if(_stricmp("PIC", CurrentData) == 0)
+					{
+						m_InterruptControler.DumpPIC();
+					}
+					else if(_stricmp("MEM", CurrentData) == 0)
+					{
+						MemoryMap->Dump();
+					}
+					else if(_stricmp("IOAPIC", CurrentData) == 0)
+					{
+						m_InterruptControler.DumpIOAPIC();						
 					}
 					else if(_stricmp("TI", CurrentData) == 0)
 					{
-						ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(__readfsdword(8));
-
+						ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(ReadFS(8));
+						
 						if(CurrentThread == nullptr)
 							break;
 

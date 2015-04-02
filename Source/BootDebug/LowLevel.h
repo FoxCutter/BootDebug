@@ -16,11 +16,13 @@
 #define ASM_SIDT(p) __asm sidt [p]
 #define ASM_LIDT(p) __asm lidt [p]
 
+#define ASM_STR(p) __asm str [p]
+#define ASM_LTR(p) __asm ltr [p]
+
 #define ASM_INVLPG(p) __asm invlpg [p]
 
-#define ASM_SCR(reg, val) __asm { __asm mov [val], reg }
-#define ASM_LCR(reg, val) __asm { __asm mov reg, [val] }
-
+#define ASM_ReadReg(reg, val) __asm { __asm mov [val], reg }
+#define ASM_WriteReg(reg, val) __asm { __asm mov reg, [val] }
 
 #pragma pack(push, 1)
 struct InterruptContext
@@ -221,7 +223,44 @@ namespace CPUFlags
 
 #define ALIGN_32BIT		__declspec(align(32)) 
 
-#define CARRY_FLAG		0x0001
+namespace EFlags
+{
+	enum Flags
+	{
+		Carry						= 0x00000001,		// 0
+		// Reserved	(Always 1)		= 0x00000002,		// 1
+		Parity						= 0x00000004,		// 2
+		// Reserved					= 0x00000008,		// 3
+		AuxiliaryCarry				= 0x00000010,		// 4
+		// Reserved					= 0x00000020,		// 5
+		Zero						= 0x00000040,		// 6
+		Sign						= 0x00000080,		// 7
+		Trap						= 0x00000100,		// 8
+		InterruptEnable				= 0x00000200,		// 9
+		Direction					= 0x00000400,		// 10
+		Overflow					= 0x00000800,		// 11
+		IOPL						= 0x00003000,		// 12 & 13
+		NestedTask					= 0x00004000,		// 14
+		// Reserved					= 0x00008000,		// 15
+		Resume						= 0x00010000,		// 16
+		Virtual8086Mode				= 0x00020000,		// 17
+		AlignmentCheck				= 0x00040000,		// 18
+		VirtualInterruptFlag		= 0x00080000,		// 19
+		VirtualInterruptPending		= 0x00100000,		// 20
+		CPUID						= 0x00200000,		// 21
+		// Reserved					= 0x00400000,		// 22
+		// Reserved					= 0x00800000,		// 23
+		// Reserved					= 0x01000000,		// 24
+		// Reserved					= 0x02000000,		// 25
+		// Reserved					= 0x04000000,		// 26
+		// Reserved					= 0x08000000,		// 27
+		// Reserved					= 0x10000000,		// 28
+		// Reserved					= 0x20000000,		// 29
+		// Reserved					= 0x40000000,		// 30
+		// Reserved					= 0x80000000,		// 31
+
+	};
+}
 
 extern "C"
 {
@@ -245,6 +284,9 @@ extern "C"
 	void WriteCR2(uint32_t Value);
 	void WriteCR3(uint32_t Value);
 	void WriteCR4(uint32_t Value);
+
+	uint32_t ReadFS(uint32_t Offset);
+	uint32_t ReadGS(uint32_t Offset);
 
 	void ReadCPUID(uint32_t Value, uint32_t Value2, Registers *Result);
 

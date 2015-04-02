@@ -78,7 +78,7 @@ void GDTManager::BuildGDTEntry(GDT::GDTEntry *Entry, uint32_t Base, uint32_t Lim
 	Entry->Attributes |= (Limit & 0x000F0000) >> 8;
 
 	Entry->Attributes |= (Type & GDT::TypeMask);
-	Entry->Attributes |= (DPL << 4);
+	Entry->Attributes |= (DPL << 5);
 }
 
 void GDTManager::PrintSelector(uint16_t Selector)

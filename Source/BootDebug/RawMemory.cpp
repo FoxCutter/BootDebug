@@ -43,11 +43,13 @@ RawMemory::RawMemory(uint32_t HeapBase, uint32_t HeapSize, uint32_t BlockSize)
 	CurrentBlock->BlockSize = HeapSize - sizeof(MemoryHeader);
 	CurrentBlock->AllocatedSize = 0;
 	CurrentBlock->NextBlock = EndBlock;
+	memset(CurrentBlock->Filler, 0x90, 16);			
 
 	EndBlock->Signature = MemoryHeader::End;
 	EndBlock->BlockSize = sizeof(MemoryHeader);
 	EndBlock->AllocatedSize = 0;
 	EndBlock->NextBlock = nullptr;
+	memset(EndBlock->Filler, 0x90, 16);			
 
 	m_BlockChain = CurrentBlock;
 	m_LastBlock = EndBlock;
@@ -104,6 +106,7 @@ void * RawMemory::malloc(size_t size, bool Fill)
 				NextBlock->NextBlock = CurrentBlock->NextBlock;
 
 				CurrentBlock->NextBlock = NextBlock;
+				CurrentBlock->BlockSize = BlockSize;
 			}
 
 			CurrentBlock->Signature = MemoryHeader::Allocated;

@@ -18,8 +18,23 @@ struct RawMemory::MemoryHeader
 	};
 };
 
-RawMemory::RawMemory(uint32_t HeapBase, uint32_t HeapSize, uint32_t BlockSize)
+RawMemory::RawMemory()
+{	
+	m_BlockChain = nullptr;
+	m_LastBlock = nullptr;
+
+	m_BlockSize = 0;
+}
+
+RawMemory::~RawMemory(void)
 {
+}
+
+void RawMemory::SetupHeap(uint32_t HeapBase, uint32_t HeapSize, uint32_t BlockSize)
+{
+	if(m_BlockChain != nullptr)
+		return;
+
 	// First off, lets tweak things to make sure the heap starts on a block
 	uint32_t Adjust = HeapBase % BlockSize;
 	if(Adjust != 0)
@@ -48,16 +63,13 @@ RawMemory::RawMemory(uint32_t HeapBase, uint32_t HeapSize, uint32_t BlockSize)
 	EndBlock->Signature = MemoryHeader::End;
 	EndBlock->BlockSize = sizeof(MemoryHeader);
 	EndBlock->AllocatedSize = 0;
-	EndBlock->NextBlock = nullptr;
+	EndBlock->NextBlock = CurrentBlock;
 	memset(EndBlock->Filler, 0x90, 16);			
 
 	m_BlockChain = CurrentBlock;
 	m_LastBlock = EndBlock;
 }
 
-RawMemory::~RawMemory(void)
-{
-}
 
 void * RawMemory::malloc(size_t size, bool Fill)
 {

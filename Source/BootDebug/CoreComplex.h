@@ -1,0 +1,50 @@
+#include <stdint.h>
+#include "GDT.h"
+#include "IDT.h"
+#include "MMU.h"
+
+#include "MultiBootInfo.h"
+#include "LowLevel.h"
+#include "RawMemory.h"
+#include "MemoryMap.h"
+#include "Thread.h"
+
+struct CoreComplexObj
+{
+	CoreComplexObj *Self;
+	uint16_t CodeSegment0;
+	uint16_t DataSegment0;
+
+	uint16_t CodeSegment1;
+	uint16_t DataSegment1;
+
+	uint16_t CodeSegment2;
+	uint16_t DataSegment2;
+
+	uint16_t CodeSegment3;
+	uint16_t DataSegment3;
+
+	uint16_t CoreSegment;
+	uint16_t ThreadSegment;
+	uint16_t TaskSegment;
+
+	MultiBootInfo MultiBoot;
+	
+	RawMemory KernalMemory;
+	MemoryPageMap PageMap;
+
+	//ThreadInformation *ThreadComplex;
+	//ProcessInformation *ProcessComplex;
+	//DeviceInformation * DeviceComplex;
+	
+	ALIGN_32BIT
+	GDTManager GDTTable;
+
+	ALIGN_32BIT
+	IDTManager IDTTable;
+
+	static CoreComplexObj *GetComplex()
+	{
+		return reinterpret_cast<CoreComplexObj *>(ReadGS(0));
+	}
+};

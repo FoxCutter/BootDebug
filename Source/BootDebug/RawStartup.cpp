@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <atomic>
+#include <new>
 
 #include "RawTerminal.h"
 #include "RawMemory.h"
@@ -22,10 +23,11 @@
 #include "Thread.h"
 #include "MemoryMap.h"
 
+#include "CoreComplex.h"
+
 #include "..\StdLib\initterm.h"
 
 void main(int argc, char *argv[]);
-extern MultiBootInfo * MultiBootHeader;
 extern MMU * MMUManager;
 extern OpenHCI * USBManager;
 
@@ -347,7 +349,7 @@ void ClockInterrupt(volatile InterruptContext * Context, uintptr_t * Data)
 
 		uint16_t OldFS;
 		ASM_ReadReg(fs, OldFS);
-		GDTManager::UpdateGDTEntry(OldFS, reinterpret_cast<uint32_t>(NextThread), sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 3);
+		GDTManager::UpdateGDTEntry(OldFS, reinterpret_cast<uint32_t>(NextThread), sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 3);
 		ASM_WriteReg(fs, OldFS);
 	}
 	else
@@ -379,8 +381,6 @@ void ThreadStart()
 
 extern MulitBoot::Header MB1Header;
 
-extern SmallMemoryMap *MemoryMap;
-
 // Okay, same notes on how things are going to 'work' in the future.
 // * When we get into MultiBootMain we have a stack and the segments are good, but that's about all we have
 // * Step one will be work out a place to put the Core Complex. We will find a block of memory that is Free in the low memory. Starting with 0x10000, 
@@ -399,80 +399,158 @@ extern SmallMemoryMap *MemoryMap;
 // * Start the monitor
 
 // Eventual all of this will be in the Core Complex
-SmallMemoryMap MemoryMapData;
-GDTManager GDTData;
 IDTManager IDTData;
 OpenHCI USB;
-
-struct CoreComplexObj
-{
-	CoreComplexObj *Self;
-	uint16_t CodeSegment0;
-	uint16_t DataSegment0;
-
-	uint16_t CodeSegment1;
-	uint16_t DataSegment1;
-
-	uint16_t CodeSegment2;
-	uint16_t DataSegment2;
-
-	uint16_t CodeSegment3;
-	uint16_t DataSegment3;
-
-	uint16_t FSSegment;
-	uint16_t GSSegment;
-
-	//RawMemory KernalHeap;
-
-	ThreadInformation *ThreadComplex;
-	//ProcessInformation *ProcessComplex;
-	
-	GDTManager GDTTable;
-	IDTManager IDTTable;
-
-	//ALIGN_32BIT	
-	//GDT::GDTEntry GDTTable[0x10];
-
-	//ALIGN_32BIT
-	//IDT::IDTEntry IDTTable[256];
-};
 
 GDT::TSS MyTSS;
 
 extern "C" void MultiBootMain(void *Address, uint32_t Magic) 
 {
 	// At this point we are officially alive, but we're still a long ways away from being up and running.
-	
-	SmallMemoryMap LocalMemoryMap;
 	MultiBootInfo MBReader;
-
 
 	// Parse the MultiBoot info
 	MBReader.LoadMultiBootInfo(Magic, Address);
-	MultiBootHeader = &MBReader;
 
-	// First off, lets build a map of our memory using the small map (
+	// Step 1: Build the memory map in physical memory
+	
+	// Step 1a: Enumerate over the Memory information in the MB data and work out some information.	
+	uint64_t MaxMemory = 0;			// The last byte of memory we know of
+	uint32_t HighReserved = 0;		// should be the start of reserved memory between 1 meg and 4 gig
+	
+	MemoryMapEntry CurrentEntry;
+	MBReader.GetFirstMemoryEntry(CurrentEntry);
 
-	// Build the MemoryMap from the system memory information
-	for(int x = 0; x < MBReader.MemoryMapLength; x++)
-		LocalMemoryMap.AddMemoryEntry(MBReader.MemoryMap[x]->BaseAddress, MBReader.MemoryMap[x]->Length, static_cast<MemoryType>(MBReader.MemoryMap[x]->Type));
+	do
+	{
+		uint64_t EndAddress = CurrentEntry.BaseAddress + CurrentEntry.Length;
+		if(EndAddress > MaxMemory)
+			MaxMemory = EndAddress;
 
-	LocalMemoryMap.SetAllocatedMemory(0x0, 0x10000, ReservedMemory);
-	LocalMemoryMap.SetAllocatedMemory(MB1Header.load_address, MB1Header.bss_end_address - MB1Header.load_address, AllocatedMemory);
-	LocalMemoryMap.SetAllocatedMemory(reinterpret_cast<uint32_t>(Address), MBReader.HeaderLength, AllocatedMemory);
+		if(HighReserved == 0 && CurrentEntry.Type != 1 && EndAddress < 0x100000000ull)
+		{
+			if(CurrentEntry.BaseAddress > 0x00100000 && CurrentEntry.BaseAddress > HighReserved)
+				HighReserved = static_cast<uint32_t>(CurrentEntry.BaseAddress);
+		}
+	} while(MBReader.GetNextMemoryEntry(CurrentEntry));
 
-	uint64_t Addr = LocalMemoryMap.AllocatePages(0, 0x10000, true);
+	// Step 1b: Work out how big the map will be.
+	// Total pages
+	uint32_t PageCount = static_cast<uint32_t>(MaxMemory / 0x1000);
+	if(MaxMemory % 0x1000)
+		PageCount++;
+	
+	// Two bytes per a page, means that a given page of memory can map 0x4000 pages (64 megs)
+	uint32_t MemoryMapSize = PageCount / 0x4000;
+	if(PageCount % 0x4000)
+		MemoryMapSize++;
+	
+	// Work out the Memory map location
+	HighReserved = HighReserved - (MemoryMapSize * 0x1000);
+	
+	// And make sure it starts on a page
+	if(HighReserved % 0x1000 != 0)
+		HighReserved -= HighReserved % 0x1000;
+
+	// Step 1c: Create the map
+	MemoryPageMap TempMap(HighReserved, PageCount);
+	
+	// Step 1d set the memory information from the MB data
+	MBReader.GetFirstMemoryEntry(CurrentEntry);
+
+	do {
+		MemoryType Type = ReservedMemory;
+		if(CurrentEntry.Type == 1)
+			Type = FreeMemory;
+
+		if(CurrentEntry.Type == 3)
+			Type = AllocatedMemory;
+
+		TempMap.SetAllocatedMemory(CurrentEntry.BaseAddress, CurrentEntry.Length, Type);
+	} while(MBReader.GetNextMemoryEntry(CurrentEntry));
+
+	// Step 1e set all the know reserved and allocated data objects
+	TempMap.SetAllocatedMemory(0x0, 0x10000, ReservedMemory);
+	TempMap.SetAllocatedMemory(MB1Header.load_address, MB1Header.bss_end_address - MB1Header.load_address, AllocatedMemory);
+	TempMap.SetAllocatedMemory(reinterpret_cast<uint32_t>(Address), MBReader.HeaderLength, AllocatedMemory);
+	TempMap.SetAllocatedMemory(HighReserved, MemoryMapSize * 0x1000, AllocatedMemory);	
+
+	{
+		ModuleEntry CurrentModule;
+		if(MBReader.GetFirstModuleEntry(CurrentModule))
+		{
+			do {
+				TempMap.SetAllocatedMemory(CurrentModule.ModStart, CurrentModule.ModEnd - CurrentModule.ModStart, AllocatedMemory);
+			} while(MBReader.GetNextModuleEntry(CurrentModule));
+		}
+	}
+
+
+	// Step 2: Build the Core Complex
+	// Pick an Address for the Core Complex
+	uint64_t TempAddress = UINT64_MAX;
+	TempAddress = TempMap.AllocateRange(0x10000, 0x10000);
+
+	//if(TempAddress == UINT64_MAX)
+		//KernalPanic
+	
+	CoreComplexObj *CoreComplex = new(reinterpret_cast<void *>(TempAddress)) CoreComplexObj();
+	CoreComplex->Self = CoreComplex;
+	CoreComplex->PageMap = TempMap;
+	CoreComplex->MultiBoot.LoadMultiBootInfo(Magic, Address);
+
+	// Step 3: Set up our GDT
+	// The NULL Segment is automatically added for us
+	CoreComplex->CodeSegment0	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeExecuteRead, 0);
+	CoreComplex->DataSegment0	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 0);
+	CoreComplex->CodeSegment3	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeExecuteRead, 3);
+	CoreComplex->DataSegment3	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 3);
+	CoreComplex->CodeSegment2	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeExecuteRead, 2);
+	CoreComplex->DataSegment2	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 2);
+	CoreComplex->CodeSegment1	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeExecuteRead, 1);
+	CoreComplex->DataSegment1	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 1);
+	CoreComplex->CoreSegment	= CoreComplex->GDTTable.AddGDTEntry(reinterpret_cast<uint32_t>(&CoreComplex), 0x10000, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 0);
+	CoreComplex->ThreadSegment	= CoreComplex->GDTTable.AddGDTEntry(0, sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 3);
+	//CoreComplex->TaskSegment	= CoreComplex->GDTTable.AddGDTEntry(reinterpret_cast<uint32_t>(&MyTSS), sizeof(GDT::TSS), GDT::Present, GDT::TSS32BitSegment, 0);
+	
+	// Switch to our GDT
+	CoreComplex->GDTTable.SetActive(CoreComplex->CodeSegment0, CoreComplex->DataSegment0);
+
+	// Set our system segments	
+	uint16_t TempSegment = CoreComplex->ThreadSegment;
+	ASM_WriteReg(fs, TempSegment);
+	
+	TempSegment = CoreComplex->CoreSegment;
+	ASM_WriteReg(gs, TempSegment);
+
+	// Step 4: Bring up the MMU for the kernel space
+	// Map the Core Complex pages 1:1 into virtual memory
+	// Okay, this doesn't do anything like that yet, but still...
+	MMU Memory;
+	MMUManager = &Memory;
+	
+	// At this point we will be up and running with virtual memory, so their will be a clear different between Physical and Virtual addresses
+
+
+	// Step X: Create the Kernal's heap
+	// Get a range for our dynamic memory, starting at 2megs and asking for 1 meg	
+	TempAddress = CoreComplex->PageMap.AllocateRange(0x200000, 0x10000);
+
+	// Start it up with 16 byte blocks
+	CoreComplex->KernalMemory.SetupHeap(static_cast<uint32_t>(TempAddress), 0x10000, 0x10);
+	MemoryMgr = &CoreComplex->KernalMemory;
+
+
+
 
 
 	// The terminal for the moment is fairly easy.
 	RawTerminal TextTerm(0xB8000);
 	TextTerm.Clear();
 	CurrentTerminal = &TextTerm;
+	//printf("%016llX\n", sizeof(CoreComplexObj));
+	//FinalMap.Dump();
 
-	// Get the memory subsystem working
-	// Start at the 256 meg mark and give it 16 megs of memory with 16 byte blocks
-	RawMemory MemorySystem(0x10000000, 0x100000, 0x10);
-	MemoryMgr = &MemorySystem;
 
 	// At this point we should be able to display text and allocate memory.
 
@@ -480,48 +558,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	_atexit_init();
 	_initterm();
 
-
-	MemoryMap = &LocalMemoryMap;
-
-	// Build the MemoryMap from the system memory information
-	//for(int x = 0; x < MBReader.MemoryMapLength; x++)
-		//MemoryMapData.AddMemoryEntry(MBReader.MemoryMap[x]->BaseAddress, MBReader.MemoryMap[x]->Length, static_cast<MemoryType>(MBReader.MemoryMap[x]->Type));
-
-	// So now lets try to get the rest of the world up and running.
-
-	// Step 1: Set our GDT
-	// The NULL Segment is automatically added for us
-	uint16_t CodeSegment = GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeSegment, 0);
-	uint16_t DataSegment = GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 0);
-	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeSegment, 3);
-	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 3);
-	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeSegment, 2);
-	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 2);
-	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeSegment, 1);
-	GDTData.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 1);
-	uint16_t ThreadSegment = GDTData.AddGDTEntry(0, sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 3);
-	uint16_t TaskSegment = GDTData.AddGDTEntry(reinterpret_cast<uint32_t>(&MyTSS), sizeof(GDT::TSS), GDT::Present, GDT::TSS32BitSegment, 0);
-	GDTData.SetActive(CodeSegment, DataSegment);
-	
-	MyTSS.EAX = 1;
-	MyTSS.EBX = 2;
-	MyTSS.ECX = 3;
-	MyTSS.EDX = 4;
-	MyTSS.CS = 0x18;
-	MyTSS.DS = 0x20;
-	MyTSS.ES = 0x20;
-	MyTSS.SS = 0x20;
-	MyTSS.FS = ThreadSegment;
-	MyTSS.GS = 0xFFFF0;
-	MyTSS.ESP0 = 0xFFFFFFFF;
-	MyTSS.SS0 = 0x10;
-	MyTSS.DebugTrapFlag = 1;
-
-	ASM_WriteReg(fs, ThreadSegment);
-	ASM_LTR(TaskSegment);
-
 	// Step 2: Set our IDT
-	IDTData.SetSelectors(CodeSegment, DataSegment);
+	IDTData.SetSelectors(CoreComplex->CodeSegment0, CoreComplex->DataSegment0);
 
 	// Set up the handlers for System errors
 	for(int x = 0; x < 0x20; x++)
@@ -537,9 +575,6 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	IDTData.SetActive();
 	
-	MMU Memory;
-	MMUManager = &Memory;
-
 	// Create the Idle Thread
 	ThreadListHead = reinterpret_cast<ThreadInformation *>(0x20000000);
 	ThreadListHead->Prev = 0;
@@ -595,8 +630,9 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	ThreadListHead->InsertLast(MyThread);
 
-	GDTData.UpdateGDTEntry(ThreadSegment, reinterpret_cast<uint32_t>(MyThread), sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataSegment, 3);
-	ASM_WriteReg(fs, ThreadSegment);
+	CoreComplex->GDTTable.UpdateGDTEntry(CoreComplex->ThreadSegment, reinterpret_cast<uint32_t>(MyThread), sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 3);
+	TempSegment = CoreComplex->ThreadSegment;
+	ASM_WriteReg(fs, TempSegment);
 
 	// And set up the PIT for ~1.5ms 
 	int ClockSpeed = 1193180 / 650;

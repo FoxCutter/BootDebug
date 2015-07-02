@@ -10,30 +10,33 @@ namespace GDT
 		ReadWrite			= 0x0002,
 		DirectionConforming = 0x0004,
 		Executable			= 0x0008,
-		TypeMask			= 0x000F,
-		NonSystemFlag		= 0x0010,
-		DPL0				= 0x0000,
-		DPL1				= 0x0020,
-		DPL2				= 0x0040,
-		DPL3				= 0x0060,
-		DPLMask				= 0x0060,
-		Present				= 0x0080,
 
-		LimitHighMask		= 0x0F00,
+		NonSystemFlag		= 0x0010,
+		Present				= 0x0080,
 		AvaliableBit		= 0x1000,
-		//LongMode			= 0x2000,
+		LongMode			= 0x2000,
 		Operand32Bit		= 0x4000,
-		Granularity4k		= 0x8000,
 	};
 
 	enum GDTTypes
 	{
-		DataSegmentReadOnly = 0,
-		CodeSegmentReadOnly = Executable,
-
-		DataSegment = ReadWrite,
-		CodeSegment = ReadWrite | Executable,
-
+		DataReadOnly							= 0,
+		DataReadOnlyAccessed					= Accessed,
+		DataReadWrite							= ReadWrite,
+		DataReadWriteAccessed					= ReadWrite | Accessed,
+		DataReadOnlyExpandDown					= DirectionConforming,
+		DataReadOnlyExpandDownAccessed			= DirectionConforming | Accessed,
+		DataReadWriteExpandDown					= DirectionConforming | ReadWrite,
+		DataReadWriteExpandDownAccessed			= DirectionConforming | ReadWrite | Accessed,
+		
+		CodeExecuteOnly							= Executable,
+		CodeExecuteOnlyAccessed					= Executable | Accessed,
+		CodeExecuteRead							= Executable | ReadWrite,
+		CodeExecuteReadAccessed					= Executable | ReadWrite | Accessed,
+		CodeExecuteReadOnlyConforming			= Executable | DirectionConforming,
+		CodeExecuteReadOnlyConformingAccessed	= Executable | DirectionConforming | Accessed,
+		CodeExecuteReadReadConforming			= Executable | DirectionConforming | ReadWrite,
+		CodeExecuteReadReadConformingAccessed	= Executable | DirectionConforming | ReadWrite | Accessed,
 
 		// System Types
 		//ReservedSegment		= 0x0,
@@ -56,13 +59,36 @@ namespace GDT
 	
 	struct GDTEntry
 	{
-		uint16_t LimitLow;
-		uint16_t BaseLow;
-		uint8_t  BaseMid;
+		union
+		{
+			struct
+			{
+				uint16_t LimitLow;
+				uint16_t BaseLow;
+				uint8_t  BaseMid;
 		
-		uint16_t Attributes;
+				uint16_t Type : 4;
+				uint16_t NonSystem : 1;
+				uint16_t DLP : 2;
+				uint16_t Present : 1;
+				
+				uint16_t LimitHigh : 4;
+				uint16_t Avaliable : 1;
+				uint16_t Long : 1;
+				uint16_t Big : 1;
+				uint16_t Granularity : 1;
 		
-		uint8_t  BaseHigh;
+				uint8_t  BaseHigh;
+			};
+			
+			struct
+			{
+				uint32_t Avaliable1;
+				uint8_t  Avaliable2;
+				uint8_t  Reserved;		// Overlaps the Type, NonSystem, DLP and Present bits.
+				uint16_t Avaliable3;
+			};
+		};
 	};
 
 	struct GDTPtr
@@ -127,6 +153,7 @@ public:
 
 	static void UpdateGDTEntry(uint16_t Selector, uint32_t Base, uint32_t Limit, uint16_t Attributes, uint8_t Type, uint8_t DPL);
 
+	void Dump();
 	void PrintSelector(uint16_t Selector);
 
 private:

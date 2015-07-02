@@ -146,6 +146,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ACPI.h" />
+    <ClInclude Include="CoreComplex.h" />
     <ClInclude Include="EnhancedHCI.h" />
     <ClInclude Include="GDT.h" />
     <ClInclude Include="IDT.h" />

@@ -137,6 +137,9 @@
     <ClInclude Include="ListNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CoreComplex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="IntEntry.asm">

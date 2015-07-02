@@ -62,23 +62,37 @@ void GDTManager::UpdateGDTEntry(uint16_t Selector, uint32_t Base, uint32_t Limit
 
 void GDTManager::BuildGDTEntry(GDT::GDTEntry *Entry, uint32_t Base, uint32_t Limit, uint16_t Attributes, uint8_t Type, uint8_t DPL)
 {
-	Entry->Attributes = Attributes;
-	
+	Entry->NonSystem = (Attributes & GDT::NonSystemFlag) == GDT::NonSystemFlag;
+	Entry->Present = (Attributes & GDT::Present) == GDT::Present;
+	Entry->Avaliable = (Attributes & GDT::AvaliableBit) == GDT::AvaliableBit;
+	Entry->Big = (Attributes & GDT::Operand32Bit) == GDT::Operand32Bit;
+
+	Entry->Long = false;
 	Entry->BaseLow  = (Base & 0x0000FFFF);
 	Entry->BaseMid  = (Base & 0x00FF0000) >> 16;
 	Entry->BaseHigh = (Base & 0xFF000000) >> 24;
 
 	if(Limit > 0xFFFFF)
 	{
-		Entry->Attributes |= GDT::Granularity4k;
+		Entry->Granularity = true;
 		Limit = Limit / 0x1000;
+	}
+	else
+	{
+		Entry->Granularity = false;
 	}
 
 	Entry->LimitLow    = (Limit & 0x0000FFFF);
-	Entry->Attributes |= (Limit & 0x000F0000) >> 8;
+	Entry->LimitHigh  |= (Limit & 0x000F0000) >> 16;
 
-	Entry->Attributes |= (Type & GDT::TypeMask);
-	Entry->Attributes |= (DPL << 5);
+	Entry->Type = Type;
+	Entry->DLP  = DPL;
+}
+
+void GDTManager::Dump()
+{
+	for(uint16_t x = 0; x < m_NextFreeSlot; x ++)
+		PrintSelector(x);
 }
 
 void GDTManager::PrintSelector(uint16_t Selector)
@@ -96,63 +110,134 @@ void GDTManager::PrintSelector(uint16_t Selector)
 	Base |= Entry->BaseHigh << 24;
 
 	Limit = Entry->LimitLow;
-	Limit |= (Entry->Attributes & GDT::LimitHighMask) << 8;
+	Limit |= Entry->LimitHigh << 16;
 
-	if(Entry->Attributes & GDT::Granularity4k)
+	if(Entry->Granularity)
 	{
 		Limit *= 0x1000;
 		Limit += 0x0FFF;
 	}
 
-	printf("Base:       %08X\n", Base);
-	printf("Limit:      %08X\n", Limit);
-	printf("DPL:        ");
+	printf(" %04X", Selector * 8);
 
-	switch(Entry->Attributes & GDT::DPLMask)
+	if(Entry->Present)
+		printf(" P");
+	else
+		printf("  ");
+	
+	if(Entry->NonSystem)
 	{
-		case GDT::DPL0:
-			printf("0\n");
-			break;
+		if(Entry->Type & GDT::Executable)
+		{
+			if(Entry->Big)
+				printf(" Code32 E");
+			else
+				printf(" Code16 E");
+			
+			if(Entry->Type & GDT::ReadWrite)
+				printf("R");
+			else
+				printf(" ");
 
-		case GDT::DPL1:
-			printf("1\n");
-			break;
+		}
+		else
+		{
 
-		case GDT::DPL2:
-			printf("2\n");
-			break;
+			if(Entry->Big)
+				printf(" Data32 R");
+			else
+				printf(" Data16 R");
 
-		case GDT::DPL3:
-			printf("3\n");
-			break;
+			if(Entry->Type & GDT::ReadWrite)
+				printf("W");
+			else
+				printf(" ");
+		}
+
+		if(Entry->Type & GDT::Accessed)
+			printf("A");
+		else
+			printf(" ");
+	}
+	else
+	{
+		switch(Entry->Type)
+		{
+			case GDT::TSS16BitSegment:
+				printf(" TSS 16 A  ");
+				break;
+
+			case GDT::LDTSegment:
+				printf(" LDT       ");
+				break;
+
+			case GDT::TSS16BitSegmentBusy:
+				printf(" TSS 16 B  ");
+				break;
+
+			case GDT::CallGate16BitSegment:
+				printf(" Call16    ");
+				break;
+
+			case GDT::TaskGateSegment:
+				printf(" Task Gate ");
+				break;
+
+			case GDT::IntGate16BitSegment:
+				printf(" Int 16    ");
+				break;
+
+			case GDT::TrapGate16BitSegment:
+				printf(" Trap16    ");
+				break;
+
+			case GDT::TSS32BitSegment:
+				printf(" TSS 32 A  ");
+				break;
+
+			case GDT::TSS32BitSegmentBusy:
+				printf(" TSS 32 B  ");
+				break;
+
+			case GDT::CallGate32BitSegment:
+				printf(" Call32    ");
+				break;
+
+			case GDT::IntGate32BitSegment:
+				printf(" Int 32    ");
+				break;
+
+			case GDT::TrapGate32BitSegment:
+				printf(" Trap32    ");
+				break;
+
+			default:
+				printf(" Reserved  ");
+				break;
+		}
+
 	}
 
-	printf("Attributes: ");
+	printf(" DPL=%X", Entry->DLP);
+	
+	if(!Entry->Present)
+	{
+		printf("  AVL = %08X-%02X-%04X\n", Entry->Avaliable1, Entry->Avaliable2, Entry->Avaliable3);
+		return;
+	}
 
-	if(Entry->Attributes & GDT::Accessed)
-		printf("Accessed ");
+	printf(" Base = %08X", Base);
+	printf(" Limit = %08X", Limit);
+	
+	if(Entry->Granularity)
+		printf(" G");
+	else
+		printf("  ");
 
-	if(Entry->Attributes & GDT::ReadWrite)
-		printf("R/W ");
+	if(Entry->Big)
+		printf(" B");
+	else
+		printf("  ");
 
-	if(Entry->Attributes & GDT::DirectionConforming)
-		printf("D/C ");
-
-	if(Entry->Attributes & GDT::Executable)
-		printf("Executable ");
-
-	if(Entry->Attributes & GDT::NonSystemFlag)
-		printf("Non-System ");
-
-	if(Entry->Attributes & GDT::Present)
-		printf("Present ");
-
-	if(Entry->Attributes & GDT::Operand32Bit)
-		printf("32Bit ");
-
-	if(Entry->Attributes & GDT::Granularity4k)
-		printf("4k ");
-
-	printf("\n", Entry->Attributes);
-
+	printf(" AVL=%X\n", Entry->Avaliable);
 }

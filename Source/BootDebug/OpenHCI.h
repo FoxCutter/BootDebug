@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include "USBData.h"
-#include "RawMemory.h"
 #pragma once
 
 namespace OpenHCIData 
@@ -35,8 +34,6 @@ typedef bool (*OpenHCICallbackPtr)(uint32_t Handle, uintptr_t * Data);
 
 class OpenHCI : public USBHubInterface
 {
-	RawMemory Allocator;
-
 	uint32_t m_DeviceID;
 	uint8_t m_IRQ;
 	InterruptControler *m_IntControler;

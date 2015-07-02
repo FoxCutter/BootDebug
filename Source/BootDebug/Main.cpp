@@ -7,22 +7,20 @@
 
 #include "..\StdLib\argcargv.h"
 
+#include "CoreComplex.h"
+
 #include "MMU.h"
 #include "PCI.h"
 #include "OpenHCI.h"
 #include "MPConfig.h"
 #include "RawTerminal.h"
 #include "LowLevel.h"
-#include "MultiBootInfo.h"
 #include "ACPI.h"
 #include "Thread.h"
-#include "MemoryMap.h"
 #include "InterruptControler.h"
 
-MultiBootInfo * MultiBootHeader = nullptr;
 MMU * MMUManager = nullptr;
 OpenHCI * USBManager = nullptr;
-SmallMemoryMap *MemoryMap = nullptr;
 
 extern InterruptControler m_InterruptControler;
 
@@ -521,9 +519,13 @@ void main(int argc, char *argv[])
 					{
 						m_InterruptControler.DumpPIC();
 					}
+					else if(_stricmp("GDT", CurrentData) == 0)
+					{
+						CoreComplexObj::GetComplex()->GDTTable.Dump();
+					}
 					else if(_stricmp("MEM", CurrentData) == 0)
 					{
-						MemoryMap->Dump();
+						CoreComplexObj::GetComplex()->PageMap.Dump();
 					}
 					else if(_stricmp("IOAPIC", CurrentData) == 0)
 					{
@@ -566,7 +568,7 @@ void main(int argc, char *argv[])
 					}
 					else if(_stricmp("MB", CurrentData) == 0)
 					{
-						MultiBootHeader->Dump();
+						CoreComplexObj::GetComplex()->MultiBoot.Dump();
 					}
 					else if(_stricmp("MP", CurrentData) == 0)
 					{

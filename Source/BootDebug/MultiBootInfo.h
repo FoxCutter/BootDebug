@@ -8,9 +8,15 @@ struct MemoryMapEntry
 	uint32_t Type;
 };
 
+struct ModuleEntry
+{
+	intptr_t ModStart;
+	intptr_t ModEnd;
+	char * CommandLine;
+};
+
 class MultiBootInfo
 {
-	static const int MemoryMapMaxLength = 0xFF;
 public:
 	enum MultiBootType
 	{
@@ -22,14 +28,20 @@ public:
 	~MultiBootInfo(void);
 
 	bool LoadMultiBootInfo(uint32_t Signatrue, void *Data);
+	
+	bool GetFirstMemoryEntry(MemoryMapEntry &Entry);
+	bool GetNextMemoryEntry(MemoryMapEntry &Entry);
+
+	bool GetFirstModuleEntry(ModuleEntry &Entry);
+	bool GetNextModuleEntry(ModuleEntry &Entry);
+
+
 	void Dump();
 
 	MultiBootType Type;
 
 	const char * CommandLine;
 	const char * BootLoader;
-	MemoryMapEntry *MemoryMap[MemoryMapMaxLength];
-	int MemoryMapLength;
 
 	uint32_t MemoryLow;
 	uint32_t MemoryHigh;	
@@ -43,5 +55,10 @@ public:
 private:
 	bool LoadMultiBoot1Info(void *Data);
 	bool LoadMultiBoot2Info(void *Data);
+
+	void *MemoryMapData;
+	intptr_t CurrentMemoryMapData;
+
+	void *CurrentModuleData;
 };
 

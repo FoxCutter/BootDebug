@@ -361,7 +361,7 @@ void OpenHCI::FillInterruptTable(PipeData *Table, int Length, PipeData *LinkTabl
 }
 
 // Start at the 512 meg mark and give it 16 megs of memory with 32 byte alignment
-OpenHCI::OpenHCI(void) : Allocator(0x2000000, 0x1000000, 32)
+OpenHCI::OpenHCI(void)
 {
 	Registers = nullptr;
 	m_DeviceID = 0;

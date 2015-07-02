@@ -41,7 +41,7 @@ struct LargePageDirectoryEntry
 	uint64_t  Accessed : 1;
 	uint64_t  Dirty : 1;
 	uint64_t  Size : 1;
-	uint64_t  Globale : 1;
+	uint64_t  Global : 1;
 	uint64_t  Available : 3;
 	uint64_t  Pat : 1;
 	uint64_t  Reserved : 8;
@@ -151,7 +151,12 @@ MMU::MMU(void)
 	WriteCR3((uint32_t) PDPTE);
 
 	uint32_t Temp = ReadCR4();
-	Temp |= CPUFlags::PhysicalAddressExtensionsEnable;
+	Temp |= CPUFlags::PhysicalAddressExtensionsEnable | CPUFlags::PageSizeExtensionsEnable | CPUFlags::PageGlobalEnable;
+
+	// We prefer to use Global Pages if possible
+	if((Res.EDX & CPUFlags::PageGlobal) == CPUFlags::PageGlobal)
+		Temp |= CPUFlags::PageGlobalEnable;
+
 	WriteCR4(Temp);
 
 	Temp = ReadCR0();

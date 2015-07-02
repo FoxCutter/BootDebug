@@ -8,8 +8,10 @@ class RawMemory :
 	struct MemoryHeader;
 
 public:
-	RawMemory(uint32_t HeapBase, uint32_t HeapSize, uint32_t BlockSize);
+	RawMemory();
 	~RawMemory(void);
+
+	void SetupHeap(uint32_t HeapBase, uint32_t HeapSize, uint32_t BlockSize);
 
 	void * malloc(size_t size, bool Fill);
 	void free(void * p);

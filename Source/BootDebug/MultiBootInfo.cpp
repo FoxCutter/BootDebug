@@ -13,9 +13,10 @@ MultiBootInfo::MultiBootInfo(void)
 	BootDevice = BootPartition[0] = BootPartition[1] = BootPartition[2] = 0xFF;
 	CommandLine = BootLoader = nullptr;
 	MBData = nullptr;
-	MemoryMapLength = 0;
 	HeaderLength = 0;
-
+	MemoryMapData = nullptr;
+	CurrentModuleData = nullptr;
+	CurrentMemoryMapData = 0;
 }
 
 MultiBootInfo::~MultiBootInfo(void)
@@ -50,57 +51,297 @@ void MultiBootInfo::Dump()
 	printf("    Boot Device Info: Device %02X, Partition %02X:%02X:%02X\n", BootDevice, BootPartition[0], BootPartition[1], BootPartition[2]);
 	printf("    Command Line: %s\n", CommandLine);
 	printf("    Boot Loader: %s\n", BootLoader);
-	printf("    Memory Map:\n");
+	printf("    Memory Map: %08X\n", MemoryMapData);
 
-	printf("           Start                End               Length       Type\n");
-
-	uint64_t TotalRam = 0;
-	uint64_t TotalReserved = 0;
-
-	for(int x = 0; x < MemoryMapLength; x++)
+	MemoryMapEntry CurrentEntry;
+	if(GetFirstMemoryEntry(CurrentEntry))
 	{
-		printf("     ");
-		PrintLongAddress(MemoryMap[x]->BaseAddress);
-		printf(" - ");
-		PrintLongAddress(MemoryMap[x]->BaseAddress + MemoryMap[x]->Length - 1);
-		printf(", ");
-		PrintLongAddress(MemoryMap[x]->Length);
-		printf(", ");
+		uint64_t TotalRam = 0;
+		uint64_t TotalReserved = 0;
 
-		switch(MemoryMap[x]->Type)
+		printf("           Start                End               Length       Type\n");
+
+		do
 		{
-			case 1:
-				printf("RAM");
-				TotalRam += MemoryMap[x]->Length;
-				break;
+			printf("     ");
+			PrintLongAddress(CurrentEntry.BaseAddress);
+			printf(" - ");
+			PrintLongAddress(CurrentEntry.BaseAddress + CurrentEntry.Length - 1);
+			printf(", ");
+			PrintLongAddress(CurrentEntry.Length);
+			printf(", ");
 
-			default:
-			case 2:
-				printf("Reserved");
-				TotalReserved += MemoryMap[x]->Length;
-				break;
+			switch(CurrentEntry.Type)
+			{
+				case 1:
+					printf("RAM");
+					TotalRam += CurrentEntry.Length;
+					break;
 
-			case 3:
-				printf("Recoverable");
-				TotalRam += MemoryMap[x]->Length;
-				break;
+				default:
+				case 2:
+					printf("Reserved");
+					TotalReserved += CurrentEntry.Length;
+					break;
 
-			case 4:
-				printf("Hibernation");
-				TotalReserved += MemoryMap[x]->Length;
-				break;
-		}
+				case 3:
+					printf("Recoverable");
+					TotalRam += CurrentEntry.Length;
+					break;
 
-		printf(" (%u)\n", MemoryMap[x]->Type);
+				case 4:
+					printf("Hibernation");
+					TotalReserved += CurrentEntry.Length;
+					break;
+			}
+
+			printf(" (%u)\n", CurrentEntry.Type);
+		} while(GetNextMemoryEntry(CurrentEntry));
+	
+		printf("     Totals:\n      RAM:      ");
+		PrintLongAddress(TotalRam);
+		printf("\n      Reserved: ");
+		PrintLongAddress(TotalReserved);
+		printf("\n      Memory:   ");
+		PrintLongAddress(TotalRam + TotalReserved + 0x10000);
+		printf("\n");
+	}
+
+	printf("    Loaded Modules:\n");
+	ModuleEntry CurrentModule;
+	if(GetFirstModuleEntry(CurrentModule))
+	{
+		printf("           Start                End        Command Line\n");
+
+		do
+		{
+			printf("     ");
+			PrintLongAddress(CurrentModule.ModStart);
+			printf(" - ");
+			PrintLongAddress(CurrentModule.ModEnd);
+			printf(" %s\n", CurrentModule.CommandLine);
+
+		} while (GetNextModuleEntry(CurrentModule));
+	}
+
+}
+
+bool MultiBootInfo::GetFirstMemoryEntry(MemoryMapEntry &Entry)
+{
+	if(MemoryMapData == nullptr)
+	{
+		Entry.BaseAddress = UINT64_MAX;
+		Entry.Length = UINT64_MAX;
+		Entry.Type = UINT32_MAX;
+
+		return false;
+	}
+
+	if(Type == Version1)
+	{
+		MulitBoot::Boot_Header * BootHeader = (MulitBoot::Boot_Header *)MBData;
+		CurrentMemoryMapData = reinterpret_cast<intptr_t>(MemoryMapData);
+
+		Entry = *reinterpret_cast<MemoryMapEntry *>(CurrentMemoryMapData + sizeof(uint32_t));
+	}
+	else if(Type == Version2)
+	{
+		MulitBoot2::Boot_MemoryMap* MapEntry = (MulitBoot2::Boot_MemoryMap *)MemoryMapData;
+		CurrentMemoryMapData = reinterpret_cast<intptr_t>(MemoryMapData) + sizeof(MulitBoot2::Boot_MemoryMap);
+
+		Entry = *reinterpret_cast<MemoryMapEntry *>(CurrentMemoryMapData);
 	}
 	
-	printf("     Totals:\n      RAM:      ");
-	PrintLongAddress(TotalRam);
-	printf("\n      Reserved: ");
-	PrintLongAddress(TotalReserved);
-	printf("\n      Memory:   ");
-	PrintLongAddress(TotalRam + TotalReserved);
-	printf("\n");
+	return true;
+}
+
+bool MultiBootInfo::GetNextMemoryEntry(MemoryMapEntry &Entry)
+{
+	if(MemoryMapData == nullptr || CurrentMemoryMapData == 0)
+	{
+		Entry.BaseAddress = UINT64_MAX;
+		Entry.Length = UINT64_MAX;
+		Entry.Type = UINT32_MAX;
+
+		return false;
+	}
+
+	if(Type == Version1)
+	{
+		MulitBoot::Boot_Header * BootHeader = (MulitBoot::Boot_Header *)MBData;
+
+		uint32_t Size = *reinterpret_cast<uint32_t *>(CurrentMemoryMapData);
+
+		if(CurrentMemoryMapData + sizeof(uint32_t) + Size >= BootHeader->MemMap_Address + BootHeader->MemMap_Length)
+		{
+			Entry.BaseAddress = UINT64_MAX;
+			Entry.Length = UINT64_MAX;
+			Entry.Type = UINT32_MAX;
+
+			return false;
+		}
+
+		CurrentMemoryMapData += sizeof(uint32_t) + Size;
+		Entry = *reinterpret_cast<MemoryMapEntry *>(CurrentMemoryMapData + sizeof(uint32_t));
+	}
+	else if(Type == Version2)
+	{
+		MulitBoot2::Boot_MemoryMap* MapEntry = (MulitBoot2::Boot_MemoryMap *)MemoryMapData;
+		
+		if(CurrentMemoryMapData + MapEntry->Entry_Size >= reinterpret_cast<intptr_t>(MemoryMapData) + MapEntry->Size)
+		{
+			Entry.BaseAddress = UINT64_MAX;
+			Entry.Length = UINT64_MAX;
+			Entry.Type = UINT32_MAX;
+
+			return false;
+		}
+
+		CurrentMemoryMapData += MapEntry->Entry_Size;
+
+		Entry = *reinterpret_cast<MemoryMapEntry *>(CurrentMemoryMapData);
+	}
+
+	return true;
+
+}
+
+bool MultiBootInfo::GetFirstModuleEntry(ModuleEntry &Entry)
+{
+	if(Type == Version1)
+	{
+		MulitBoot::Boot_Header * BootHeader = (MulitBoot::Boot_Header *)MBData;
+
+		if((BootHeader->Flags & MulitBoot::ModuleInfo) == 0)
+		{
+			Entry.ModStart = 0;
+			Entry.ModEnd = 0;
+			Entry.CommandLine = nullptr;
+
+			return false;
+		}
+
+		CurrentModuleData = (void *)BootHeader->Mod_Address;
+		MulitBoot::Boot_Module *ModEntry = (MulitBoot::Boot_Module *)BootHeader->Mod_Address;		
+
+		Entry.ModStart = ModEntry->ModStart;
+		Entry.ModEnd = ModEntry->ModEnd;
+		Entry.CommandLine = reinterpret_cast<char *>(ModEntry->String);		
+	}
+	else if(Type == Version2)
+	{
+		MulitBoot2::Boot_Header * BootHeader = (MulitBoot2::Boot_Header *)MBData;
+
+		unsigned char *Pos = (unsigned char *)MBData;
+		unsigned char *End = (unsigned char *)MBData + BootHeader->Size;
+		Pos += sizeof(MulitBoot2::Boot_Header);
+
+		while(Pos < End)
+		{			
+			while ((int)Pos % 8 != 0)
+				Pos++;
+
+			MulitBoot2::Boot_Entry * CurrentHeader = (MulitBoot2::Boot_Entry *)Pos;
+
+			if(CurrentHeader->Type == MulitBoot2::Modules)
+			{
+				CurrentModuleData = Pos;
+				
+				MulitBoot2::Boot_Module * ModEntry = (MulitBoot2::Boot_Module *)Pos;
+
+				Entry.ModStart = ModEntry->ModStart;
+				Entry.ModEnd = ModEntry->ModEnd;
+				Entry.CommandLine = ModEntry->String;	
+
+				return true;
+			}
+		
+			Pos += CurrentHeader->Size;
+		};
+
+		Entry.ModStart = 0;
+		Entry.ModEnd = 0;
+		Entry.CommandLine = nullptr;
+
+		return false;
+	}
+	
+	return true;
+}
+
+bool MultiBootInfo::GetNextModuleEntry(ModuleEntry &Entry)
+{
+	if(CurrentModuleData == nullptr)
+	{
+		Entry.ModStart = 0;
+		Entry.ModEnd = 0;
+		Entry.CommandLine = nullptr;
+
+		return false;
+	}
+
+	if(Type == Version1)
+	{
+		MulitBoot::Boot_Header * BootHeader = (MulitBoot::Boot_Header *)MBData;
+
+		MulitBoot::Boot_Module *ModEntry = reinterpret_cast<MulitBoot::Boot_Module *>(CurrentModuleData);		
+
+		if(reinterpret_cast<intptr_t>(&ModEntry[1]) >= BootHeader->Mod_Address + static_cast<intptr_t>(BootHeader->Mod_Count * sizeof(MulitBoot::Boot_Module)))
+		{
+			Entry.ModStart = 0;
+			Entry.ModEnd = 0;
+			Entry.CommandLine = nullptr;
+
+			return false;
+		}
+
+		CurrentModuleData = &ModEntry[1];
+
+		Entry.ModStart = ModEntry[1].ModStart;
+		Entry.ModEnd = ModEntry[1].ModEnd;
+		Entry.CommandLine = reinterpret_cast<char *>(ModEntry[1].String);		
+	}
+	else if(Type == Version2)
+	{
+		MulitBoot2::Boot_Header * BootHeader = (MulitBoot2::Boot_Header *)MBData;
+
+		unsigned char *Pos = (unsigned char *)CurrentModuleData;
+		unsigned char *End = (unsigned char *)MBData + BootHeader->Size;
+		MulitBoot2::Boot_Entry * CurrentHeader = (MulitBoot2::Boot_Entry *)Pos;
+		Pos += CurrentHeader->Size;
+
+		while(Pos < End)
+		{
+			while ((int)Pos % 8 != 0)
+				Pos++;
+
+			CurrentHeader = (MulitBoot2::Boot_Entry *)Pos;
+
+			if(CurrentHeader->Type == MulitBoot2::Modules)
+			{
+				CurrentModuleData = Pos;
+				
+				MulitBoot2::Boot_Module * ModEntry = (MulitBoot2::Boot_Module *)Pos;
+
+				Entry.ModStart = ModEntry->ModStart;
+				Entry.ModEnd = ModEntry->ModEnd;
+				Entry.CommandLine = ModEntry->String;	
+
+				return true;
+			}
+		
+			Pos += CurrentHeader->Size;
+		};
+
+		Entry.ModStart = 0;
+		Entry.ModEnd = 0;
+		Entry.CommandLine = nullptr;
+
+		return false;
+	}
+
+	return true;
+
 }
 
 bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
@@ -138,20 +379,12 @@ bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 	{
 		MulitBoot::Boot_Module *Entry = (MulitBoot::Boot_Module *)BootHeader->Mod_Address;
 
-		for(uint32_t x = 0; x < BootHeader->Mod_Count; x++)
-		{
-			printf("Mod S:%08X E:%08X N:%s\n", Entry[x].ModStart, Entry[x].ModEnd, Entry[x].String);
-		}
-		
 		TempAddress = BootHeader->Mod_Address + (sizeof(MulitBoot::Boot_Module) * BootHeader->Mod_Count);
 
 		if(TempAddress > LastAddress)
 			LastAddress = TempAddress;
-
-		//printf(" Mods\n");
 	}
-
-	 
+ 
 	// We don't care about symbols
 	if((BootHeader->Flags & MulitBoot::AOutSymbols) == MulitBoot::AOutSymbols)
 	{
@@ -169,22 +402,9 @@ bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 			LastAddress = TempAddress;
 	} 
 	
-	MemoryMapLength = 0;
 	if((BootHeader->Flags & MulitBoot::MemoryMapInfo) == MulitBoot::MemoryMapInfo)
 	{
-		intptr_t Base = 0;		
-
-		while(Base < (intptr_t) BootHeader->MemMap_Length && MemoryMapLength < MemoryMapMaxLength)
-		{
-			uint32_t *Size = (uint32_t *)(BootHeader->MemMap_Address + Base);
-			Base += sizeof(uint32_t);
-
-			MemoryMap[MemoryMapLength] = (MemoryMapEntry *)(BootHeader->MemMap_Address + Base);
-
-			Base += *Size;
-
-			MemoryMapLength++;
-		}
+		MemoryMapData = reinterpret_cast<void *>(BootHeader->MemMap_Address);
 
 		TempAddress = BootHeader->MemMap_Address + BootHeader->MemMap_Length;
 
@@ -266,7 +486,6 @@ bool MultiBootInfo::LoadMultiBoot2Info(void *Data)
 
 	// This one is easy
 	HeaderLength = BootHeader->Size;
-	MemoryMapLength = 0;
 
 	while(Pos < End)
 	{
@@ -294,7 +513,7 @@ bool MultiBootInfo::LoadMultiBoot2Info(void *Data)
 			case MulitBoot2::Modules:
 			{
 				MulitBoot2::Boot_Module * Entry = (MulitBoot2::Boot_Module *)Pos;
-				printf(" Module: %08X, %08X, %s\n", Entry->ModStart, Entry->ModEnd, Entry->String);
+				//printf(" Module: %08X, %08X, %s\n", Entry->ModStart, Entry->ModEnd, Entry->String);
 				break;
 			}
 			 
@@ -320,22 +539,7 @@ bool MultiBootInfo::LoadMultiBoot2Info(void *Data)
 
 			case MulitBoot2::MemoryMap:
 			{
-				MulitBoot2::Boot_MemoryMap* Entry = (MulitBoot2::Boot_MemoryMap *)Pos;
-				
-				intptr_t Base = sizeof(MulitBoot2::Boot_MemoryMap);
-				
-				while(Base < (intptr_t) Entry->Size && MemoryMapLength < MemoryMapMaxLength)
-				{
-					MemoryMap[MemoryMapLength] = (MemoryMapEntry *)(Pos + Base);
-					//printf("Mem: %016llX - %016llX, %02X\n", MemoryMap[MemoryMapLength]->BaseAddress, 
-					//	                                     MemoryMap[MemoryMapLength]->BaseAddress + MemoryMap[MemoryMapLength]->Length - 1,
-					//										 MemoryMap[MemoryMapLength]->Type);
-
-					MemoryMapLength++;
-
-					Base += Entry->Entry_Size;
-				}
-				
+				MemoryMapData = Pos;
 				break;
 			}
 

@@ -67,9 +67,9 @@ struct PageTableEntry
 
 #pragma section(".PDE", read, write)
 
-__declspec(align(32)) PageDirectoryPointerEntry PDPTE[4];
 __declspec(allocate(".PDE")) LargePageDirectoryEntry PDE[2048];
 __declspec(allocate(".PDE")) PageTableEntry PTE[512];
+__declspec(allocate(".PDE")) PageDirectoryPointerEntry PDPTE[4];
 
 MMU::MMU(void)
 {
@@ -182,89 +182,71 @@ void MMU::PrintAddressInformation(uint32_t Address)
 	printf("Virtual Address: %08X\n", Address);
 	
 	uint64_t RealAddress = 0;
-	bool Done = false;
+	PageDirectoryPointerEntry *PDP = reinterpret_cast<PageDirectoryPointerEntry *>(ReadCR3());
+	printf(" Page Directory Pointer %08X\n", PDP);
+	
+	uint32_t PDPIndex = (Address & 0xC0000000) >> 30;
+	printf(" PDP Index: %X", PDPIndex);
+	
+	PageDirectoryEntry *PDE = reinterpret_cast<PageDirectoryEntry *>(PDP[PDPIndex].Directory_Address << 12);
 
-	uint32_t Level1 = (Address & 0xC0000000) >> 30;
-	printf(" Level 1: Index: %X", Level1);
-
-	PageDirectoryPointerEntry *Tabel1 = reinterpret_cast<PageDirectoryPointerEntry *>(ReadCR3());
-	if(Tabel1[Level1].Present == false)
+	if(PDP[PDPIndex].Present == false)
 	{
 		printf(", Not Present\n");
 		return;
 	}
 	else
 	{
-		printf(", Directory Address: ");
-		PrintLongAddress(Tabel1[Level1].Directory_Address << 12);
+		printf(", Page Directory Address: ");
+		PrintLongAddress(PDP[PDPIndex].Directory_Address << 12);
 		printf("\n");
 	}
 
-	uint32_t Level2 = (Address & 0x3FE00000) >> 21;
-	printf(" Level 2: Index: %X", Level2);
+	uint32_t PDEIndex = (Address & 0x3FE00000) >> 21;
+	printf(" PDE Index: %X", PDEIndex);
 
-	PageDirectoryEntry *Tabel2 = reinterpret_cast<PageDirectoryEntry *>(Tabel1[Level1].Directory_Address << 12);
-	if(Tabel2[Level2].Present == false)
+	if(PDE[PDEIndex].Present == false)
 	{
 		printf(", Not Present\n");
 		return;
 	}
+	else if(PDE[PDEIndex].Size == true)
+	{
+		LargePageDirectoryEntry *LPDE = reinterpret_cast<LargePageDirectoryEntry *>(PDE);
+		printf(", 2M Base Address       : ");
+		PrintLongAddress(LPDE[PDEIndex].Page_Address << 21);
+		printf("\n");
+
+		RealAddress = LPDE[PDEIndex].Page_Address << 21;
+		RealAddress += (Address & 0x001FFFFF);
+	}
 	else
 	{
-		if(Tabel2[Level2].Accessed == true)
-			printf(", Accessed");
+		printf(", Page Table Address    : ");
+		PrintLongAddress(PDE[PDEIndex].Table_Address << 12);
+		printf("\n");
 
-		if(Tabel2[Level2].Size == true)
-		{
-			LargePageDirectoryEntry *Page2 = reinterpret_cast<LargePageDirectoryEntry *>(Tabel1[Level1].Directory_Address << 12);
-			
-			if(Page2[Level2].Dirty == true)
-				printf(", Dirty");
+		PageTableEntry *PTE = reinterpret_cast<PageTableEntry *>(PDE[PDEIndex].Table_Address << 12);
+		uint32_t PTEIndex = (Address & 0x001FF000) >> 12;
+		printf(" PTE Index: %X", PTEIndex);
 
-			printf(", 2M Base Address: ");
-			PrintLongAddress(Page2[Level2].Page_Address << 21);
-			printf("\n");
-
-			RealAddress = Page2[Level2].Page_Address << 21;
-			RealAddress += (Address & 0x001FFFFF);
-
-			Done = true;
-		}
-		else
-		{
-			printf(", Table Address: ");
-			PrintLongAddress(Tabel2[Level2].Table_Address << 12);
-			printf("\n");
-		}
-	}
-
-	if(!Done)
-	{
-		uint32_t Level3 = (Address & 0x001FF000) >> 12;
-		printf(" Level 3: Index: %X", Level3);
-
-		PageTableEntry *Tabel3 = reinterpret_cast<PageTableEntry *>(Tabel2[Level2].Table_Address << 12);
-		if(Tabel3[Level3].Present == false)
+		if(PTE[PTEIndex].Present == false)
 		{
 			printf(", Not Present\n");
 			return;
 		}
 		else
 		{
-			if(Tabel3[Level3].Accessed == true)
-				printf(", Accessed");
-
-			if(Tabel3[Level3].Dirty == true)
-				printf(", Dirty");
-
-			printf(", 4k Base Address: ");
-			PrintLongAddress(Tabel3[Level3].Page_Address << 12);
+			printf(", 4k Base Address       : ");
+			PrintLongAddress(PTE[PTEIndex].Page_Address << 12);
 			printf("\n");
 
-			RealAddress = Tabel3[Level3].Page_Address << 12;
+			RealAddress = PTE[PTEIndex].Page_Address << 12;
 			RealAddress += (Address & 0x00000FFF);
 		}
 	}
+
+
 
 	printf("  Physical Address: ");
 	PrintLongAddress(RealAddress);

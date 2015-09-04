@@ -68,6 +68,8 @@ uint64_t MemoryPageMap::AllocateRange(uint64_t MinAddress, uint32_t Length)
 	uint64_t CurrentAddress = StartAddress;
 	uint32_t Pages = 0;
 
+	uint32_t Boundry = PageSize;
+
 	for(uint32_t x = StartPage; x < PageCount; x++)
 	{
 		if(((PageData[Index] & Mask) >> Offset) == FreeMemory)
@@ -80,6 +82,12 @@ uint64_t MemoryPageMap::AllocateRange(uint64_t MinAddress, uint32_t Length)
 			}
 		}
 		else
+		{
+			StartAddress = CurrentAddress + PageSize;
+			Pages = 0;
+		}
+
+		if(Pages == 1 & StartAddress % Boundry != 0)
 		{
 			StartAddress = CurrentAddress + PageSize;
 			Pages = 0;

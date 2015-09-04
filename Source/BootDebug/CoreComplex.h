@@ -30,7 +30,7 @@ struct CoreComplexObj
 
 	MultiBootInfo MultiBoot;
 	
-	RawMemory KernalMemory;
+	RawMemory KernalHeap;
 	MemoryPageMap PageMap;
 
 	//ThreadInformation *ThreadComplex;

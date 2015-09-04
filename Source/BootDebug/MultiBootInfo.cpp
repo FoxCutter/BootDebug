@@ -52,6 +52,7 @@ void MultiBootInfo::Dump()
 	printf("    Command Line: %s\n", CommandLine);
 	printf("    Boot Loader: %s\n", BootLoader);
 	printf("    Memory Map: %08X\n", MemoryMapData);
+	printf("    Frame Buffer: %08X (%02X) %02ux%02u, P:%04X, BPP:%02X\n", (unsigned int)FrameBuffer.Address, FrameBuffer.Type, FrameBuffer.Width, FrameBuffer.Height, FrameBuffer.Pitch, FrameBuffer.BPP);
 
 	MemoryMapEntry CurrentEntry;
 	if(GetFirstMemoryEntry(CurrentEntry))
@@ -464,6 +465,13 @@ bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 	}
 	if((BootHeader->Flags & MulitBoot::FrameBufferInfo) == MulitBoot::FrameBufferInfo)
 	{
+		FrameBuffer.Type = BootHeader->FrameBuffer_Type;
+		FrameBuffer.Address = BootHeader->FrameBuffer_Address;
+		FrameBuffer.Pitch = BootHeader->FrameBuffer_Pitch;
+		FrameBuffer.Width = BootHeader->FrameBuffer_Width;
+		FrameBuffer.Height = BootHeader->FrameBuffer_Height;
+		FrameBuffer.BPP = BootHeader->FrameBuffer_BPP;
+		
 		//printf(" Frame Buffer Info\n");
 		//printf("  Addr:%08X, P:%04X, W:%04X, H:%04X BPP:%02X\n", (unsigned int)BootHeader->FrameBuffer_Address, BootHeader->FrameBuffer_Pitch, BootHeader->FrameBuffer_Width, BootHeader->FrameBuffer_Height, BootHeader->FrameBuffer_BPP);
 		//printf("  Type: %02X\n", BootHeader->FrameBuffer_Type);
@@ -553,6 +561,14 @@ bool MultiBootInfo::LoadMultiBoot2Info(void *Data)
 			case MulitBoot2::FrameBufferInfo:
 			{
 				MulitBoot2::Boot_FrameBufferInfo* Entry = (MulitBoot2::Boot_FrameBufferInfo *)Pos;
+				FrameBuffer.Type = Entry->FrameBufferType;
+				FrameBuffer.Address = Entry->Address;
+				FrameBuffer.Pitch = Entry->Pitch;
+				FrameBuffer.Width = Entry->Width;
+				FrameBuffer.Height = Entry->Height;
+				FrameBuffer.BPP = Entry->BPP;
+
+		
 				//printf(" Frame Buffer Info\n");
 				//printf("  Addr:%08X, P:%04X, W:%04X, H:%04X BPP:%02X\n", (unsigned int)Entry->Address, Entry->Pitch, Entry->Width, Entry->Height, Entry->BPP);
 				//printf("  Type: %02X\n", Entry->FrameBufferType);

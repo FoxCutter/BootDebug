@@ -138,9 +138,9 @@ namespace GDT
 
 class GDTManager
 {
-	static const int TableSize = 0x10;
+	static const int MaxTableSize = 0x10;
 	
-	GDT::GDTEntry GDTTable[TableSize];
+	GDT::GDTEntry GDTTable[MaxTableSize ];
 
 	int m_NextFreeSlot;
 
@@ -155,6 +155,8 @@ public:
 
 	void Dump();
 	void PrintSelector(uint16_t Selector);
+
+	int TableSize() const { return m_NextFreeSlot; }
 
 private:
 	static void BuildGDTEntry(GDT::GDTEntry *Entry, uint32_t Base, uint32_t Limit, uint16_t Attributes, uint8_t Type, uint8_t DPL);

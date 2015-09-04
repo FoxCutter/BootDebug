@@ -53,7 +53,7 @@ static void IRQInterrupt(InterruptContext * Context, uintptr_t * Data)
 
 InterruptControler::InterruptControler(void)
 {
-	UsingAPIC = false;
+	Mode = ePIC;
 	APICRegisterBase = 0;
 
 	for(int x = 0; x < 0x10; x++)
@@ -74,15 +74,15 @@ InterruptControler::InterruptControler(void)
 		{
 			// Grab the register
 			APICRegisterBase = APICBase & 0xFFFFF000;
-			UsingAPIC = true;
+			Mode = eAPIC;
 		}
 	}
 }
 
 uint32_t InterruptControler::GetAPICRegister(int Reg)
 {
-	if(!UsingAPIC)
-		return 0xFFFFFFFF;
+	if(APICRegisterBase == 0)
+		return 0x00000000;
 
 	uint32_t *Register = reinterpret_cast<uint32_t *>(APICRegisterBase + (Reg * 0x10));
 
@@ -91,7 +91,7 @@ uint32_t InterruptControler::GetAPICRegister(int Reg)
 
 void InterruptControler::SetAPICRegister(int Reg, uint32_t Value)
 {
-	if(!UsingAPIC)
+	if(APICRegisterBase == 0)
 		return;
 
 	uint32_t *Register = reinterpret_cast<uint32_t *>(APICRegisterBase + (Reg * 0x10));
@@ -165,7 +165,7 @@ uint8_t InterruptControler::MapIRQToInt(uint8_t IRQ)
 
 void InterruptControler::SetSpuriousInterruptVector(uint8_t Vector)
 {
-	if(!UsingAPIC)
+	if(Mode == ePIC)
 		return;
 
 	SetAPICRegister(SpuriousInterruptVector, (GetAPICRegister(SpuriousInterruptVector) & 0xFFFFFF00) | Vector);	
@@ -193,7 +193,7 @@ void InterruptControler::RemapIRQBase(uint8_t NewBase)
 	OutPortb(0x21, 0x01);	// We are still x86
     OutPortb(0xA1, 0x01);
     
-	if(UsingAPIC)
+	if(Mode != ePIC)
 	{
 		SetAPICRegister(LVTInt0, 0x7FF);
 
@@ -271,7 +271,7 @@ void InterruptControler::DisableIRQ(uint8_t IRQ)
 
 void InterruptControler::SignalInterrupt(uint8_t Int)
 {
-	if(UsingAPIC)
+	if(Mode != ePIC)
 	{
 		SetAPICRegister(InterruptCommandHigh, 0x0);
 		SetAPICRegister(InterruptCommandLow, 0x40000 | Int);
@@ -358,6 +358,7 @@ void PrintInt(uint32_t Value, bool Internal = false)
 void InterruptControler::DumpPIC()
 {
 	uint16_t Port;
+	printf("Mode: %0X\n", Mode);
 	printf("IRQ        0 1 2 3 4 5 6 7 8 9 A B C D E F\n");
 	Port = InPortb(0x21);
 	Port += InPortb(0xA1) << 8;
@@ -420,6 +421,7 @@ void InterruptControler::DumpPIC()
 
 void InterruptControler::DumpAPIC()
 {
+	printf("Mode: %0X\n", Mode);
 	printf("APIC (%08X) ID: %02X, Logical ID %02X, Version: %08X\n", APICRegisterBase, GetAPICRegister(LocalACPIID) >> 24, (GetAPICRegister(LocalACPIVersion) & 0xFF000000) >> 24, GetAPICRegister(LocalACPIVersion));
 	printf(" Spurious Interrupt Vector: %02X, Error Status %03X\n", GetAPICRegister(SpuriousInterruptVector) & 0xFF, GetAPICRegister(ErrorStatus) & 0x1FF);
 	printf(" Task Priority: %02X, Arbitration Priority: %02X, Processor Priority: %02X\n", GetAPICRegister(TaskPriority) & 0xFF, GetAPICRegister(ArbitrationPriority) & 0xFF, GetAPICRegister(ProcessorPriority) & 0xFF);
@@ -478,6 +480,7 @@ void InterruptControler::DumpIOAPIC()
 	Registers[0] = 0;
 	Temp = Registers[4];
 
+	printf("Mode: %0X\n", Mode);
 	printf("I/O APIC ID: %02X\n", Temp >> 24); 
 
 	Registers[0] = 1;

@@ -4,15 +4,17 @@
 
 char FetchKeyboardBuffer();
 
-RawTerminal::RawTerminal(uint32_t ScreenBufferOffest)
+RawTerminal::RawTerminal(uint32_t ScreenBufferOffest, uint32_t Width, uint32_t Height, uint32_t Pitch)
 {
-	m_Row = 25;
-	m_Cols = 80;
+	m_Row = Height;
+	m_Cols = Width;
 	m_ScreenBuffer = (uint16_t *) ScreenBufferOffest;
 	
 	m_CurrentRow = m_CurrentCol = 0;
 	m_CurrentColor = 0x0700;
 	m_OutputCount = 0;
+
+	m_PauseFullScreen = true;
 }
 
 
@@ -190,7 +192,7 @@ int RawTerminal::Write(const char *szData, int cbLength)
 					CurrentPos = (m_CurrentRow * m_Cols) + m_CurrentCol;
 				}
 
-				if(m_OutputCount == m_Row - 1)
+				if(m_PauseFullScreen && m_OutputCount == m_Row - 1)
 				{
 					WriteAt("...Paused...", 12, m_CurrentRow, m_CurrentCol);
 

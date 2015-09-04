@@ -7,7 +7,7 @@ class RawTerminal :
 	public Terminal
 {
 public:
-	RawTerminal(uint32_t ScreenBufferOffest);
+	RawTerminal(uint32_t ScreenBufferOffest, uint32_t Width, uint32_t Height, uint32_t Pitch);
 	~RawTerminal(void);
 
 	int WriteAt(const char *szData, int cbLength, int Row, int Col);
@@ -17,6 +17,7 @@ public:
 
 	void Clear();
 
+	void SetPauseFullScreen(bool Value) { m_PauseFullScreen = Value; }
 private:
 	
 	int m_Row;
@@ -28,5 +29,7 @@ private:
 	unsigned short m_CurrentColor;
 
 	int m_OutputCount;
+
+	bool m_PauseFullScreen;
 };
 

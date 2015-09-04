@@ -5,7 +5,7 @@
 
 GDTManager::GDTManager()
 {
-	memset(GDTTable, 0, sizeof(GDT::GDTEntry) * TableSize);
+	memset(GDTTable, 0, sizeof(GDT::GDTEntry) * MaxTableSize);
 		
 	m_NextFreeSlot = 0;
 
@@ -32,7 +32,7 @@ GDT::GDTPtr GDTManager::SetActive(uint16_t NewCodeSelector, uint16_t NewDataSele
 
 uint16_t GDTManager::AddGDTEntry(uint32_t Base, uint32_t Limit, uint16_t Attributes, uint8_t Type, uint8_t DPL)
 {
-	if(m_NextFreeSlot == TableSize)
+	if(m_NextFreeSlot == MaxTableSize)
 		return 0;
 
 	uint16_t Selector = m_NextFreeSlot << 3;

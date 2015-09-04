@@ -7,6 +7,13 @@ typedef void (*InterruptCallbackPtr)(InterruptContext * Context, uintptr_t * Dat
 
 class InterruptControler
 {
+	enum PICMode
+	{
+		ePIC,
+		eAPIC,
+		eIOAPIC,
+	};
+
 	struct MappingData
 	{
 		InterruptCallbackPtr InterruptCallback;
@@ -14,7 +21,7 @@ class InterruptControler
 	} Mapping[0x10];
 
 	// The base of the two IRQ blocks
-	bool UsingAPIC;
+	PICMode Mode;
 	uint32_t APICRegisterBase;
 	uint8_t IRQBase1;
 	uint8_t IRQBase2;

@@ -132,7 +132,7 @@ namespace CPUFlags
 		TimeStampDisable					= 0x00000004,
 		DebuggingExtensionsEnable			= 0x00000008, // Check
 		PageSizeExtensionsEnable			= 0x00000010, // Check
-		PhysicalAddressExtensionsEnable 	= 0x00000020, // CCheck
+		PhysicalAddressExtensionsEnable 	= 0x00000020, // Check
 		MachineCheckEnable					= 0x00000040,
 		PageGlobalEnable					= 0x00000080,
 		PreformanceCounterEnabled			= 0x00000100,

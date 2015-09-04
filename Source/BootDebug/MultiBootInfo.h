@@ -15,6 +15,16 @@ struct ModuleEntry
 	char * CommandLine;
 };
 
+struct FrameBufferData
+{
+	uint64_t Address;
+	uint32_t Pitch;
+	uint32_t Width;
+	uint32_t Height;
+	uint8_t  BPP;
+	uint8_t  Type;
+};
+
 class MultiBootInfo
 {
 public:
@@ -48,6 +58,8 @@ public:
 
 	uint32_t BootDevice;
 	uint32_t BootPartition[3];
+
+	FrameBufferData FrameBuffer;
 
 	uint32_t HeaderLength;
 	void *MBData;

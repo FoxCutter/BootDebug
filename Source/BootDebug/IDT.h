@@ -9,11 +9,13 @@ namespace IDT
 		TypeMask			= 0x0F,
 		Operand32Bit		= 0x08,
 		//NonSystemFlag		= 0x10,	// All IDT entries are 'System'
+		
 		DPL0				= 0x00,
 		DPL1				= 0x20,
 		DPL2				= 0x40,
 		DPL3				= 0x60,
 		DPLMask				= 0x60,
+		
 		Present				= 0x80,
 	};
 
@@ -65,6 +67,9 @@ public:
 	// This version is only used if you want to change it from a Gate (Clears IF) to a trap (Doesn't Clear IF)
 	void SetInterupt(unsigned int  IntNum, InterruptCallbackPtr CallBack, uint8_t Type, uintptr_t * Data = nullptr);
 	
+	// Changes the DPL of the IDT entry
+	void SetInteruptDPL(unsigned int  IntNum, InterruptCallbackPtr CallBack, uint8_t DPL, uintptr_t * Data = nullptr);
+
 	IDT::IDTPtr SetActive();
 
 private:

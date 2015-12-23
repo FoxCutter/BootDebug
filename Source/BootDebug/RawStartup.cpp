@@ -690,6 +690,9 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	m_InterruptControler.SetIRQInterrupt(0x00, (InterruptCallbackPtr)ClockInterrupt);	
 
+	//m_InterruptControler.EnableIRQ(2);
+	//m_InterruptControler.EnableIRQ(9);
+
 	ASM_STI;
 
 	PCI PCIBus;

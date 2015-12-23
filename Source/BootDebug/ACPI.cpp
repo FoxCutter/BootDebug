@@ -99,8 +99,8 @@ namespace ACPIData
 		uint32_t	GPE0_Block;
 		uint32_t	GPE1_Block;
 		uint8_t		PM1_EventLength;
-		uint8_t		PM1_ControLength;
-		uint8_t		PM2_ControLength;
+		uint8_t		PM1_ControlLength;
+		uint8_t		PM2_ControlLength;
 		uint8_t		PM_TimeLength;
 		uint8_t		GPE0_BlockLength;
 		uint8_t		GPE1_BlockLength;
@@ -135,6 +135,23 @@ namespace ACPIData
 		GenAddress	ExGPE1_Block;
 		
 	};
+
+	const uint8_t FACSTableSig[] = "FACS";
+
+	struct FACSTable
+	{
+		uint8_t		Signature[4];
+		uint32_t	Length;
+		uint32_t	HardwareSignature;
+		uint32_t	FirmwareWakingVector;
+		uint32_t	GlobalLock;
+		uint32_t	Flags;
+		uint64_t	ExFirmwareWakingVector;
+		uint8_t		Version;
+		uint8_t		Reserved[3];
+		uint32_t	OSPMFlags;
+	};
+
 
 	const uint8_t MultiACPITableSig[] = "APIC";
 
@@ -431,6 +448,40 @@ void ACPI::Dump(char *Options)
 			}
 		}
 	}
+	else if(_stricmp("FACP", Options) == 0)
+	{
+		ACPIData::FADTTable *FADT = nullptr;
+
+		for(int x = 0; x < EntryCount; x++)
+		{
+			ACPIData::DescriptionHeader * Blob = reinterpret_cast<ACPIData::DescriptionHeader *>(XSDTTable->Entry[x]);
+		
+			if(memcmp(Blob->Signature, ACPIData::FADTTableSig, 4) == 0)
+			{
+				FADT = reinterpret_cast<ACPIData::FADTTable *>(XSDTTable->Entry[x]);
+			}
+		}
+
+		if(FADT == nullptr)
+		{
+			printf(" Fixed ACPI Description Table (FADT) is missing\n");
+			return;
+		}
+
+		printf(" Fixed ACPI Description Table (FADT) (%08X)\n", FADT);
+		printf(" FACS: %08X, DSDT: %08X\n", FADT->FACSAddress, FADT->DSDTAddress);
+		printf(" SCI Int: %04X, Port: %08X, ACPI Enable: %02X, ACPI Disable: %02X\n", FADT->SCI_Int, FADT->SMI_Cmd, FADT->ACPI_Enable, FADT->ACPI_Disable); 
+		printf(" PM1 Event Block   %08X/%08X, Length: %02x\n", FADT->PM1a_EventBlock, FADT->PM1b_EventBlock, FADT->PM1_EventLength);
+		printf(" PM1 Control Block %08X/%08X, Length: %02x\n", FADT->PM1a_ControlBlock, FADT->PM1b_ControlBlock, FADT->PM1_ControlLength);
+		printf(" PM2 Control Block %08X, Length: %02x\n", FADT->PM2_ControlBlock, FADT->PM2_ControlLength);
+		printf(" PM Timer Block    %08X, Length: %02x\n", FADT->PM_TimeLength, FADT->PM_TimeLength);
+		printf(" GP0 Event Block   %08X, Length: %02x\n", FADT->GPE0_Block, FADT->GPE0_BlockLength);
+		printf(" GP1 Event Block   %08X, Length: %02x, Base: %02X\n", FADT->GPE1_Block, FADT->GPE1_BlockLength, FADT->GPE1_Base);
+		printf(" Boot Flags: %04X\n", FADT->BootArchitectureFlags);
+		printf("  Legacy: %c, 8042: %c\n", FADT->BootArchitectureFlags & 0x01 ? 'Y' : 'N', FADT->BootArchitectureFlags & 0x02 ? 'Y' : 'N');
+		printf(" Flags: %08X\n", FADT->Flags);
+
+	}	
 	else
 	{
 		printf("%s\n", Options);

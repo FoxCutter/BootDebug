@@ -10,7 +10,6 @@
 #include "CoreComplex.h"
 
 #include "MMU.h"
-#include "PCI.h"
 #include "OpenHCI.h"
 #include "MPConfig.h"
 #include "RawTerminal.h"
@@ -24,47 +23,7 @@ OpenHCI * USBManager = nullptr;
 
 extern InterruptControler m_InterruptControler;
 
-template <typename DataType>
-bool ParseHex(char *String, DataType &Value)
-{
-	DataType RetValue = 0;
 
-	size_t CurrentLength = 0;
-	size_t MaxLength = sizeof(DataType) * 2;	
-	
-	if(String[0] == 0)
-		return true;
-
-	while(*String != 0)
-	{
-		if(CurrentLength == MaxLength)
-			return false;
-		
-		char Data = *String;
-		
-		if(Data >= '0' && Data <= '9')
-			Data = Data - '0';
-
-		else if (Data >= 'a' && Data <= 'f')
-			Data = Data - 'a' + 10;
-
-		else if (Data >= 'A' && Data <= 'F')
-			Data = Data - 'A' + 10;
-
-		else
-			return false;
-
-		RetValue *= 0x10;
-		RetValue += Data;
-
-		String++;
-		CurrentLength ++;
-	}
-
-	Value = RetValue;
-
-	return true;
-}
 
 char * TrimChar(char *String, char Value)
 {
@@ -121,42 +80,6 @@ char * TrimString(char *String)
 	return String;
 }
 
-char * NextToken(char *&Input)
-{
-	if(Input == nullptr)
-		return nullptr;
-
-	if(Input[0] == 0)
-		return Input;
-
-	char * TokenStart = Input;
-	Input = nullptr;
-
-	bool InQuote = false;
-
-	while(TokenStart[0] != 0 && isspace(*TokenStart))
-		TokenStart++;
-
-	for(int x = 0; TokenStart[x] != 0; x++)
-	{
-		if(TokenStart[x] == '"')
-		{
-			if(x == 0)
-				InQuote = true;
-
-			else
-				InQuote = false;
-		}
-		else if(isspace(TokenStart[x]) && !InQuote)
-		{
-			TokenStart[x] = 0;			
-			Input = &TokenStart[x + 1];
-			break;
-		}
-	}
-
-	return TokenStart;
-}
 
 bool ParseData(char *InputData, void *Data, uint32_t &DataLength, uint32_t DataSize)
 {
@@ -270,7 +193,6 @@ void main(int argc, char *argv[])
 	char InputBuffer[0x100];
 	bool Done = false;
 
-	PCI PCIBus;
 	MPConfig MPData;
 	
 	uint32_t DumpAddress = 0x100000;
@@ -500,13 +422,18 @@ void main(int argc, char *argv[])
 				}
 				break;
 
+			case 'B':
+				CurrentData = NextToken(Input);
+				CoreComplexObj::GetComplex()->ObjectComplex.DisplayObjects(CurrentData, Input);
+				break;
+
 			case 'N':
 				{
 					CurrentData = NextToken(Input);
 					if(CurrentData == nullptr)
 					{
 						puts("Information Type Missing");
-						puts(" Valid: MB, MP, CPUID, PCI, USB");
+						puts(" Valid: MB, MP, CPUID, USB");
 						continue;
 
 					}
@@ -608,53 +535,6 @@ void main(int argc, char *argv[])
 							ReadCPUID(ParamID, ParamID2, &Res);
 							printf(" EAX: %08X, EBX: %08X, ECX: %08X, EDX: %08X\n", Res.EAX, Res.EBX, Res.ECX, Res.EDX);
 						}
-					}
-					else if(_stricmp("PCI", CurrentData) == 0)
-					{
-						CurrentData = NextToken(Input);
-						if(CurrentData == nullptr)
-						{
-							PCIBus.Initilize();
-							break;
-						}
-
-						uint32_t DeviceID = 0;
-						if(!ParseHex(CurrentData, DeviceID))
-						{
-							printf(" Invalid Device [%s]\n", CurrentData);
-							continue;
-						}
-
-						CurrentData = NextToken(Input);
-						if(CurrentData == nullptr)
-						{
-							PCIBus.DumpDevice(DeviceID);
-							break;
-						}
-						
-						uint32_t Register = 0;
-						if(!ParseHex(CurrentData, Register))
-						{
-							printf(" Invalid Register [%s]\n", CurrentData);
-							continue;
-						}
-
-						CurrentData = NextToken(Input);
-						if(CurrentData == nullptr)
-						{
-							uint32_t Value = PCIBus.ReadRegister(DeviceID, Register);
-							printf("%02X: %08X\n", Register & 0xFC, Value);
-							break;
-						}
-
-						uint32_t Value = 0;
-						if(!ParseHex(CurrentData, Value))
-						{
-							printf(" Invalid Value [%s]\n", CurrentData);
-							continue;
-						}
-
-						PCIBus.SetRegister(DeviceID, Register, Value);
 					}
 					else
 					{
@@ -1129,6 +1009,7 @@ void main(int argc, char *argv[])
 				puts(" Memory Information    X Address");
 				puts(" Register Information  R Register [Value]");
 				puts(" General Information   N [Type]");
+				puts(" Object Information    B [Name]");
 				puts("");
 				puts(" Size = B|W|D|Q: Byte, Word, DWord or QWord");
 				break;

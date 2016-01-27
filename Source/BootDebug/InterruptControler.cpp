@@ -113,6 +113,10 @@ void InterruptControler::Interrupt(InterruptContext * Context)
 		{
 			Mapping[IRQ].InterruptCallback(Context, Mapping[IRQ].Data);
 		}
+		else
+		{
+			printf("IRQ %02X ", IRQ);
+		}
 
 		ClearIRQ(IRQ);
 	}

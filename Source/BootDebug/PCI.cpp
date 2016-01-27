@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "LowLevel.h"
+#include "Utility.h"
+#include "ObjectManager.h"
+#include "KernalLib.h"
 
 PCI::PCI(void)
 {
@@ -14,8 +17,10 @@ PCI::~PCI(void)
 
 bool PCI::Initilize()
 {
-	for(int x = 0; x < 256; x++)
-		EnumerateBus(x);
+	ObjectManager::Current()->AddObject("PCI", 3, this);
+	
+	//for(int x = 0; x < 256; x++)
+	//	EnumerateBus(x);
 
 	return true;
 }
@@ -28,7 +33,7 @@ bool PCI::EnumerateBus(uint8_t Bus)
 	uint32_t CurrentDeviceID = 0;
 
 	bool AllFunctions = false;
-	//printf("Bus %u\n", Bus);
+	//KernalPrintf("Bus %u\n", Bus);
 	while(true)
 	{
 		if(CurrentFunction == 0x08)
@@ -57,14 +62,14 @@ bool PCI::EnumerateBus(uint8_t Bus)
 		}
 		else
 		{
-			printf("PCI %06X(%02X:%02X:%02X)", CurrentDeviceID, Bus, CurrentDevice, CurrentFunction);
-			printf(" Dev %04X:%04X", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
+			KernalPrintf("PCI %06X(%02X:%02X:%02X)", CurrentDeviceID, Bus, CurrentDevice, CurrentFunction);
+			KernalPrintf(" Dev %04X:%04X", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
 			
 			Val = ReadRegister(CurrentDeviceID, 0x08);
-			printf(", C %02X, S %02X, Pn  %02X", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8);
+			KernalPrintf(", C %02X, S %02X, Pn  %02X", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8);
 			
 			Val = ReadRegister(CurrentDeviceID, 0x2C);
-			printf(", SV %04X, SI %04X", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
+			KernalPrintf(", SV %04X, SI %04X", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
 
 			Val = ReadRegister(CurrentDeviceID, 0x0C);			
 			Val = (Val & 0x00FF0000) >> 16;
@@ -85,9 +90,9 @@ bool PCI::EnumerateBus(uint8_t Bus)
 				Val = ReadRegister(CurrentDeviceID, 0x18);
 				Val = (Val & 0x00FF0000) >> 16;
 
-				printf(", SB %02X", Val);
+				KernalPrintf(", SB %02X", Val);
 			}
-			printf("\n");
+			KernalPrintf("\n");
 		}
 	} 
 
@@ -102,99 +107,108 @@ bool PCI::DumpDevice(uint32_t DeviceID)
 
 	if(Val == 0xFFFFFFFF)
 	{
-		printf("PCI Device %08X is not present\n", DeviceID);
+		KernalPrintf("PCI Device %08X is not present\n", DeviceID);
 		return false;
 	}
 
-	printf("PCI Device ID: %08X\n", DeviceID);
-	printf("  Vender ID %04X, Device ID %04X\n", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
+	KernalPrintf("PCI Device ID: %08X\n", DeviceID);
+	KernalPrintf("  Vender ID %04X, Device ID %04X\n", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
 
 	Val = ReadRegister(DeviceID, 4);
-	printf("  Status %04X, Command %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
+	KernalPrintf("  Status %04X, Command %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
 	
 	Val = ReadRegister(DeviceID, 8);
-	printf("  Class %02X, Sub Class %02X, Prog IF %02X, Revision ID %02X\n", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
+	KernalPrintf("  Class %02X, Sub Class %02X, Prog IF %02X, Revision ID %02X\n", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
 	
 	Val = ReadRegister(DeviceID, 0x0C);
-	printf("  BIST %02X, Header Type %02X, Latency Timer %02X, Cache Line Size %02X\n", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
+	KernalPrintf("  BIST %02X, Header Type %02X, Latency Timer %02X, Cache Line Size %02X\n", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
 
 	Val = (Val & 0x00FF0000) >> 16;
 
 	if((Val & 0x7F) == 0x00)
 	{	
 		Val = ReadRegister(DeviceID, 0x10);
-		printf("  Base Address 0 %08X\n", Val);
+		KernalPrintf("  Base Address 0 %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x14);
-		printf("  Base Address 1 %08X\n", Val);
+		KernalPrintf("  Base Address 1 %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x18);
-		printf("  Base Address 2 %08X\n", Val);
+		KernalPrintf("  Base Address 2 %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x1C);
-		printf("  Base Address 3 %08X\n", Val);
+		KernalPrintf("  Base Address 3 %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x20);
-		printf("  Base Address 4 %08X\n", Val);
+		KernalPrintf("  Base Address 4 %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x24);
-		printf("  Base Address 5 %08X\n", Val);
+		KernalPrintf("  Base Address 5 %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x28);
-		printf("  Cardbus Pointer %08X\n", Val);
+		KernalPrintf("  Cardbus Pointer %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x2C);
-		printf("  Subsystem ID %04X, Subsystem Vender ID %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
+		KernalPrintf("  Subsystem ID %04X, Subsystem Vender ID %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
 
 		Val = ReadRegister(DeviceID, 0x30);
-		printf("  Expansion Rom Base %08X\n", Val);
+		KernalPrintf("  Expansion Rom Base %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x34);
-		printf("  Reserved %06X, Capabilities Pointer %02X\n",  (Val & 0xFFFFFF00) >> 8, Val & 0x000000FF);
+		uint8_t CapRegister = Val & 0x000000FF;
+		KernalPrintf("  Reserved %06X, Capabilities Pointer %02X\n",  (Val & 0xFFFFFF00) >> 8, CapRegister);
 
-		Val = ReadRegister(DeviceID, 0x38);
-		printf("  Reserved %08X\n", Val);
+		while(CapRegister != 00)
+		{
+			Val = ReadRegister(DeviceID, CapRegister);
+			KernalPrintf("    ID: %02X, Register: %02X\n",  Val & 0x000000FF, CapRegister);
+			
+			CapRegister = (Val & 0x0000FF00) >> 8;
+		};
+		
+		//Val = ReadRegister(DeviceID, 0x38);
+		//KernalPrintf("  Reserved %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x3C);
-		printf("  Max latency %02X, Min Grant %02X, Interrupt PIN %02X, Interrupt Line %02X\n", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
+		KernalPrintf("  Max latency %02X, Min Grant %02X, Interrupt PIN %02X, Interrupt Line %02X\n", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
 	}
 	else
 	{
 		Val = ReadRegister(DeviceID, 0x10);
-		printf("  Base Address 0 %08X\n", Val);
+		KernalPrintf("  Base Address 0 %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x14);
-		printf("  Base Address 1 %08X\n", Val);
+		KernalPrintf("  Base Address 1 %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x18);
-		printf("  Sec Latency Time %02X, Sub Bus %02X, Secondary Bus %02X, Primary Bus %02X\n", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
+		KernalPrintf("  Sec Latency Time %02X, Sub Bus %02X, Secondary Bus %02X, Primary Bus %02X\n", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
 
 		Val = ReadRegister(DeviceID, 0x1C);
-		printf("  Secondary Status %04X, I/O Limit %02X, I/O Base %02X\n", (Val & 0xFFFF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
+		KernalPrintf("  Secondary Status %04X, I/O Limit %02X, I/O Base %02X\n", (Val & 0xFFFF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
 
 		Val = ReadRegister(DeviceID, 0x20);
-		printf("  Memory Limit %04X, Memory Base %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
+		KernalPrintf("  Memory Limit %04X, Memory Base %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
 
 		Val = ReadRegister(DeviceID, 0x24);
-		printf("  Prefetch Memory Limit %04X, Prefetch Memory Base %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
+		KernalPrintf("  Prefetch Memory Limit %04X, Prefetch Memory Base %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
 
 		Val = ReadRegister(DeviceID, 0x28);
-		printf("  Prefetchable Base Upper 32 Bits %08X\n", Val);
+		KernalPrintf("  Prefetchable Base Upper 32 Bits %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x2C);
-		printf("  Prefetchable Limit Upper 32 Bits %08X\n", Val);
+		KernalPrintf("  Prefetchable Limit Upper 32 Bits %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x30);
-		printf("  I/O Limit Upper 16 Bits  %04X, I/O Base Upper 16 Bits %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
+		KernalPrintf("  I/O Limit Upper 16 Bits  %04X, I/O Base Upper 16 Bits %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
 
 		Val = ReadRegister(DeviceID, 0x34);
-		printf("  Reserved %06X, Capabilities Pointer %02X\n",  (Val & 0xFFFFFF00) >> 8, Val & 0x000000FF);
+		KernalPrintf("  Reserved %06X, Capabilities Pointer %02X\n",  (Val & 0xFFFFFF00) >> 8, Val & 0x000000FF);
 
 		Val = ReadRegister(DeviceID, 0x38);
-		printf("  Expansion Rom Base %08X\n", Val);
+		KernalPrintf("  Expansion Rom Base %08X\n", Val);
 
 		Val = ReadRegister(DeviceID, 0x3C);
-		printf("  Bridge Control %04X, Interrupt PIN %02X, Interrupt Line %02X\n", (Val & 0xFFFF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
+		KernalPrintf("  Bridge Control %04X, Interrupt PIN %02X, Interrupt Line %02X\n", (Val & 0xFFFF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
 	}
 	return true;
 }
@@ -303,4 +317,58 @@ uint32_t PCI::BuildRegisterID(uint32_t DeviceID, uint8_t Register)
 uint32_t PCI::BuildRegisterID(uint8_t Bus, uint8_t Device, uint8_t Function, uint8_t Register)
 {
 	return BuildRegisterID(BuildDeviceID(Bus, Device, Function), Register);
+}
+
+void PCI::DisplayObject(char * Command)
+{
+	char *Input = Command;
+	char *CurrentData = NextToken(Input);
+
+	if(CurrentData == nullptr)
+	{
+		for(int x = 0; x < 256; x++)
+			EnumerateBus(x);
+		
+		return;
+	}
+
+	uint32_t DeviceID = 0;
+	if(!ParseHex(CurrentData, DeviceID))
+	{
+		KernalPrintf(" Invalid Device [%s]\n", CurrentData);
+		return;
+	}
+
+	CurrentData = NextToken(Input);
+
+	if(CurrentData == nullptr)
+	{
+		DumpDevice(DeviceID);
+		return;
+	}
+						
+	uint32_t Register = 0;
+	if(!ParseHex(CurrentData, Register))
+	{
+		KernalPrintf(" Invalid Register [%s]\n", CurrentData);
+		return;
+	}
+
+	CurrentData = NextToken(Input);
+
+	if(CurrentData == nullptr)
+	{
+		uint32_t Value = ReadRegister(DeviceID, Register);
+		KernalPrintf("%02X: %08X\n", Register & 0xFC, Value);
+		return;
+	}
+
+	uint32_t Value = 0;
+	if(!ParseHex(CurrentData, Value))
+	{
+		KernalPrintf(" Invalid Value [%s]\n", CurrentData);
+		return;
+	}
+
+	SetRegister(DeviceID, Register, Value);
 }

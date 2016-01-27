@@ -1,7 +1,7 @@
 @echo off
 
 set ToolFolder=%~dp1..\..\Tools
-set ImagePath=%homedrive%%homepath%\VirtualBox VMs\Grub\Grub.vhd
+set ImagePath=D:\My Virtual Machines\VirtualBox VMs\Grub\Grub.vhd
 set OutputPath=(hd1)\Kernal.exe
 
 %ToolFolder%\HeaderSet %1

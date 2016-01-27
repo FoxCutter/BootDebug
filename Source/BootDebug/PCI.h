@@ -1,7 +1,8 @@
 #include <stdint.h>
+#include "ObjectCallback.h"
 #pragma once
 
-class PCI
+class PCI : ObjectCallback
 {
 	static const uint16_t ConfigPort = 0xCF8;
 	static const uint16_t DataPort = 0xCFC;
@@ -22,6 +23,6 @@ private:
 	static uint32_t BuildRegisterID(uint32_t DeviceID, uint8_t Register);
 	static uint32_t BuildRegisterID(uint8_t Bus, uint8_t Device, uint8_t Function, uint8_t Register);
 
-
+	virtual void DisplayObject(char * Command);
 };
 

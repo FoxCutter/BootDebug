@@ -9,6 +9,8 @@
 #include "MemoryMap.h"
 #include "Thread.h"
 
+#include "ObjectManager.h"
+
 struct CoreComplexObj
 {
 	CoreComplexObj *Self;
@@ -37,6 +39,8 @@ struct CoreComplexObj
 	//ProcessInformation *ProcessComplex;
 	//DeviceInformation * DeviceComplex;
 	
+	ObjectManager ObjectComplex;
+
 	ALIGN_32BIT
 	GDTManager GDTTable;
 

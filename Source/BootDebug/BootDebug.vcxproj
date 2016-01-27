@@ -135,6 +135,7 @@
     <ClCompile Include="MMU.cpp" />
     <ClCompile Include="MPConfig.cpp" />
     <ClCompile Include="MultiBootInfo.cpp" />
+    <ClCompile Include="ObjectManager.cpp" />
     <ClCompile Include="OpenHCI.cpp" />
     <ClCompile Include="PCI.cpp" />
     <ClCompile Include="PCIBIOS.cpp" />
@@ -161,6 +162,8 @@
     <ClInclude Include="MultiBoot.h" />
     <ClInclude Include="MultiBoot2.h" />
     <ClInclude Include="MultiBootInfo.h" />
+    <ClInclude Include="ObjectCallback.h" />
+    <ClInclude Include="ObjectManager.h" />
     <ClInclude Include="OpenHCI.h" />
     <ClInclude Include="PCI.h" />
     <ClInclude Include="PCIBIOS.h" />

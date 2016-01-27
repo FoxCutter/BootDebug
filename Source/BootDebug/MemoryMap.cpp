@@ -87,7 +87,7 @@ uint64_t MemoryPageMap::AllocateRange(uint64_t MinAddress, uint32_t Length)
 			Pages = 0;
 		}
 
-		if(Pages == 1 & StartAddress % Boundry != 0)
+		if(Pages == 1 && StartAddress % Boundry != 0)
 		{
 			StartAddress = CurrentAddress + PageSize;
 			Pages = 0;

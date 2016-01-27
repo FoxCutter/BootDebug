@@ -1,6 +1,44 @@
 #include "Utility.h"
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
+
+char * NextToken(char *&Input)
+{
+	if(Input == nullptr)
+		return nullptr;
+
+	if(Input[0] == 0)
+		return Input;
+
+	char * TokenStart = Input;
+	Input = nullptr;
+
+	bool InQuote = false;
+
+	while(TokenStart[0] != 0 && isspace(*TokenStart))
+		TokenStart++;
+
+	for(int x = 0; TokenStart[x] != 0; x++)
+	{
+		if(TokenStart[x] == '"')
+		{
+			if(x == 0)
+				InQuote = true;
+
+			else
+				InQuote = false;
+		}
+		else if(isspace(TokenStart[x]) && !InQuote)
+		{
+			TokenStart[x] = 0;			
+			Input = &TokenStart[x + 1];
+			break;
+		}
+	}
+
+	return TokenStart;
+}
 
 void PrintLongAddress(uint64_t Address)
 {

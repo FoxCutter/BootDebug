@@ -455,7 +455,7 @@ MemoryPageMap BuildMemoryPageMap(MultiBootInfo &MBReader)
 	// Step 1c: Create the map
 	MemoryPageMap TempMap(HighReserved, PageCount);
 	
-	KernalPrintf("  Memory Map: %08X, Size %08X\n", HighReserved, PageCount, MemoryMapSize * 0x1000);
+	KernalPrintf("  Memory Map: %08X, Size %08X\n", HighReserved, MemoryMapSize * 0x1000);
 
 	// Step 1d set the memory information from the MB data
 	MBReader.GetFirstMemoryEntry(CurrentEntry);
@@ -594,16 +594,14 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 
 	// Step X: Create the Kernal's heap
-	// Get a range for our dynamic memory, starting at 2megs and asking for 1 meg	
-	uint64_t TempAddress = CoreComplex->PageMap.AllocateRange(0x200000, 0x10000);
+	// Get a range for our dynamic memory, starting at 2megs and asking for 16 meg	
+	uint64_t TempAddress = CoreComplex->PageMap.AllocateRange(0x200000, 0x1000000);
 
 	// Start it up with 16 byte blocks
-	CoreComplex->KernalHeap.SetupHeap(static_cast<uint32_t>(TempAddress), 0x10000, 0x10);
+	CoreComplex->KernalHeap.SetupHeap(static_cast<uint32_t>(TempAddress), 0x1000000, 0x10);
 	MemoryMgr = &CoreComplex->KernalHeap;
 
-
-
-
+	CoreComplex->ObjectComplex.Setup();
 
 	CurrentTerminal = &TextTerm;
 	//printf("%016llX\n", sizeof(CoreComplexObj));
@@ -696,6 +694,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	ASM_STI;
 
 	PCI PCIBus;
+	PCIBus.Initilize();
+
 	uint32_t USBID = PCIBus.FindDeviceID(0x0C, 0x03, 0x10);
 
 	if(USBID != 0xFFFFFFFF)

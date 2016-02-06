@@ -18,6 +18,8 @@
 #include "Thread.h"
 #include "InterruptControler.h"
 
+#include "Disassembler.h"
+
 MMU * MMUManager = nullptr;
 OpenHCI * USBManager = nullptr;
 
@@ -997,6 +999,55 @@ void main(int argc, char *argv[])
 					MMUManager->PrintAddressInformation(Start);
 				}
 
+				break;
+
+			case 'U':
+				{
+					int DataSize = 32;
+					uint32_t Length = 0x20;
+					uint32_t Address = DumpAddress;
+					
+					switch(CurrentData[1])
+					{
+						case '1':
+							DataSize = 16;
+							break;
+						
+						case 0:
+						case '3':
+							DataSize = 32;
+							break;
+
+						case '6':
+							DataSize = 64;
+							break;
+					}					
+
+					CurrentData = NextToken(Input);
+					if(CurrentData != nullptr)
+					{
+						if(!ParseAddress(CurrentData, Address))
+						{
+							printf(" Invalid Address [%s]\n", CurrentData);
+							continue;
+						}
+					}
+
+					CurrentData = NextToken(Input);
+
+					if(CurrentData != nullptr)
+					{
+						if(!ParseHex(CurrentData, Length))
+						{
+							printf(" Invalid Length [%s]\n", CurrentData);
+							continue;
+						}
+					}
+
+					LastAddress = Address;
+					Disassembler Dis;
+					DumpAddress = Address + Dis.Disassamble(reinterpret_cast<intptr_t *>(Address), Length, DataSize, DataSize);
+				}
 				break;
 
 			case '?':

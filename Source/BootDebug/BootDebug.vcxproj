@@ -126,6 +126,7 @@
   <ItemGroup>
     <ClCompile Include="ACPI.cpp" />
     <ClCompile Include="BootHeader.cpp" />
+    <ClCompile Include="Disassembler.cpp" />
     <ClCompile Include="EnhancedHCI.cpp" />
     <ClCompile Include="GDT.cpp" />
     <ClCompile Include="IDT.cpp" />
@@ -149,6 +150,7 @@
   <ItemGroup>
     <ClInclude Include="ACPI.h" />
     <ClInclude Include="CoreComplex.h" />
+    <ClInclude Include="Disassembler.h" />
     <ClInclude Include="EnhancedHCI.h" />
     <ClInclude Include="GDT.h" />
     <ClInclude Include="IDT.h" />
@@ -164,6 +166,7 @@
     <ClInclude Include="MultiBootInfo.h" />
     <ClInclude Include="ObjectCallback.h" />
     <ClInclude Include="ObjectManager.h" />
+    <ClInclude Include="OpcodeTables.h" />
     <ClInclude Include="OpenHCI.h" />
     <ClInclude Include="PCI.h" />
     <ClInclude Include="PCIBIOS.h" />

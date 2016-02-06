@@ -156,13 +156,30 @@ int RawTerminal::Write(const char *szData, int cbLength)
 
 			else 
 			{
-				if(szData[x] != '\n')
+				if(szData[x] != '\n' && szData[x] != '\t')
 				{
 					// Write the character
 					m_ScreenBuffer[CurrentPos] = (m_CurrentColor | szData[x]);
 
 					CurrentPos ++;
 					m_CurrentCol ++;
+				}
+				
+				if(szData[x] == '\t')
+				{
+					int Count = 4 - m_CurrentCol % 4;
+
+					for(int x = 0; x < Count; x++)
+					{
+						// Write the character
+						m_ScreenBuffer[CurrentPos] = (m_CurrentColor | ' ');
+
+						CurrentPos ++;
+						m_CurrentCol ++;
+
+						if(m_CurrentCol == m_Cols)
+							break;
+					}
 				}
 
 				if(m_CurrentCol == m_Cols || szData[x] == '\n')

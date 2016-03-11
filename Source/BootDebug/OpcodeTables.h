@@ -132,10 +132,10 @@ enum ASMParamTypes
 	Reg14r,
 	Reg15r,
 
-	SegCS,
-	SegDS,
 	SegES,
+	SegCS,
 	SegSS,
+	SegDS,
 	SegFS,
 	SegGS,
 };

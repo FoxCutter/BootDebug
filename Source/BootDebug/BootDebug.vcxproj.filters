@@ -1,185 +1,208 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
+    <Filter Include="Monitor">
+      <UniqueIdentifier>{a549b400-6650-4d1a-b574-99947a8722cb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Monitor\Header Files">
+      <UniqueIdentifier>{21e3a7c5-878c-4879-95d9-f69516d4f57d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Monitor\Source Files">
+      <UniqueIdentifier>{41185935-7516-4ac6-8fb3-74d4498f36d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Drivers">
+      <UniqueIdentifier>{02ea7be7-3822-47a9-b1a9-d15831622671}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kernal">
+      <UniqueIdentifier>{7bbcaf13-4bec-4090-9933-1a4ed9dbe47e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kernal\Source Files">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Header Files">
+    <Filter Include="Kernal\Header Files">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Drivers\Header Files">
+      <UniqueIdentifier>{ac3d7fbc-4b88-41c0-a891-70a330972de0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Monitor">
-      <UniqueIdentifier>{a549b400-6650-4d1a-b574-99947a8722cb}</UniqueIdentifier>
+    <Filter Include="Drivers\Source Files">
+      <UniqueIdentifier>{dfb1f6de-b622-4104-b3f1-a2c85172bbef}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RawTerminal.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="InterruptControler.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RawMemory.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BootHeader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Main.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RawStartup.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MultiBootInfo.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GDT.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="IDT.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ACPI.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PCIBIOS.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PCI.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Utility.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MPConfig.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="OpenHCI.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MMU.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="EnhancedHCI.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Thread.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MemoryMap.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="KernalLib.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ObjectManager.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Disassembler.cpp">
-      <Filter>Monitor</Filter>
+      <Filter>Monitor\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Main.cpp">
+      <Filter>Monitor\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Utility.cpp">
+      <Filter>Monitor\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OpenHCI.cpp">
+      <Filter>Drivers\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MultiBootInfo.cpp">
+      <Filter>Kernal\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MPConfig.cpp">
+      <Filter>Drivers\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EnhancedHCI.cpp">
+      <Filter>Drivers\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ACPI.cpp">
+      <Filter>Drivers\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PCI.cpp">
+      <Filter>Drivers\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PCIBIOS.cpp">
+      <Filter>Drivers\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="InterruptControler.cpp">
+      <Filter>Drivers\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ExtensibleHCI.cpp">
+      <Filter>Drivers\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RawTerminal.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MultiBoot2.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MultiBoot.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GDT.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="IDT.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="InterruptControler.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="LowLevel.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RawMemory.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MultiBootInfo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ACPI.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PCIBIOS.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PCI.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Utility.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MPConfig.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="OpenHCI.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MMU.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EnhancedHCI.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="USBData.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Thread.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MemoryMap.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ListNode.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CoreComplex.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="KernalLib.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Stack.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ObjectManager.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ObjectCallback.h">
-      <Filter>Header Files</Filter>
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Disassembler.h">
-      <Filter>Monitor</Filter>
+      <Filter>Monitor\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="OpcodeTables.h">
-      <Filter>Monitor</Filter>
+      <Filter>Monitor\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Utility.h">
+      <Filter>Monitor\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="USBData.h">
+      <Filter>Drivers\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PCIBIOS.h">
+      <Filter>Drivers\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PCI.h">
+      <Filter>Drivers\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenHCI.h">
+      <Filter>Drivers\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ACPI.h">
+      <Filter>Drivers\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EnhancedHCI.h">
+      <Filter>Drivers\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="InterruptControler.h">
+      <Filter>Drivers\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ExtensibleHCI.h">
+      <Filter>Drivers\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PEData.h">
+      <Filter>Kernal\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="IntEntry.asm">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </MASM>
     <MASM Include="Startup.asm">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </MASM>
     <MASM Include="LowLevel.asm">
-      <Filter>Source Files</Filter>
+      <Filter>Kernal\Source Files</Filter>
     </MASM>
   </ItemGroup>
 </Project>

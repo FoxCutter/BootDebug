@@ -100,7 +100,6 @@
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <AdditionalIncludeDirectories>..\StdLib\</AdditionalIncludeDirectories>
-      <AssemblerOutput>NoListing</AssemblerOutput>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -128,6 +127,7 @@
     <ClCompile Include="BootHeader.cpp" />
     <ClCompile Include="Disassembler.cpp" />
     <ClCompile Include="EnhancedHCI.cpp" />
+    <ClCompile Include="ExtensibleHCI.cpp" />
     <ClCompile Include="GDT.cpp" />
     <ClCompile Include="IDT.cpp" />
     <ClCompile Include="InterruptControler.cpp" />
@@ -152,6 +152,7 @@
     <ClInclude Include="CoreComplex.h" />
     <ClInclude Include="Disassembler.h" />
     <ClInclude Include="EnhancedHCI.h" />
+    <ClInclude Include="ExtensibleHCI.h" />
     <ClInclude Include="GDT.h" />
     <ClInclude Include="IDT.h" />
     <ClInclude Include="InterruptControler.h" />
@@ -170,6 +171,7 @@
     <ClInclude Include="OpenHCI.h" />
     <ClInclude Include="PCI.h" />
     <ClInclude Include="PCIBIOS.h" />
+    <ClInclude Include="PEData.h" />
     <ClInclude Include="RawMemory.h" />
     <ClInclude Include="RawTerminal.h" />
     <ClInclude Include="Stack.h" />

@@ -96,10 +96,10 @@ char * RegName[] =
 	"R14!",
 	"R15!",
 
-	"CS",
-	"DS",
 	"ES",
+	"CS",
 	"SS",
+	"DS",
 	"FS",
 	"GS",
 };
@@ -366,7 +366,7 @@ void PrintModRM(uint32_t ModData, int32_t Displacement, uint32_t PointerSize, ui
 				if(Mod != 3)
 					printf("%s", ModRM16[RM]);
 				else
-					PrintReg(ConvertReg(RM, AdSize), AdSize);
+					PrintReg(ConvertReg(RM, AdSize), PointerSize);
 
 				if(Mod == 1)
 					DisplacmentSize = 8;
@@ -461,12 +461,16 @@ void Disassembler::PrintOpcode(uint8_t *Address, OpcodeData &Data)
 		
 		switch(Data.ParamsFlags[x])
 		{
+			case ParamOne:
+				printf("1");
+				break;
+
 			case ParamRegDirect:
 				PrintReg(Data.Params[x], Data.PointerSize);		
 				break;
 
 			case ParamRegSeg:
-				PrintReg(SegCS + Data.Params[x], Data.OpSize);		
+				PrintReg(SegES + Data.Params[x], Data.OpSize);		
 				break;
 
 			case ParamModRM:				
@@ -487,6 +491,10 @@ void Disassembler::PrintOpcode(uint8_t *Address, OpcodeData &Data)
 
 			case ParamFarAddress:
 				printf("FAR %X:%X", Data.SegmentPrefix, Data.Params[x]);
+				
+				if(Data.AddressSize == 16)
+					printf(" (%X)", (Data.SegmentPrefix << 4) + Data.Params[x]);
+
 				break;
 
 			case ParamAddress:
@@ -495,7 +503,11 @@ void Disassembler::PrintOpcode(uint8_t *Address, OpcodeData &Data)
 
 			case ParamOffset:
 				PrintOffset(Data.Params[x], Data.AddressSize);
-				printf(" (%X)", Address + Data.Length + Data.Params[x]);
+
+				if(Data.AddressSize != 16)
+					printf(" (%X)", Address + Data.Length + Data.Params[x]);
+				else
+					printf(" (%X)", (uint32_t)(Address + Data.Length + Data.Params[x]) & 0xFFFFF);
 				break;
 		};		
 	}
@@ -672,6 +684,7 @@ Disassembler::OpcodeData Disassembler::ReadOpcode(uint8_t *Address, uint32_t OpS
 				
 				SIBModRM = data & 0xC7;
 
+				/*
 				if(Ret.AddressSize == 32 || Ret.AddressSize == 64)
 				{
 					if(Mod == 0)
@@ -726,6 +739,36 @@ Disassembler::OpcodeData Disassembler::ReadOpcode(uint8_t *Address, uint32_t OpS
 						ImmediateSize = 2;
 						State = 4;	// Displacement
 					}
+				}
+				*/
+
+				if(Mod == 0)
+				{
+					if(Ret.AddressSize == 16 && RM == 6)
+					{
+						ImmediateSize = 2;
+						State = 4;	// Displacement
+					}
+					else if(Ret.AddressSize != 16 && RM == 5)
+					{
+						ImmediateSize = 4;
+						State = 4;	// Displacement
+					}
+				}
+				else if (Mod == 1)
+				{
+					ImmediateSize = 1;
+					State = 4; // Displacement
+				}
+				else if (Mod == 2)
+				{
+					ImmediateSize = (Ret.AddressSize == 16 ? 2 : 4);
+					State = 4; // Displacement
+				}
+
+				if(Ret.AddressSize != 16 && Mod != 3 && RM == 4)
+				{
+					State = 3;	// SIB
 				}
 				
 				if(State == 2)				
@@ -796,7 +839,10 @@ Disassembler::OpcodeData Disassembler::ReadOpcode(uint8_t *Address, uint32_t OpS
 			case 5: // Parse Immediate
 				if(OpEntry->ParseType == ParseImmediate || OpEntry->ParseType == ParseOnlyImmediate || OpEntry->ParseType == ParseModRMPlus || OpEntry->ParseType == ParseOnlyFarAddress)
 				{
-					ImmediateSize = Ret.OpSize / 8;
+					if(OpEntry->Params[0] == ParamAddress || OpEntry->Params[1] == ParamAddress)
+						ImmediateSize = Ret.AddressSize / 8;
+					else
+						ImmediateSize = Ret.OpSize / 8;
 				}
 				else if (OpEntry->ParseType == ParseOnlyImmediateWord)
 				{
@@ -804,7 +850,11 @@ Disassembler::OpcodeData Disassembler::ReadOpcode(uint8_t *Address, uint32_t OpS
 				}
 				else if (OpEntry->ParseType == ParseImmediateByte || OpEntry->ParseType == ParseOnlyImmediateByte || OpEntry->ParseType == ParseOpImmediateByte || OpEntry->ParseType == ParseModRMPlusByte)
 				{
-					ImmediateSize = 1;
+					// Byte pointer to an address
+					if(OpEntry->Params[0] == ParamAddress || OpEntry->Params[1] == ParamAddress)
+						ImmediateSize = Ret.AddressSize / 8;
+					else
+						ImmediateSize = 1;
 				}
 				else
 				{

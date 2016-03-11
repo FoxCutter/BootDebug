@@ -187,6 +187,7 @@ uint16_t KeyState = 0;
 #define NumLock		0x100
 #define	ScrollLock	0x200
 #define CapsLock	0x400
+#define EchoLock	0x800
 
 void InsertKeyboardBuffer(char Key)
 {
@@ -226,20 +227,37 @@ void KeyboardInterrupt(InterruptContext * Context, uintptr_t * Data)
 	unsigned char scancode2 = 0;
 	int Escape = 0;
 
+	if(KeyState & EchoLock)
+		KernalPrintf("[%02X", scancode);
+
 	if(scancode == 0xE0)
 	{
 		Escape = 1;
 		scancode = InPortb(0x60);
+
+		if(KeyState & EchoLock)
+			KernalPrintf(" %02X", scancode);
 	}
 	else if(scancode == 0xE1)
 	{
 		Escape = 2;
 		scancode = InPortb(0x60);
 		scancode2 = InPortb(0x60);
+
+		if(KeyState & EchoLock)
+			KernalPrintf(" %02X %02X", scancode, scancode2);
 	}
+
+	if(KeyState & EchoLock)
+		KernalPrintf("] ");
 
 	bool KeyUp = ((scancode & 0x80) == 0x80);
 	scancode = scancode & 0x7F;
+
+	if(KeyUp && scancode == 0x0E && (KeyState & LeftCtrl) && (KeyState & LeftAlt)) // CTRL-ALT-Backspace
+	{
+		KeyState ^= EchoLock;
+	}
 
 	if(scancode == 0x2A && Escape == 0) // LSHIFT
 	{
@@ -257,9 +275,42 @@ void KeyboardInterrupt(InterruptContext * Context, uintptr_t * Data)
 		else
 			KeyState |= RightShift;
 	}
+	else if(scancode == 0x1D && Escape == 0) // LCTRL
+	{
+		if(KeyUp)
+			KeyState &= ~LeftCtrl;
+			
+		else
+			KeyState |= LeftCtrl;
+	}
+	else if(scancode == 0x1D && Escape == 1) // RCTRL
+	{
+		if(KeyUp)
+			KeyState &= ~RightCtrl;
+			
+		else
+			KeyState |= RightCtrl;
+	}
+
+	else if(scancode == 0x38 && Escape == 0) // LALT
+	{
+		if(KeyUp)
+			KeyState &= ~LeftAlt;
+			
+		else
+			KeyState |= LeftAlt;
+	}
+	else if(scancode == 0x38 && Escape == 1) // RALT
+	{
+		if(KeyUp)
+			KeyState &= ~RightAlt;
+			
+		else
+			KeyState |= RightAlt;
+	}
 	else if(!KeyUp && Escape == 0)
 	{
-		char Key = 0;
+		char Key = 0;	
 		if(KeyState & LeftShift || KeyState & RightShift)
 			Key = kbdus_Shift[scancode];
 		else
@@ -411,7 +462,7 @@ MemoryPageMap BuildMemoryPageMap(MultiBootInfo &MBReader)
 	// Step 1a: Enumerate over the Memory information in the MB data and work out some information.		
 	uint64_t MaxMemory = 0;			// The last byte of memory we know of
 	uint32_t HighReserved = 0;		// should be the start of reserved memory between 1 meg and 4 gig
-	uint64_t TotalMemory = 0x10000;
+	uint64_t TotalMemory = 0x10000; // The count always seems to be 64k off, so start with that assumed.
 
 	MemoryMapEntry CurrentEntry;
 	MBReader.GetFirstMemoryEntry(CurrentEntry);

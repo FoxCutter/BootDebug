@@ -31,9 +31,6 @@ int KernalPrintf(const char * format, ...)
 	KernalTerminal->Write(Buffer, retValue);
 
     return retValue;
-	
-	
-	return 0;
 }
 
 int KernalPanic(KernalCode::Codes Error, const char * format, ...)

@@ -1,0 +1,726 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source">
+      <UniqueIdentifier>{a7c88e8b-40b7-4443-929f-ba829eef0fff}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;rc;def;r;odl;idl;hpj;bat</Extensions>
+    </Filter>
+    <Filter Include="Source\Utilities">
+      <UniqueIdentifier>{11df9643-5c0d-4d29-ab2a-bc4edd50219f}</UniqueIdentifier>
+      <Extensions>.c</Extensions>
+    </Filter>
+    <Filter Include="Source\Events">
+      <UniqueIdentifier>{812f84e7-3e7c-48e6-858c-047178ac5182}</UniqueIdentifier>
+      <Extensions>.c</Extensions>
+    </Filter>
+    <Filter Include="Source\Hardware">
+      <UniqueIdentifier>{af4071f1-717d-4403-8fd7-377ac4885258}</UniqueIdentifier>
+      <Extensions>.c</Extensions>
+    </Filter>
+    <Filter Include="Source\Namespace">
+      <UniqueIdentifier>{d0874aa3-e0ff-47cc-bbe1-623845d3361f}</UniqueIdentifier>
+      <Extensions>.c</Extensions>
+    </Filter>
+    <Filter Include="Source\Resources">
+      <UniqueIdentifier>{d6fd639f-f81d-4eba-97f6-32035c9e2fb0}</UniqueIdentifier>
+      <Extensions>.c</Extensions>
+    </Filter>
+    <Filter Include="Source\Tables">
+      <UniqueIdentifier>{8ed0c3ad-f232-4fad-9ab0-539787b5ae43}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Disassembler">
+      <UniqueIdentifier>{b473a07a-ef65-4b5d-a800-920796274568}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Debugger">
+      <UniqueIdentifier>{b7116e8f-8280-401d-ad5a-41bd180165f7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Dispatcher">
+      <UniqueIdentifier>{9eae8d81-1e15-4f43-9493-064e1558194a}</UniqueIdentifier>
+      <Extensions>*.c</Extensions>
+    </Filter>
+    <Filter Include="Source\Parser">
+      <UniqueIdentifier>{b373de38-754a-4f28-996b-ea39f502f3f0}</UniqueIdentifier>
+      <Extensions>*.c</Extensions>
+    </Filter>
+    <Filter Include="Standard Headers">
+      <UniqueIdentifier>{c5ea2868-151a-4e42-b53a-a74df3bee156}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl</Extensions>
+    </Filter>
+    <Filter Include="Source\Executer">
+      <UniqueIdentifier>{06434d1d-1e92-45a5-8cd3-6c4f0557dd0d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="DEBUGGER\dbcmds.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="debugger\dbconvert.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbdisply.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbexec.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbfileio.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbhistry.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbinput.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="debugger\dbmethod.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="debugger\dbnames.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="debugger\dbobject.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbstats.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="debugger\dbtest.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbutils.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbxface.c">
+      <Filter>Source\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmbuffer.c">
+      <Filter>Source\Disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="disassembler\dmcstyle.c">
+      <Filter>Source\Disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="disassembler\dmdeferred.c">
+      <Filter>Source\Disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmnames.c">
+      <Filter>Source\Disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmopcode.c">
+      <Filter>Source\Disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmresrc.c">
+      <Filter>Source\Disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmresrcl.c">
+      <Filter>Source\Disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="disassembler\dmresrcl2.c">
+      <Filter>Source\Disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmresrcs.c">
+      <Filter>Source\Disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmutils.c">
+      <Filter>Source\Disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmwalk.c">
+      <Filter>Source\Disassembler</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dsargs.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dscontrol.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dsdebug.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dsfield.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dsinit.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dsmethod.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dsmthdat.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dsobject.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dsopcode.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dsutils.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dswexec.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dswload.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dswload2.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dswscope.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher\dswstate.c">
+      <Filter>Source\Dispatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evxfregn.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evxfgpe.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evxfevnt.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evxface.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evsci.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evrgnini.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evregion.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evmisc.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evhandler.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evgpeutil.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evgpeinit.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="EVENTS\evgpeblk.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="EVENTS\evgpe.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evglock.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="events\evevent.c">
+      <Filter>Source\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exutils.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\extrace.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exsystem.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exstorob.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exstoren.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exstore.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exresop.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exresolv.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exresnte.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exregion.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exprep.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exoparg6.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exoparg3.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exoparg2.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exoparg1.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exnames.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exmutex.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exmisc.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exfldio.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exfield.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exdump.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exdebug.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\excreate.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exconvrt.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exconfig.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="executer\exconcat.c">
+      <Filter>Source\Executer</Filter>
+    </ClCompile>
+    <ClCompile Include="hardware\hwxfsleep.c">
+      <Filter>Source\Hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="hardware\hwxface.c">
+      <Filter>Source\Hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="hardware\hwvalid.c">
+      <Filter>Source\Hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="hardware\hwtimer.c">
+      <Filter>Source\Hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="hardware\hwsleep.c">
+      <Filter>Source\Hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="hardware\hwregs.c">
+      <Filter>Source\Hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="hardware\hwpci.c">
+      <Filter>Source\Hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="hardware\hwgpe.c">
+      <Filter>Source\Hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="hardware\hwesleep.c">
+      <Filter>Source\Hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="hardware\hwacpi.c">
+      <Filter>Source\Hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsaccess.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsalloc.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsarguments.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsconvert.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsdump.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nseval.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsinit.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsload.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsnames.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsobject.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="NAMESPACE\nsparse.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nspredef.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsprepkg.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsrepair.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsrepair2.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nssearch.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsutils.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nswalk.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="NAMESPACE\nsxfeval.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsxfname.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsxfobj.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="namespace\nsdumpdv.c">
+      <Filter>Source\Namespace</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\psargs.c">
+      <Filter>Source\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\psloop.c">
+      <Filter>Source\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\psobject.c">
+      <Filter>Source\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\psopcode.c">
+      <Filter>Source\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\psopinfo.c">
+      <Filter>Source\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\psparse.c">
+      <Filter>Source\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\psscope.c">
+      <Filter>Source\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\pstree.c">
+      <Filter>Source\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\psutils.c">
+      <Filter>Source\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\pswalk.c">
+      <Filter>Source\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\psxface.c">
+      <Filter>Source\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rsaddr.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rscalc.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rscreate.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rsinfo.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rsio.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rsirq.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rslist.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rsmemory.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rsmisc.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rsserial.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rsutils.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rsxface.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="tables\tbdata.c">
+      <Filter>Source\Tables</Filter>
+    </ClCompile>
+    <ClCompile Include="tables\tbfadt.c">
+      <Filter>Source\Tables</Filter>
+    </ClCompile>
+    <ClCompile Include="tables\tbfind.c">
+      <Filter>Source\Tables</Filter>
+    </ClCompile>
+    <ClCompile Include="tables\tbinstal.c">
+      <Filter>Source\Tables</Filter>
+    </ClCompile>
+    <ClCompile Include="tables\tbprint.c">
+      <Filter>Source\Tables</Filter>
+    </ClCompile>
+    <ClCompile Include="tables\tbutils.c">
+      <Filter>Source\Tables</Filter>
+    </ClCompile>
+    <ClCompile Include="tables\tbxface.c">
+      <Filter>Source\Tables</Filter>
+    </ClCompile>
+    <ClCompile Include="tables\tbxfload.c">
+      <Filter>Source\Tables</Filter>
+    </ClCompile>
+    <ClCompile Include="tables\tbxfroot.c">
+      <Filter>Source\Tables</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utaddress.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utalloc.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utbuffer.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utcache.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utclib.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utcopy.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utdebug.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utdecode.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utdelete.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\uterror.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\uteval.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utexcep.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utglobal.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\uthex.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utids.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utinit.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utlock.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utmath.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utmisc.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utmutex.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utnonansi.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utobject.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utosi.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utownerid.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utpredef.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utprint.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utresrc.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utstate.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utstring.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\uttrack.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utuuid.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utxface.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utxferror.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utxfinit.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\utxfmutex.c">
+      <Filter>Source\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rsdump.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="resources\rsdumpinfo.c">
+      <Filter>Source\Resources</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\acbuffer.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\accommon.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acconfig.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acdebug.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="INCLUDE\acdisasm.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acdispat.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\platform\acefi.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\platform\acenv.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acevents.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acexcep.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\platform\acfreebsd.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\platform\acgcc.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acglobal.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\achware.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acinterp.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\platform\aclinux.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\aclocal.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acmacros.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\platform\acmsvc.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\acnames.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acnamesp.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acobject.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\acopcode.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acoutput.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acparser.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acpi.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acpiosxf.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acpixf.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\acpredef.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acresrc.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\acstruct.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\actables.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\actbl.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\actbl1.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\actbl2.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\actypes.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\acutils.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\platform\acwin.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\amlcode.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="INCLUDE\amlresrc.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\platform\acbootdebug.h">
+      <Filter>Standard Headers</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

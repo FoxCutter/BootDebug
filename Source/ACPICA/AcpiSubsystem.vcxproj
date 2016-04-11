@@ -1,0 +1,448 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{2B403FFB-5AFB-48D8-8C13-F8E65CEC5BB6}</ProjectGuid>
+    <RootNamespace>AcpiSubsystem</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v110</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v110</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>11.0.61030.0</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>.\AcpiSubsystemDebug\</OutDir>
+    <IntDir>.\AcpiSubsystemDebug\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir>.\AcpiSubsystem\</IntDir>
+    <PreLinkEventUseInBuild>false</PreLinkEventUseInBuild>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>MinSpace</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <AdditionalIncludeDirectories>.\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ACPI_LIBRARY;_DEBUG;_WINDOWS;PROCESSOR_ARCHITECTURE=x86;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <ExceptionHandling />
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <DisableLanguageExtensions>true</DisableLanguageExtensions>
+      <PrecompiledHeaderOutputFile>.\AcpiSubsystemDebug\AcpiSubsystem.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\AcpiSubsystemDebug\</AssemblerListingLocation>
+      <ObjectFileName>.\AcpiSubsystemDebug\</ObjectFileName>
+      <ProgramDataBaseFileName>.\AcpiSubsystemDebug\</ProgramDataBaseFileName>
+      <BrowseInformation>true</BrowseInformation>
+      <WarningLevel>Level4</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CallingConvention>FastCall</CallingConvention>
+      <CompileAs>CompileAsC</CompileAs>
+    </ClCompile>
+    <ResourceCompile>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <PreLinkEvent>
+      <Command>if NOT EXIST ..\..\libraries mkdir ..\..\libraries</Command>
+    </PreLinkEvent>
+    <Lib>
+      <UseUnicodeResponseFiles>false</UseUnicodeResponseFiles>
+      <OutputFile>.\AcpiSubsystemDebug\AcpiSubsystem.lib</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+    </Lib>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>$(IntDir)</OutputFile>
+    </Bscmake>
+    <PostBuildEvent>
+      <Message>Copy ACPICA library to Libraries (DEBUG)</Message>
+      <Command>copy AcpiSubsystemDebug\acpisubsystem.lib ..\..\libraries\Acpica_dbg.lib
+dir ..\..\libraries\acpica_dbg.lib
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MinSpace</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <AdditionalIncludeDirectories>.\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ACPI_LIBRARY;NDEBUG;_GEN;DRIVER;__BOOTDEBUG__;PROCESSOR_ARCHITECTURE=x86;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <ExceptionHandling>false</ExceptionHandling>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <DisableLanguageExtensions>true</DisableLanguageExtensions>
+      <PrecompiledHeaderOutputFile>.\AcpiSubsystem\AcpiSubsystem.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\AcpiSubsystem\</AssemblerListingLocation>
+      <ObjectFileName>.\AcpiSubsystem\</ObjectFileName>
+      <ProgramDataBaseFileName>.\AcpiSubsystem\</ProgramDataBaseFileName>
+      <BrowseInformation>true</BrowseInformation>
+      <WarningLevel>Level4</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <CallingConvention>Cdecl</CallingConvention>
+      <CompileAs>CompileAsC</CompileAs>
+      <SDLCheck>false</SDLCheck>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <PreLinkEvent>
+      <Command>if NOT EXIST ..\libraries mkdir ..\libraries</Command>
+    </PreLinkEvent>
+    <Lib>
+      <UseUnicodeResponseFiles>false</UseUnicodeResponseFiles>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>$(IntDir)</OutputFile>
+    </Bscmake>
+    <PostBuildEvent>
+      <Message>Copy ACPICA library to libraries</Message>
+      <Command>copy AcpiSubsystem\acpisubsystem.lib ..\libraries\Acpica.lib
+dir ..\libraries\acpica.lib
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="namespace\nsdumpdv.c" />
+    <ClCompile Include="resources\rsdump.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="resources\rsdumpinfo.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="utilities\utaddress.c" />
+    <ClCompile Include="utilities\utalloc.c" />
+    <ClCompile Include="utilities\utbuffer.c" />
+    <ClCompile Include="utilities\utcache.c" />
+    <ClCompile Include="utilities\utclib.c" />
+    <ClCompile Include="utilities\utcopy.c" />
+    <ClCompile Include="utilities\utdebug.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="utilities\utdecode.c" />
+    <ClCompile Include="utilities\utdelete.c" />
+    <ClCompile Include="utilities\uterror.c" />
+    <ClCompile Include="utilities\uteval.c" />
+    <ClCompile Include="utilities\utexcep.c" />
+    <ClCompile Include="utilities\utglobal.c" />
+    <ClCompile Include="utilities\uthex.c" />
+    <ClCompile Include="utilities\utids.c" />
+    <ClCompile Include="utilities\utinit.c" />
+    <ClCompile Include="utilities\utlock.c" />
+    <ClCompile Include="utilities\utmath.c">
+      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
+      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</DisableLanguageExtensions>
+    </ClCompile>
+    <ClCompile Include="utilities\utmisc.c" />
+    <ClCompile Include="utilities\utmutex.c" />
+    <ClCompile Include="utilities\utnonansi.c" />
+    <ClCompile Include="utilities\utobject.c" />
+    <ClCompile Include="utilities\utosi.c" />
+    <ClCompile Include="utilities\utownerid.c" />
+    <ClCompile Include="utilities\utpredef.c" />
+    <ClCompile Include="utilities\utprint.c" />
+    <ClCompile Include="utilities\utresrc.c" />
+    <ClCompile Include="utilities\utstate.c" />
+    <ClCompile Include="utilities\utstring.c" />
+    <ClCompile Include="utilities\uttrack.c" />
+    <ClCompile Include="utilities\utuuid.c" />
+    <ClCompile Include="utilities\utxface.c" />
+    <ClCompile Include="utilities\utxferror.c" />
+    <ClCompile Include="utilities\utxfinit.c" />
+    <ClCompile Include="utilities\utxfmutex.c" />
+    <ClCompile Include="events\evevent.c" />
+    <ClCompile Include="events\evglock.c" />
+    <ClCompile Include="EVENTS\evgpe.c" />
+    <ClCompile Include="EVENTS\evgpeblk.c" />
+    <ClCompile Include="events\evgpeinit.c" />
+    <ClCompile Include="events\evgpeutil.c" />
+    <ClCompile Include="events\evhandler.c" />
+    <ClCompile Include="events\evmisc.c" />
+    <ClCompile Include="events\evregion.c" />
+    <ClCompile Include="events\evrgnini.c" />
+    <ClCompile Include="events\evsci.c" />
+    <ClCompile Include="events\evxface.c" />
+    <ClCompile Include="events\evxfevnt.c" />
+    <ClCompile Include="events\evxfgpe.c" />
+    <ClCompile Include="events\evxfregn.c" />
+    <ClCompile Include="hardware\hwacpi.c" />
+    <ClCompile Include="hardware\hwesleep.c" />
+    <ClCompile Include="hardware\hwgpe.c" />
+    <ClCompile Include="hardware\hwpci.c" />
+    <ClCompile Include="hardware\hwregs.c" />
+    <ClCompile Include="hardware\hwsleep.c" />
+    <ClCompile Include="hardware\hwtimer.c">
+      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
+      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</DisableLanguageExtensions>
+    </ClCompile>
+    <ClCompile Include="hardware\hwvalid.c" />
+    <ClCompile Include="hardware\hwxface.c" />
+    <ClCompile Include="hardware\hwxfsleep.c" />
+    <ClCompile Include="namespace\nsaccess.c" />
+    <ClCompile Include="namespace\nsalloc.c" />
+    <ClCompile Include="namespace\nsarguments.c" />
+    <ClCompile Include="namespace\nsconvert.c" />
+    <ClCompile Include="namespace\nsdump.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="namespace\nseval.c" />
+    <ClCompile Include="namespace\nsinit.c" />
+    <ClCompile Include="namespace\nsload.c" />
+    <ClCompile Include="namespace\nsnames.c" />
+    <ClCompile Include="namespace\nsobject.c" />
+    <ClCompile Include="NAMESPACE\nsparse.c" />
+    <ClCompile Include="namespace\nspredef.c" />
+    <ClCompile Include="namespace\nsprepkg.c" />
+    <ClCompile Include="namespace\nsrepair.c" />
+    <ClCompile Include="namespace\nsrepair2.c" />
+    <ClCompile Include="namespace\nssearch.c" />
+    <ClCompile Include="namespace\nsutils.c" />
+    <ClCompile Include="namespace\nswalk.c" />
+    <ClCompile Include="NAMESPACE\nsxfeval.c" />
+    <ClCompile Include="namespace\nsxfname.c" />
+    <ClCompile Include="namespace\nsxfobj.c" />
+    <ClCompile Include="resources\rsaddr.c" />
+    <ClCompile Include="resources\rscalc.c" />
+    <ClCompile Include="resources\rscreate.c" />
+    <ClCompile Include="resources\rsinfo.c" />
+    <ClCompile Include="resources\rsio.c" />
+    <ClCompile Include="resources\rsirq.c" />
+    <ClCompile Include="resources\rslist.c" />
+    <ClCompile Include="resources\rsmemory.c" />
+    <ClCompile Include="resources\rsmisc.c" />
+    <ClCompile Include="resources\rsserial.c" />
+    <ClCompile Include="resources\rsutils.c" />
+    <ClCompile Include="resources\rsxface.c" />
+    <ClCompile Include="tables\tbdata.c" />
+    <ClCompile Include="tables\tbfadt.c" />
+    <ClCompile Include="tables\tbfind.c" />
+    <ClCompile Include="tables\tbinstal.c" />
+    <ClCompile Include="tables\tbprint.c" />
+    <ClCompile Include="tables\tbutils.c" />
+    <ClCompile Include="tables\tbxface.c" />
+    <ClCompile Include="tables\tbxfload.c" />
+    <ClCompile Include="tables\tbxfroot.c" />
+    <ClCompile Include="Disassembler\dmbuffer.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="disassembler\dmcstyle.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="disassembler\dmdeferred.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmnames.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmopcode.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmresrc.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmresrcl.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="disassembler\dmresrcl2.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmresrcs.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmutils.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Disassembler\dmwalk.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbcmds.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="debugger\dbconvert.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbdisply.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbexec.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbfileio.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbhistry.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbinput.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="debugger\dbmethod.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="debugger\dbnames.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="debugger\dbobject.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbstats.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="debugger\dbtest.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbutils.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DEBUGGER\dbxface.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="executer\exconcat.c" />
+    <ClCompile Include="executer\exconfig.c" />
+    <ClCompile Include="executer\exconvrt.c" />
+    <ClCompile Include="executer\excreate.c" />
+    <ClCompile Include="executer\exdebug.c" />
+    <ClCompile Include="executer\exdump.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="executer\exfield.c" />
+    <ClCompile Include="executer\exfldio.c">
+      <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">All</AssemblerOutput>
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NoExtensions</EnableEnhancedInstructionSet>
+    </ClCompile>
+    <ClCompile Include="executer\exmisc.c" />
+    <ClCompile Include="executer\exmutex.c" />
+    <ClCompile Include="executer\exnames.c" />
+    <ClCompile Include="executer\exoparg1.c" />
+    <ClCompile Include="executer\exoparg2.c" />
+    <ClCompile Include="executer\exoparg3.c" />
+    <ClCompile Include="executer\exoparg6.c" />
+    <ClCompile Include="executer\exprep.c" />
+    <ClCompile Include="executer\exregion.c" />
+    <ClCompile Include="executer\exresnte.c" />
+    <ClCompile Include="executer\exresolv.c" />
+    <ClCompile Include="executer\exresop.c" />
+    <ClCompile Include="executer\exstore.c" />
+    <ClCompile Include="executer\exstoren.c" />
+    <ClCompile Include="executer\exstorob.c" />
+    <ClCompile Include="executer\exsystem.c" />
+    <ClCompile Include="executer\extrace.c" />
+    <ClCompile Include="executer\exutils.c" />
+    <ClCompile Include="dispatcher\dsargs.c" />
+    <ClCompile Include="dispatcher\dscontrol.c" />
+    <ClCompile Include="dispatcher\dsdebug.c" />
+    <ClCompile Include="dispatcher\dsfield.c" />
+    <ClCompile Include="dispatcher\dsinit.c" />
+    <ClCompile Include="dispatcher\dsmethod.c" />
+    <ClCompile Include="dispatcher\dsmthdat.c" />
+    <ClCompile Include="dispatcher\dsobject.c" />
+    <ClCompile Include="dispatcher\dsopcode.c" />
+    <ClCompile Include="dispatcher\dsutils.c" />
+    <ClCompile Include="dispatcher\dswexec.c" />
+    <ClCompile Include="dispatcher\dswload.c" />
+    <ClCompile Include="dispatcher\dswload2.c" />
+    <ClCompile Include="dispatcher\dswscope.c" />
+    <ClCompile Include="dispatcher\dswstate.c" />
+    <ClCompile Include="parser\psargs.c" />
+    <ClCompile Include="parser\psloop.c" />
+    <ClCompile Include="parser\psobject.c" />
+    <ClCompile Include="parser\psopcode.c" />
+    <ClCompile Include="parser\psopinfo.c" />
+    <ClCompile Include="parser\psparse.c" />
+    <ClCompile Include="parser\psscope.c" />
+    <ClCompile Include="parser\pstree.c" />
+    <ClCompile Include="parser\psutils.c" />
+    <ClCompile Include="parser\pswalk.c" />
+    <ClCompile Include="parser\psxface.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\acbuffer.h" />
+    <ClInclude Include="include\accommon.h" />
+    <ClInclude Include="Include\acconfig.h" />
+    <ClInclude Include="Include\acdebug.h" />
+    <ClInclude Include="INCLUDE\acdisasm.h" />
+    <ClInclude Include="Include\acdispat.h" />
+    <ClInclude Include="include\platform\acbootdebug.h" />
+    <ClInclude Include="Include\platform\acefi.h" />
+    <ClInclude Include="Include\platform\acenv.h" />
+    <ClInclude Include="Include\acevents.h" />
+    <ClInclude Include="Include\acexcep.h" />
+    <ClInclude Include="Include\platform\acfreebsd.h" />
+    <ClInclude Include="Include\platform\acgcc.h" />
+    <ClInclude Include="Include\acglobal.h" />
+    <ClInclude Include="Include\achware.h" />
+    <ClInclude Include="Include\acinterp.h" />
+    <ClInclude Include="Include\platform\aclinux.h" />
+    <ClInclude Include="Include\aclocal.h" />
+    <ClInclude Include="Include\acmacros.h" />
+    <ClInclude Include="Include\platform\acmsvc.h" />
+    <ClInclude Include="include\acnames.h" />
+    <ClInclude Include="Include\acnamesp.h" />
+    <ClInclude Include="Include\acobject.h" />
+    <ClInclude Include="include\acopcode.h" />
+    <ClInclude Include="Include\acoutput.h" />
+    <ClInclude Include="Include\acparser.h" />
+    <ClInclude Include="Include\acpi.h" />
+    <ClInclude Include="Include\acpiosxf.h" />
+    <ClInclude Include="Include\acpixf.h" />
+    <ClInclude Include="include\acpredef.h" />
+    <ClInclude Include="Include\acresrc.h" />
+    <ClInclude Include="include\acstruct.h" />
+    <ClInclude Include="Include\actables.h" />
+    <ClInclude Include="Include\actbl.h" />
+    <ClInclude Include="Include\actbl1.h" />
+    <ClInclude Include="Include\actbl2.h" />
+    <ClInclude Include="Include\actypes.h" />
+    <ClInclude Include="Include\acutils.h" />
+    <ClInclude Include="Include\platform\acwin.h" />
+    <ClInclude Include="Include\amlcode.h" />
+    <ClInclude Include="INCLUDE\amlresrc.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

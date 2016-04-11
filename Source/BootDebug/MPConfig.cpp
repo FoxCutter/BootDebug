@@ -115,47 +115,8 @@ char * TypeToString(uint8_t Type)
 	}
 }
 
-void PrintFlags(uint16_t Flags)
-{
-	printf("%04X ", Flags);
-	switch (Flags & 0x03)
-	{
-		case 0:
-			printf("CONF ");
-			break;
+void PrintFlags(uint16_t Flags);
 
-		case 1:
-			printf("HIGH ");
-			break;
-
-		case 2:
-			printf("RES  ");
-			break;
-
-		case 3:
-			printf("LOW  ");
-			break;
-	}
-
-	switch ((Flags >> 2) & 0x03)
-	{
-		case 0:
-			printf("CONF");
-			break;
-
-		case 1:
-			printf("EDGE");
-			break;
-
-		case 2:
-			printf("RES ");
-			break;
-
-		case 3:
-			printf("LVL ");
-			break;
-	}
-}
 
 bool MPConfig::Initilize()
 {
@@ -221,7 +182,7 @@ bool MPConfig::Initilize()
 
 					printf("I/O Int: Type %s ", TypeToString(Entry->IntType));
 					PrintFlags(Entry->Flags);
-					printf(", Source %02X:%02X, Dest %02X:%02X\n", Entry->SourceBusID, Entry->SourceBusIRQ, Entry->DestIOAPICID, Entry->DestIOAPICINT);
+					printf(", Source Bus:IRQ %02X:%02X, Dest I/O:INT %02X:%02X\n", Entry->SourceBusID, Entry->SourceBusIRQ, Entry->DestIOAPICID, Entry->DestIOAPICINT);
 					//printf("I/O Int: Type %02X, Source Bus %02X, Source IRQ %02X, Dest I/O APIC: %02X, Dest Int %02X\n", Entry->IntType, Entry->SourceBusID, Entry->SourceBusIRQ, Entry->DestIOAPICID, Entry->DestIOAPICINT);
 
 					Data += 8;
@@ -234,7 +195,13 @@ bool MPConfig::Initilize()
 
 					printf("Loc Int: Type %s ", TypeToString(Entry->IntType));
 					PrintFlags(Entry->Flags);
-					printf(", Source %02X:%02X, Dest %02X:LINT%01X\n", Entry->SourceBusID, Entry->SourceBusIRQ, Entry->DestIOAPICID, Entry->DestIOAPICINT);
+					printf(", Source Bus:IRQ %02X:%02X, Dest APIC ", Entry->SourceBusID, Entry->SourceBusIRQ);
+					if(Entry->DestIOAPICID == 0xFF)
+						printf("ALL");
+					else
+						printf("%02X ", Entry->DestIOAPICID);
+
+					printf(":LINT%01X\n", Entry->DestIOAPICINT);
 
 					Data += 8;
 				}

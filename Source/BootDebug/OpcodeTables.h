@@ -458,7 +458,7 @@ ASMTableEntry SingleByteOpCodes[256] =
 	{"REP",		ParsePrefix,			0,	0,	{}},
 	{"HLT",		ParseNoParam,			0,	0,	{}},
 	{"CMC",		ParseNoParam,			0,	0,	{}},
-	{"\x03",	ParseModRMByte,			0,	0,	{}},
+	{"\x03",	ParseModRMPlusByte,		0,	0,	{}},
 	{"\x03",	ParseModRM,				0,	0,	{}},
 
 	// F8
@@ -685,8 +685,8 @@ ASMTableEntry TwoByteOpCodes[256] =
 	{"",		ParseInvalid,			0,	0,	{}},
 
 	// A8
-	{"PUSH",	ParseNoParam,			0,	1,	{SegES}},
-	{"POP",		ParseNoParam,			0,	1,	{SegES}},
+	{"PUSH",	ParseNoParam,			0,	1,	{SegGS}},
+	{"POP",		ParseNoParam,			0,	1,	{SegGS}},
 	{"RSM",		ParseNoParam,			0,	0,	{}},
 	{"BTS",		ParseModRM,				0,	2,	{ParamModRM, ParamReg}},
 	{"SHRD",	ParseModRMPlusByte,		0,	3,	{ParamModRM, ParamReg, ParamImmediate}},

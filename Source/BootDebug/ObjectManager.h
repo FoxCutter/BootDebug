@@ -28,7 +28,7 @@ public:
 	static ObjectManager * Current();
 
 private:
-	void DisplayObject(char * Command);
+	void DisplayObject(char * Command, char *Param);
 
 	ObjectEntry * NewNode(char *Name, char cbLength, ObjectCallback *Callback);
 

@@ -9,6 +9,7 @@
 #include "MemoryMap.h"
 #include "Thread.h"
 
+#include "HardwareTree.h"
 #include "ObjectManager.h"
 
 struct CoreComplexObj
@@ -38,6 +39,7 @@ struct CoreComplexObj
 	//ThreadInformation *ThreadComplex;
 	//ProcessInformation *ProcessComplex;
 	//DeviceInformation * DeviceComplex;
+	HardwareComplexObj HardwareComplex;
 	
 	ObjectManager ObjectComplex;
 

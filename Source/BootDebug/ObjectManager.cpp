@@ -65,7 +65,7 @@ void ObjectManager::DisplayObjects(char * Command, char *Param)
 		{
 			if(_stricmp(Current->Name, Command) == 0)
 			{
-				Current->CallBack->DisplayObject(Param);
+				Current->CallBack->DisplayObject(Command, Param);
 				break;
 			}
 
@@ -79,7 +79,7 @@ void ObjectManager::DisplayObjects(char * Command, char *Param)
 	}
 }
 
-void ObjectManager::DisplayObject(char * Command)
+void ObjectManager::DisplayObject(char * Command, char *Param)
 {
 	KernalPrintf("  Object Root: %08X\n", m_ObjectRoot); 
 }

@@ -213,11 +213,11 @@ int RawTerminal::Write(const char *szData, int cbLength)
 				{
 					WriteAt("...Paused...", 12, m_CurrentRow, m_CurrentCol);
 
-					SetCursor(m_CurrentRow, 12);
+					SetCursor(m_CurrentRow, m_CurrentCol + 12);
 					
 					FetchKeyboardBuffer();
 
-					WriteAt("            ", 12, m_CurrentRow, m_CurrentCol);
+					WriteAt("             ", 13, m_CurrentRow, m_CurrentCol);
 
 					m_OutputCount = 0;
 				}
@@ -245,6 +245,8 @@ int RawTerminal::Read(char *Buffer, int cbLength)
 	{
 		char Next = FetchKeyboardBuffer();
 
+		m_OutputCount = 0;
+	
 		switch(Next)
 		{			
 			case '\t':
@@ -280,8 +282,6 @@ int RawTerminal::Read(char *Buffer, int cbLength)
 			break;
 	}
 	while(!Done);
-	
-	m_OutputCount = 0;
 
 	return Pos;
 }

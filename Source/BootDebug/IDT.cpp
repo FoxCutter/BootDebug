@@ -11,10 +11,18 @@
 	  so they are the only ones that should care about it.
 	* Dump the Callback table, handlers will be called directly
 	* There will be a 'generic' functions for calling ints.
-	* When adding a new handler the generic function will be copied in system memory and patched with the correct function address.
-	* Also patched will be the extra 'pop' needed for functions that take error code, removing it in the majority of cases
+	*       Generic_Interrupt to Generic_InterruptEnd
+	* Fill in InterruptContext + 1 with the address of the context data
+	* The last 4 bytes before Generic_InterruptEnd can be patched to remove the error code from the stack. (replace them with "add esp, 4" 83 C4 04, and "iret" CF)
 	* There will be one 'invalid' interrupt handler (also a patched generic) that will be default value for all IDL entries.
-	* This does lose the Context Data associated with Interrupts, but that is acceptable as we are now being specific with what gets called when
+
+	* There will be a structure that holds the meta information about an interrupt (inculding the patched function code). It will be allocated on demand.
+	* It will contain the context information about the interrupt (for the int manager) and information about the code that owns it.
+	* This will also contain the chained interrupts if there is more then one handler for an IRQ.
+
+	* There are two types of core interrupt handers.
+	* one that takes an Interrupt Context (Stock Generic_Interrupt)
+	* One that takes an Interrupt Context with Error Code (Generic_Interrupt with Generic_InterruptEnd updated to remove the code)
 */
 
 
@@ -23,7 +31,11 @@ extern "C"
 	extern uint16_t IntData;
 	extern uint32_t IntCallback;
 	extern uint32_t IntTable[];
+	extern uintptr_t Generic_Interrupt, Generic_InterruptEnd;
+	extern uintptr_t InterruptSelector, InterruptCall, InterruptContextPtr;
 }
+
+uint8_t DataBlock[128];
 
 InterruptData *InterruptCallbackTable = nullptr;
 

@@ -27,7 +27,7 @@ extern InterruptControler m_InterruptControler;
 
 
 
-__declspec( dllexport )
+
 char * TrimChar(char *String, char Value)
 {
 	// Remove any leading characters
@@ -127,7 +127,7 @@ bool ParseData(char *InputData, void *Data, uint32_t &DataLength, uint32_t DataS
 
 static uint32_t LastAddress = 0x100000;
 
-__declspec( dllexport )
+
 bool ParseAddress(char *Value, uint32_t &Address)
 {
 	bool Error = false;
@@ -192,7 +192,7 @@ bool ParseAddress(char *Value, uint32_t &Address)
 	return true;
 }
 
-__declspec( dllexport )
+
 void main(int argc, char *argv[])
 {
 	char InputBuffer[0x100];
@@ -500,6 +500,10 @@ void main(int argc, char *argv[])
 							printf(" No USB1 Device\n");
 						else
 							USBManager->Dump();
+					}
+					else if(_stricmp("HW", CurrentData) == 0)
+					{
+						CoreComplexObj::GetComplex()->HardwareComplex.Dump();
 					}
 					else if(_stricmp("MB", CurrentData) == 0)
 					{

@@ -91,7 +91,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);__BOOTDEBUG__</PreprocessorDefinitions>
       <ExceptionHandling>false</ExceptionHandling>
       <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
@@ -99,7 +99,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
-      <AdditionalIncludeDirectories>..\StdLib\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\StdLib\;..\ACPICA\include\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -110,7 +110,6 @@
       <AdditionalOptions>/filealign:0x1000 /IGNORE:4254 %(AdditionalOptions)</AdditionalOptions>
       <BaseAddress>0x100000</BaseAddress>
       <AdditionalDependencies>$(ProjectDir)\..\..\Tools\Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <ManifestFile />
@@ -124,11 +123,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ACPI.cpp" />
+    <ClCompile Include="AHCI.cpp" />
     <ClCompile Include="BootHeader.cpp" />
     <ClCompile Include="Disassembler.cpp" />
     <ClCompile Include="EnhancedHCI.cpp" />
     <ClCompile Include="ExtensibleHCI.cpp" />
     <ClCompile Include="GDT.cpp" />
+    <ClCompile Include="IDE.cpp" />
     <ClCompile Include="IDT.cpp" />
     <ClCompile Include="InterruptControler.cpp" />
     <ClCompile Include="KernalLib.cpp" />
@@ -149,11 +150,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ACPI.h" />
+    <ClInclude Include="AHCI.h" />
     <ClInclude Include="CoreComplex.h" />
     <ClInclude Include="Disassembler.h" />
     <ClInclude Include="EnhancedHCI.h" />
     <ClInclude Include="ExtensibleHCI.h" />
     <ClInclude Include="GDT.h" />
+    <ClInclude Include="HardwareTree.h" />
+    <ClInclude Include="IDE.h" />
     <ClInclude Include="IDT.h" />
     <ClInclude Include="InterruptControler.h" />
     <ClInclude Include="KernalLib.h" />
@@ -180,6 +184,9 @@
     <ClInclude Include="Utility.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ACPICA\AcpiSubsystem.vcxproj">
+      <Project>{2b403ffb-5afb-48d8-8c13-f8e65cec5bb6}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\StdLib\StdLib.vcxproj">
       <Project>{5d88dde7-4d62-41d6-bd5b-f2ab88a8cc8d}</Project>
     </ProjectReference>

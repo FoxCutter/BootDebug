@@ -122,6 +122,7 @@ namespace EHCIData
 	enum LinkPointerFlags
 	{
 		TerminateLink			= 0x01,
+
 		IsochronousTDLink		= 0x00,
 		QueueHeadLink			= 0x02,
 		SplitIsochronousTDLink	= 0x04,
@@ -138,7 +139,6 @@ namespace EHCIData
 		uint32_t BabbleDetected : 1;
 		uint32_t DataBufferError : 1;
 		uint32_t Active : 1;
-
 	};
 	
 	struct iTD
@@ -287,7 +287,7 @@ namespace EHCIData
 
 	};
 
-	struct gcnew
+	struct FSTN
 	{
 		uint32_t NormalPathLinkPointer;
 		uint32_t BackPathLinkPointer;

@@ -33,10 +33,10 @@ namespace GDT
 		CodeExecuteOnlyAccessed					= Executable | Accessed,
 		CodeExecuteRead							= Executable | ReadWrite,
 		CodeExecuteReadAccessed					= Executable | ReadWrite | Accessed,
-		CodeExecuteReadOnlyConforming			= Executable | DirectionConforming,
-		CodeExecuteReadOnlyConformingAccessed	= Executable | DirectionConforming | Accessed,
-		CodeExecuteReadReadConforming			= Executable | DirectionConforming | ReadWrite,
-		CodeExecuteReadReadConformingAccessed	= Executable | DirectionConforming | ReadWrite | Accessed,
+		CodeExecuteOnlyConforming				= Executable | DirectionConforming,
+		CodeExecuteOnlyConformingAccessed		= Executable | DirectionConforming | Accessed,
+		CodeExecuteReadConforming				= Executable | DirectionConforming | ReadWrite,
+		CodeExecuteReadConformingAccessed		= Executable | DirectionConforming | ReadWrite | Accessed,
 
 		// System Types
 		//ReservedSegment		= 0x0,

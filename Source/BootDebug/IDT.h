@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "ListNode.h"
 #pragma once
 #pragma pack(push, 1)
 
@@ -53,10 +54,21 @@ struct InterruptData
 	uintptr_t * Data;
 };
 
+struct InterruptMeta : ListNode<InterruptMeta>
+{
+	// The ID of the interrupt this is the meta data for.
+	uint16_t Interrupt;
+
+	// This is where we store our function code.
+	__declspec(align(32)) uint8_t Callback[0x100];
+};
+
 class IDTManager
 {
 	IDT::IDTEntry IDTTable[256];
 	InterruptData InterruptCallback[256]; 
+
+	InterruptMeta::ListEntry MetaData;
 
 public:
 	IDTManager();

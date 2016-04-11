@@ -29,7 +29,7 @@ namespace PEFile
         uint32_t e_lfanew;                    // File address of new exe header
     };
 
-    enum class ImageFileCharacteristics : uint16_t
+    enum ImageFileCharacteristics : uint16_t
     {
         RELOCS_STRIPPED             = 0x0001,  // Relocation info stripped from file.
         EXECUTABLE_IMAGE            = 0x0002,  // File is executable  (i.e. no unresolved externel references).
@@ -124,7 +124,7 @@ namespace PEFile
         WINDOWS_BOOT_APPLICATION    = 16,
     };
 
-    enum class DllCharacteristics : uint16_t
+    enum DllCharacteristics : uint16_t
     {
         //PROCESS_INIT          = 0x0001,   // Reserved.
         //PROCESS_TERM          = 0x0002,   // Reserved.
@@ -142,8 +142,8 @@ namespace PEFile
         //                      = 0x4000,   // Reserved.
         TERMINAL_SERVER_AWARE   = 0x8000,
     };
-
-    struct IMAGE_OPTIONAL_HEADER32
+    
+	struct IMAGE_OPTIONAL_HEADER32
     {
         //
         // Standard fields.
@@ -260,7 +260,7 @@ namespace PEFile
         Reserved                = 15
     };
     
-    enum class SectionCharacteristics : uint32_t
+    enum SectionCharacteristics : uint32_t
     {
         //TYPE_REG                  = 0x00000000,   // Reserved.
         //TYPE_DSECT                = 0x00000001,   // Reserved.
@@ -330,8 +330,8 @@ namespace PEFile
         uint32_t PointerToLinenumbers;
         uint16_t NumberOfRelocations;
         uint16_t NumberOfLinenumbers;
-        SectionCharacteristics Characteristics;e
-    };
+        SectionCharacteristics Characteristics;
+	};
 
 	struct IMAGE_EXPORT_DIRECTORY 
 	{

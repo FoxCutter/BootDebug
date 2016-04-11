@@ -44,6 +44,55 @@ Common_Interrupt PROC
 
 Common_Interrupt ENDP
 
+
+Generic_Interrupt:
+	; Save our state
+	pushad	
+	push ds
+	push es
+	push fs
+	push gs
+	
+	; Set up the Data segment
+	mov ax, IntData
+	mov ds, ax
+	mov es, ax
+	
+	; Put a Pointer to the context on the stack.
+InterruptContextPtr:
+	push dword ptr 00h
+
+	; Put a Pointer to the register context as well
+	mov eax, esp
+	sub eax, 4
+	push eax
+	
+	; Call handler
+	mov eax, IntCallback
+	call eax
+
+	pop eax
+	pop eax
+
+	pop gs
+	pop fs
+	pop es
+	pop ds
+	
+	popad
+
+	add esp, 4
+	iretd
+	nop
+	nop
+	nop
+Generic_InterruptEnd:
+
+
+public C Generic_Interrupt, Generic_InterruptEnd
+public C InterruptContextPtr
+
+
 ; A quick table of all our interrupt handlers so we can build them dynamically.
 IntTable:
 	DWORD offset int00

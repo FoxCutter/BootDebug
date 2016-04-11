@@ -101,6 +101,12 @@
     <ClCompile Include="ExtensibleHCI.cpp">
       <Filter>Drivers\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="IDE.cpp">
+      <Filter>Drivers\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AHCI.cpp">
+      <Filter>Drivers\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RawTerminal.h">
@@ -191,6 +197,15 @@
       <Filter>Drivers\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PEData.h">
+      <Filter>Kernal\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IDE.h">
+      <Filter>Drivers\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AHCI.h">
+      <Filter>Drivers\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HardwareTree.h">
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
   </ItemGroup>

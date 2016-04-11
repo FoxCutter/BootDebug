@@ -59,7 +59,15 @@ namespace USBData
 		Interface				= 4,
 		Endpoint				= 5,
 		DeviceQualifier			= 6,	// USB 2
-		OtherSpeedConfiguration = 7		// USB 2
+		OtherSpeedConfiguration = 7,	// USB 2
+		IntefacePower			= 8,
+		OTG						= 9,
+		Debug					= 10,
+		InterfaceAssociation	= 11,	// USB 3
+		BOS						= 15,	// USB 3
+		DeviceCapability		= 16,	// USB 3
+		SuperspeedEndpoint		= 48,	// USB 3
+		SuperspeedIsoEndpoint	= 49,	// USB 3
 	};
 
 	enum USBDeviceFeatures
@@ -144,8 +152,8 @@ namespace USBData
 		uint8_t		Length;
 		uint8_t		DescriptorType;
 
-		uint8_t		EndpointAddress : 3;
-		uint8_t		Reserved : 4;
+		uint8_t		EndpointAddress : 4;
+		uint8_t		Reserved : 3;
 		uint8_t		Direction : 1;
 
 		uint8_t		TransferType : 2;
@@ -173,6 +181,10 @@ namespace USBData
 		DataEndpoint				= 0,
 		FeedbackEndpoint			= 1,
 		ImplicitFeedbackEndpoint	= 2,
+
+		// USB 3
+		PeriodicEndpoint			= 0,
+		NotificationEndpoint		= 1,
 	};
 
 	// USB 2
@@ -192,7 +204,66 @@ namespace USBData
 		uint8_t		NumConfigurations;
 
 		uint8_t		Reserved;
+	};
 
+	// USB 3
+	struct BDODescriptor
+	{
+		uint8_t		Length;
+		uint8_t		DescriptorType;
+
+		uint16_t	TotalLength;		
+		uint8_t		NumDeviceCaps;
+	};
+
+	struct DeviceCapDescriptor
+	{
+		uint8_t		Length;
+		uint8_t		DescriptorType;
+
+		uint8_t		DeviceCapabilityType;		
+		uint8_t		Data[1];
+	};
+
+	enum DeviceCapabilities
+	{
+		WirelessUSB = 0x01,
+		USB20,
+		Superspeed,
+		ContainerID,
+		Platfrom,
+		PowerDevilery,
+		BatteryInfo,
+		PDConsumerPort,
+		PDProviderPort,
+		SuperspeedPlus,
+		PrecisionTimeMeasurement,
+		WirelessUSBExt,
+	};
+
+	struct InterfaceAssociationDescriptor
+	{
+		uint8_t		Length;
+		uint8_t		DescriptorType;
+
+		uint8_t		FirstInterface;
+		uint8_t		InterfaceCount;
+
+		uint8_t		FunctionClass;
+		uint8_t		FunctionSubClass;
+		uint8_t		FunctionProtical;
+
+		uint8_t		Function;
+	};
+
+	struct SuperspeedEndpointDescriptor
+	{
+		uint8_t		Length;
+		uint8_t		DescriptorType;
+
+		uint8_t		MaxBurst;
+		uint8_t		Attributes;
+		uint16_t	BytesPerInterval;
 	};
 }
 
@@ -231,15 +302,18 @@ namespace USBHub
 	enum USBDeviceRequestIDs
 	{
 		GetState			= 2,		// USB 1 only
-		ClearTTBuffer		= 8,		// USB 2
-		ResetTT				= 9,		// USB 2
-		GetTTState			= 10,		// USB 2
-		StopTT				= 11,		// USB 2
+		ClearTTBuffer		= 8,		// USB 2 only
+		ResetTT				= 9,		// USB 2 only
+		GetTTState			= 10,		// USB 2 only
+		StopTT				= 11,		// USB 2 only
+		SetHubDepth			= 12,		// USB 3
+		GetPortErrorCount	= 13,		// USB 3
 	};
 
 	enum DescriptorTypes
 	{
-		Hub					= 0x29
+		Hub					= 0x29,
+		SuperspeedHub		= 0x2A,
 	};
 
 	enum USBDeviceFeatures
@@ -250,21 +324,58 @@ namespace USBHub
 
 		// Port Features
 		PortConnection			= 0,
-		PortEnabled				= 1,
-		PortSuspended			= 2,
+		PortEnabled				= 1,	// USB 1 & 2
+		PortSuspended			= 2,	// USB 1 & 2
 		PortOverCurrent			= 3,
 		PortReset				= 4,
+		PortLinkState			= 5,	// USB 3
 		PortPower				= 8,
-		PortLowSpeed			= 9,
+		PortLowSpeed			= 9,	// USB 1 & 2
 		
 		ClearPortConnection		= 16,
 		ClearPortEnable			= 17,
 		ClearPortSuspended		= 18,
 		ClearPortOverCurrent	= 19,
 		ClearPortReset			= 20,
+
 		PortTest				= 21,	// USB 2
-		PortIndicator			= 22	// USB 2
+		PortIndicator			= 22,	// USB 2
+
+		PortU1Timeout			= 23,	// USB 3
+		PortU2Timeout			= 24,	// USB 3
+
+		ClearPortLinkState		= 25,	// USB 3
+		ClearPortConfigError	= 26,	// USB 3
+
+		PortRemoteWakeMask		= 27,	// USB 3
+		BHPortReset				= 28,	// USB 3
+		ClearBPPortReset		= 29,	// USB 3
+		ForceLinkPMAccept		= 30,	// USB 3
 	};
+
+	struct SuperspeedHubDescriptor
+	{
+		uint8_t		Length;
+		uint8_t		DescriptorType;
+
+		uint8_t		DownStreamPorts;
+
+		uint16_t	PowerSwitchingMode : 1;
+		uint16_t	NoPowerSwitching : 1;
+		uint16_t	DeviceType : 1;
+		uint16_t	OverCurrentProtectionMode : 1;
+		uint16_t	NoOverCurrentProtection : 1;
+
+		uint8_t		PowerOnToGood;
+		uint8_t		MaxHubCurrent;
+		
+		uint8_t		PacketHeaderDecodeLatency;
+		uint16_t	HubDelay;
+
+		// Both the DeviceRemovable is variable length,
+		uint8_t		DeviceRemovable[1];
+	};
+
 
 	struct HubStatusAndChange
 	{
@@ -299,7 +410,7 @@ namespace USBHub
 				{
 					uint16_t Connection : 1;
 					uint16_t Enabled : 1;
-					uint16_t Suspended : 1;
+					uint16_t Suspended : 1;					// USB 1 & 2
 					uint16_t OverCurrentIndicator : 1;
 					uint16_t Reset : 1;
 					uint16_t Reserved : 3;
@@ -313,14 +424,57 @@ namespace USBHub
 				struct
 				{
 					uint16_t ConnectionChange : 1;
-					uint16_t EnabledChange : 1;
-					uint16_t SuspendedChange : 1;
+					uint16_t EnabledChange : 1;				// USB 1 & 2
+					uint16_t SuspendedChange : 1;			// USB 1 & 2
 					uint16_t OverCurrentIndicatorChange : 1;
 					uint16_t ResetChange : 1;
+					uint16_t DHResetChanged : 1;			// USB 3
+					uint16_t PortLinkStatusChanged : 1;		// USB 3
+					uint16_t PortConfigError : 1;			// USB 3
 				} Changed;
 			};
 		};
 	};
+
+	struct PortExtendedStatusAndChange
+	{
+		union
+		{
+			uint32_t StatusAndChanged;
+			struct
+			{
+				struct 
+				{
+					uint16_t Connection : 1;
+					uint16_t Enabled : 1;
+					uint16_t Suspended : 1;					// USB 1 & 2
+					uint16_t OverCurrentIndicator : 1;
+					uint16_t Reset : 1;
+					uint16_t PortLinkState : 4;				// USB 3
+					uint16_t PortPower : 1;
+					uint16_t PortSpeed : 3;					// USB 3
+				} Status;
+
+				struct
+				{
+					uint16_t ConnectionChange : 1;
+					uint16_t EnabledChange : 1;				// USB 1 & 2
+					uint16_t SuspendedChange : 1;			// USB 1 & 2
+					uint16_t OverCurrentIndicatorChange : 1;
+					uint16_t ResetChange : 1;
+					uint16_t DHResetChanged : 1;			// USB 3
+					uint16_t PortLinkStatusChanged : 1;		// USB 3
+					uint16_t PortConfigError : 1;			// USB 3
+				} Changed;
+			};
+			
+			uint32_t RxSublinkSpeedID : 4;
+			uint32_t TxSublinkSpeedID : 4;
+			uint32_t RxLaneCount: 4;
+			uint32_t TxLaneCount: 4;
+		};
+	};
+
 }
 
 #pragma pack(pop)

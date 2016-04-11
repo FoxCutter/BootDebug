@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include "CoreComplex.h"
 #include "KernalLib.h"
 #include "LowLevel.h"
 #include "c99-snprintf-1.1\system.h"
@@ -18,6 +19,18 @@ void KernalFree(void * Address)
 	return;
 }
 
+int KernalSprintf(char * Dest, uint32_t cCount, const char * format, ...)
+{
+    int retValue;
+    va_list argptr;
+
+    va_start( argptr, format );
+    retValue = vsnprintf( Dest, cCount, format, argptr );
+    va_end( argptr );
+
+    return retValue;
+}
+
 int KernalPrintf(const char * format, ...)
 {
     int retValue;
@@ -33,7 +46,19 @@ int KernalPrintf(const char * format, ...)
     return retValue;
 }
 
-int KernalPanic(KernalCode::Codes Error, const char * format, ...)
+int KernalVprintf(const char * format, va_list Args)
+{
+    int retValue;
+	char Buffer[STR_MAX];
+
+    retValue = vsnprintf( Buffer, STR_MAX, format, Args );
+
+	KernalTerminal->Write(Buffer, retValue);
+
+    return retValue;
+}
+
+int KernalPanic(KernalCode Error, const char * format, ...)
 {
 	KernalPrintf("\n\nKERNAL PANIC! Code: %08X\n   ", Error);
 	KernalPrintf(format);
@@ -44,4 +69,13 @@ int KernalPanic(KernalCode::Codes Error, const char * format, ...)
 	}
 
 	return 0;
+}
+
+void * KernalPageAllocate(uint32_t Size, KernalPageFlags Flags)
+{
+	CoreComplexObj * CoreComplex = CoreComplexObj::GetComplex();
+	
+	uint64_t Address = CoreComplex->PageMap.AllocateRange(0x2000000, Size);
+
+	return reinterpret_cast<void *>(Address);
 }

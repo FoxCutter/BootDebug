@@ -25,6 +25,17 @@ struct FrameBufferData
 	uint8_t  Type;
 };
 
+struct VBEData
+{
+	intptr_t ControlInfo;
+	intptr_t ModeInfo;
+	uint16_t Mode;
+	uint16_t IntefaceSegment;
+	uint16_t IntefaceOffset;
+	uint16_t IntefaceLength;
+
+};
+
 class MultiBootInfo
 {
 public:
@@ -60,6 +71,7 @@ public:
 	uint32_t BootPartition[3];
 
 	FrameBufferData FrameBuffer;
+	VBEData VBE;
 
 	uint32_t HeaderLength;
 	void *MBData;

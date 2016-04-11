@@ -17,6 +17,12 @@ MultiBootInfo::MultiBootInfo(void)
 	MemoryMapData = nullptr;
 	CurrentModuleData = nullptr;
 	CurrentMemoryMapData = 0;
+	VBE.ControlInfo = 0;
+	VBE.ModeInfo = 0;
+	VBE.IntefaceOffset = 0;
+	VBE.IntefaceSegment = 0;
+	VBE.IntefaceLength = 0;
+	VBE.Mode = 0;
 }
 
 MultiBootInfo::~MultiBootInfo(void)
@@ -53,6 +59,8 @@ void MultiBootInfo::Dump()
 	printf("    Boot Loader: %s\n", BootLoader);
 	printf("    Memory Map: %08X\n", MemoryMapData);
 	printf("    Frame Buffer: %08X (%02X) %02ux%02u, P:%04X, BPP:%02X\n", (unsigned int)FrameBuffer.Address, FrameBuffer.Type, FrameBuffer.Width, FrameBuffer.Height, FrameBuffer.Pitch, FrameBuffer.BPP);
+	printf("    VBEInfo: Mode %04X, Seg: %04X, Offset: %04X, Length %04X\n", VBE.Mode, VBE.IntefaceSegment, VBE.IntefaceOffset, VBE.IntefaceLength);
+	printf("    VBE Control: %08X, VBE Modes: %08X\n", VBE.ControlInfo, VBE.ModeInfo);
 
 	MemoryMapEntry CurrentEntry;
 	if(GetFirstMemoryEntry(CurrentEntry))
@@ -461,6 +469,13 @@ bool MultiBootInfo::LoadMultiBoot1Info(void *Data)
 		if(TempAddress > LastAddress)
 			LastAddress = TempAddress;
 
+		VBE.ControlInfo = BootHeader->VBE_ControlInfo;
+		VBE.ModeInfo = BootHeader->VBE_ModeInfo;
+		VBE.Mode = BootHeader->VBE_Mode;
+		VBE.IntefaceSegment = BootHeader->VBE_IntefaceSegment;
+		VBE.IntefaceOffset = BootHeader->VBE_IntefaceOffset;
+		VBE.IntefaceLength = BootHeader->VBE_IntefaceLength;
+
 		//printf(" VBE: Mode %04X, Seg: %04X, Offset: %04X, Length %04X\n", BootHeader->VBE_Mode, BootHeader->VBE_IntefaceSegment, BootHeader->VBE_IntefaceOffset, BootHeader->VBE_IntefaceLength);
 	}
 	if((BootHeader->Flags & MulitBoot::FrameBufferInfo) == MulitBoot::FrameBufferInfo)
@@ -554,7 +569,12 @@ bool MultiBootInfo::LoadMultiBoot2Info(void *Data)
 			case MulitBoot2::VBEInfo:
 			{
 				MulitBoot2::Boot_VBEInfo* Entry = (MulitBoot2::Boot_VBEInfo *)Pos;
-				//printf(" VBEInfo: Mode %04X, Seg: %04X, Offset: %04X, Length %04X\n", Entry->Mode, Entry->IntefaceSegment, Entry->IntefaceOffset, Entry->IntefaceLength);
+				VBE.Mode = Entry->Mode;
+				VBE.ControlInfo = reinterpret_cast<uintptr_t>(&Entry->ControlInfo);
+				VBE.ModeInfo = reinterpret_cast<uintptr_t>(&Entry->ModeInfo);
+				VBE.IntefaceSegment = Entry->IntefaceSegment;
+				VBE.IntefaceOffset = Entry->IntefaceOffset;
+				VBE.IntefaceLength = Entry->IntefaceLength;
 				break;
 			}
 

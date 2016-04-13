@@ -26,6 +26,8 @@ OpenHCI * USBManager = nullptr;
 extern InterruptControler m_InterruptControler;
 
 
+#define FPTR_TO_32(p) ((p & 0xFFFF0000) >> 12) + (p & 0xFFFF)
+
 
 
 char * TrimChar(char *String, char Value)
@@ -190,6 +192,21 @@ bool ParseAddress(char *Value, uint32_t &Address)
 		Address = Address - ParsedValue;
 
 	return true;
+}
+
+uint32_t SearchBIOS(const void *Search, uint32_t DataLength, uint32_t Alignment)
+{
+	// First, check the 1st K of the EBDA.
+	uint32_t EBDABase = *(uint16_t *)(0x040E);
+	EBDABase = EBDABase << 4;
+
+	uint32_t Address = SeachMemory(EBDABase, 0x400, Search, DataLength, Alignment);
+
+	// If that failed check the BIOS space
+	if(Address == UINT32_MAX)
+		Address = SeachMemory(0xE0000, 0x20000, Search, DataLength, Alignment);
+
+	return Address;
 }
 
 
@@ -512,6 +529,133 @@ void main(int argc, char *argv[])
 					else if(_stricmp("MP", CurrentData) == 0)
 					{
 						MPData.Initilize();
+					}
+					else if(_stricmp("BIOS", CurrentData) == 0)
+					{
+						printf(" Legacy BIOS Vectors\n");
+						printf("  %08X: BIOS Data Area\n", 0x400); 
+						printf("  %08X: Extended BIOS Data Area\n", (*reinterpret_cast<uint16_t *>(0x40E)) << 4); 
+						
+						{
+							uint32_t *IVT = reinterpret_cast<uint32_t *>(0);
+							printf("  %08X: Video Parameter Table\n", FPTR_TO_32(IVT[0x1D])); 
+							printf("  %08X: Video Graphics Character Table\n", FPTR_TO_32(IVT[0x1F]));
+							printf("  %08X: EGA Video Graphics Character Table\n", FPTR_TO_32(IVT[0x43]));
+							printf("  %08X: Diskette Parameter Table\n", FPTR_TO_32(IVT[0x1E]));
+							printf("  %08X: Fixed Disk Parameter Table 1\n", FPTR_TO_32(IVT[0x41]));
+							printf("  %08X: Fixed Disk Parameter Table 2\n", FPTR_TO_32(IVT[0x46]));
+						}
+
+						printf("\n");
+
+						printf(" Legacy BIOS ROMs\n");
+						uint32_t TableAddress;
+						for(TableAddress = 0xc0000; TableAddress < 0x100000; TableAddress += 0x800)
+						{
+							if(*reinterpret_cast<uint16_t *>(TableAddress) == 0xAA55)
+								printf("   %08X\n", TableAddress);
+						}
+
+						printf("\n");
+
+						printf(" BIOS Tables\n");
+
+						// Start with the well know tables
+						TableAddress = 0xF0000;
+						while((TableAddress = SeachMemory(TableAddress, 0x10000, "$PnP", 4, 0x10)) != UINT32_MAX)
+						{
+							if(*reinterpret_cast<uint8_t *>(TableAddress + 4) == 0x10)
+								printf("   %08X: \"$PnP\" - PnP BIOS Table\n", TableAddress);
+
+							TableAddress += 4;
+						};
+						
+						TableAddress = SearchBIOS("$PMM", 4, 0x10);
+						if(TableAddress != UINT32_MAX)
+							printf("   %08X: \"$PMM\" - POST Memory Manager\n", TableAddress);
+
+						TableAddress = SearchBIOS("$PIR", 4, 0x10);
+						if(TableAddress != UINT32_MAX)
+							printf("   %08X: \"$PIR\" - PCI Interrupt Routing Table\n", TableAddress);
+
+						TableAddress = SearchBIOS("IFE$", 4, 0x10);
+						if(TableAddress != UINT32_MAX)
+							printf("   %08X: \"IFE$\" - EFI Compatablity Table\n", TableAddress);
+
+						TableAddress = SearchBIOS("_MP_", 4, 0x10);
+						if(TableAddress != UINT32_MAX)
+							printf("   %08X: \"_MP_\" - MultiBoot Table Pointer\n", TableAddress);
+
+						TableAddress = SearchBIOS("_32_", 4, 0x10);
+						if(TableAddress != UINT32_MAX)
+							printf("   %08X: \"_32_\" - 32-Bit BIOS Entry Point\n", TableAddress);
+
+						TableAddress = SearchBIOS("_SM_", 4, 0x10);
+						if(TableAddress != UINT32_MAX)
+						{
+							printf("   %08X: \"_SM_\" - SMBios Table Pointer\n", TableAddress);
+						}
+						else
+						{
+							TableAddress = SearchBIOS("_DMI_", 5, 0x10);
+							if(TableAddress != UINT32_MAX)
+								printf("   %08X: \"_DMI_\" - DMI Table Pointer\n", TableAddress);
+						}
+
+						TableAddress = SearchBIOS("RSD PTR ", 8, 0x10);
+						if(TableAddress != UINT32_MAX)
+							printf("   %08X: \"RDS PTR \" - ACPI Root Pointer\n", TableAddress);
+
+
+						//uint32_t LastAddress = 0xE0000;
+						//
+						//while((LastAddress = SeachMemory(LastAddress, 0x20000, "$", 1, 0x10)) != UINT32_MAX)
+						//{
+						//	printf("  %08X: %4.4s\n", LastAddress, LastAddress);
+						//	LastAddress +=4;
+						//};
+
+
+					}
+					else if(_stricmp("CMOS", CurrentData) == 0)
+					{
+						char Buffer[17];
+						Buffer[16] = 0;
+						int Pos = 0;
+						for(int x = 0; x < 0x80; x++, Pos++)
+						{
+							if(x % 0x10 == 0)
+							{
+								if(x != 0)
+								{			
+									printf("   %s\n", Buffer);
+								}
+
+								printf("      %02X:", x);
+								Pos = 0;
+							}
+
+							if(x % 0x10 != 0 && x % 0x08 == 0)
+								printf("-");
+							else
+								printf(" ");
+
+							OutPortb(0x70, x);
+							InPortb(0);
+							InPortb(0);
+							InPortb(0);
+							InPortb(0);
+							uint8_t Val = InPortb(0x71);
+
+							printf("%02X", Val);
+
+							if(Val < ' ' || Val > 127)
+								Buffer[Pos] = '.';
+							else
+								Buffer[Pos] = Val;
+						}
+						
+						printf("   %s\n", Buffer);
 					}
 					else if(_stricmp("CPUID", CurrentData) == 0)
 					{

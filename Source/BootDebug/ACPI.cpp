@@ -471,6 +471,10 @@ void PrintType(ACPI_OBJECT_TYPE Type)
 			KernalPrintf("Field (Index)");
 			break;
 
+		case ACPI_TYPE_LOCAL_ALIAS:
+			KernalPrintf("Alias");
+			break;
+		
 		case ACPI_TYPE_LOCAL_SCOPE:
 			break;
 

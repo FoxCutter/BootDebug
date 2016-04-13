@@ -137,10 +137,10 @@ bool PCI::DumpBus(uint8_t Bus)
 			KernalPrintf(" Dev %04X:%04X", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
 			
 			Val = ReadRegister(CurrentDeviceID, 0x08);
-			KernalPrintf(", C %02X, S %02X, Pn %02X", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8);
+			KernalPrintf(", C %02X-%02X-%02X", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8);
 			
 			Val = ReadRegister(CurrentDeviceID, 0x2C);
-			KernalPrintf(", SV %04X, SI %04X", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
+			KernalPrintf(", Sub %04X:%04X", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
 
 			Val = ReadRegister(CurrentDeviceID, 0x0C);			
 			Val = (Val & 0x00FF0000) >> 16;
@@ -159,9 +159,12 @@ bool PCI::DumpBus(uint8_t Bus)
 			if((Val & 0x7F) == 0x01)
 			{
 				Val = ReadRegister(CurrentDeviceID, 0x18);
-				Val = (Val & 0x00FF0000) >> 16;
+				uint8_t SecondaryBus = (Val & 0x0000FF00) >> 8;
+				uint8_t SubBus =       (Val & 0x00FF0000) >> 16;
 
-				KernalPrintf(", SB %02X", Val);
+				KernalPrintf(", SB %02X", SecondaryBus);
+				if(SecondaryBus != SubBus)
+					KernalPrintf("-%02X", SubBus);
 			}
 			KernalPrintf("\n");
 		}
@@ -169,6 +172,26 @@ bool PCI::DumpBus(uint8_t Bus)
 
 	return false;
 }
+
+void PrintPCIAddress(uint32_t Address)
+{
+	if(Address == 0)
+	{
+		KernalPrintf("Unused");
+	}
+	else if(Address & 0x00000001)
+	{
+		KernalPrintf("I/O %04X", Address & 0xFFFFFFFC);
+	}
+	else
+	{
+		KernalPrintf("Memory %08X", Address & 0xFFFFFFF0);
+
+		if(Address & 0x00000008)
+			KernalPrintf(", Prefetch");
+	}
+}
+
 
 bool PCI::DumpDevice(uint32_t DeviceID)
 {
@@ -182,12 +205,17 @@ bool PCI::DumpDevice(uint32_t DeviceID)
 		return false;
 	}
 
+	bool CapabilitiesList = false;
+
 	KernalPrintf("PCI Device ID: %08X\n", DeviceID);
 	KernalPrintf("  Vender ID %04X, Device ID %04X\n", Val & 0xFFFF, (Val & 0xFFFF0000) >> 16);
 
 	Val = ReadRegister(DeviceID, 4);
 	KernalPrintf("  Status %04X, Command %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
 	
+	if(Val & 0x00100000)
+		CapabilitiesList = true;
+
 	Val = ReadRegister(DeviceID, 8);
 	KernalPrintf("  Class %02X, Sub Class %02X, Prog IF %02X, Revision ID %02X\n", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
 	
@@ -199,22 +227,34 @@ bool PCI::DumpDevice(uint32_t DeviceID)
 	if((Val & 0x7F) == 0x00)
 	{	
 		Val = ReadRegister(DeviceID, 0x10);
-		KernalPrintf("  Base Address 0 %08X\n", Val);
+		KernalPrintf("  BAR0: ");
+		PrintPCIAddress(Val);
+		KernalPrintf("\n");
 
 		Val = ReadRegister(DeviceID, 0x14);
-		KernalPrintf("  Base Address 1 %08X\n", Val);
+		KernalPrintf("  BAR1: ");
+		PrintPCIAddress(Val);
+		KernalPrintf("\n");
 
 		Val = ReadRegister(DeviceID, 0x18);
-		KernalPrintf("  Base Address 2 %08X\n", Val);
+		KernalPrintf("  BAR2: ");
+		PrintPCIAddress(Val);
+		KernalPrintf("\n");
 
 		Val = ReadRegister(DeviceID, 0x1C);
-		KernalPrintf("  Base Address 3 %08X\n", Val);
+		KernalPrintf("  BAR3: ");
+		PrintPCIAddress(Val);
+		KernalPrintf("\n");
 
 		Val = ReadRegister(DeviceID, 0x20);
-		KernalPrintf("  Base Address 4 %08X\n", Val);
+		KernalPrintf("  BAR4: ");
+		PrintPCIAddress(Val);
+		KernalPrintf("\n");
 
 		Val = ReadRegister(DeviceID, 0x24);
-		KernalPrintf("  Base Address 5 %08X\n", Val);
+		KernalPrintf("  BAR5: ");
+		PrintPCIAddress(Val);
+		KernalPrintf("\n");
 
 		Val = ReadRegister(DeviceID, 0x28);
 		KernalPrintf("  Cardbus Pointer %08X\n", Val);
@@ -225,20 +265,20 @@ bool PCI::DumpDevice(uint32_t DeviceID)
 		Val = ReadRegister(DeviceID, 0x30);
 		KernalPrintf("  Expansion Rom Base %08X\n", Val);
 
-		Val = ReadRegister(DeviceID, 0x34);
-		uint8_t CapRegister = Val & 0x000000FF;
-		KernalPrintf("  Reserved %06X, Capabilities Pointer %02X\n",  (Val & 0xFFFFFF00) >> 8, CapRegister);
-
-		while(CapRegister != 00)
+		if(CapabilitiesList)
 		{
-			Val = ReadRegister(DeviceID, CapRegister);
-			KernalPrintf("    ID: %02X, Register: %02X\n",  Val & 0x000000FF, CapRegister);
+			Val = ReadRegister(DeviceID, 0x34);
+			uint8_t CapRegister = Val & 0x000000FF;
+			KernalPrintf("  Capabilities Pointer %02X\n", CapRegister);
+
+			while(CapRegister != 00)
+			{
+				Val = ReadRegister(DeviceID, CapRegister);
+				KernalPrintf("    ID: %02X, Register: %02X\n",  Val & 0x000000FF, CapRegister);
 			
-			CapRegister = (Val & 0x0000FF00) >> 8;
-		};
-		
-		//Val = ReadRegister(DeviceID, 0x38);
-		//KernalPrintf("  Reserved %08X\n", Val);
+				CapRegister = (Val & 0x0000FF00) >> 8;
+			};		
+		}
 
 		Val = ReadRegister(DeviceID, 0x3C);
 		KernalPrintf("  Max latency %02X, Min Grant %02X, Interrupt PIN %02X, Interrupt Line %02X\n", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
@@ -246,34 +286,59 @@ bool PCI::DumpDevice(uint32_t DeviceID)
 	else
 	{
 		Val = ReadRegister(DeviceID, 0x10);
-		KernalPrintf("  Base Address 0 %08X\n", Val);
+		KernalPrintf("  BAR0: ");
+		PrintPCIAddress(Val);
+		KernalPrintf("\n");
 
 		Val = ReadRegister(DeviceID, 0x14);
-		KernalPrintf("  Base Address 1 %08X\n", Val);
+		KernalPrintf("  BAR1: ");
+		PrintPCIAddress(Val);
+		KernalPrintf("\n");
 
 		Val = ReadRegister(DeviceID, 0x18);
 		KernalPrintf("  Sec Latency Time %02X, Sub Bus %02X, Secondary Bus %02X, Primary Bus %02X\n", (Val & 0xFF000000) >> 24, (Val & 0x00FF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
 
+		uint8_t IOBase, IOLimit;
+		
 		Val = ReadRegister(DeviceID, 0x1C);
-		KernalPrintf("  Secondary Status %04X, I/O Limit %02X, I/O Base %02X\n", (Val & 0xFFFF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
+		IOLimit = (Val & 0x0000FF00) >> 8;
+		IOBase = Val & 0x000000FF;
+		
+		//KernalPrintf("  Secondary Status %04X, I/O Limit %02X, I/O Base %02X\n", (Val & 0xFFFF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
+		KernalPrintf("  Secondary Status %04X\n", (Val & 0xFFFF0000) >> 16);
 
 		Val = ReadRegister(DeviceID, 0x20);
 		KernalPrintf("  Memory Limit %04X, Memory Base %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
 
+		uint16_t Base, Limit;
+		
 		Val = ReadRegister(DeviceID, 0x24);
-		KernalPrintf("  Prefetch Memory Limit %04X, Prefetch Memory Base %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
+		Limit = (Val & 0xFFFF0000) >> 16;
+		Base = Val & 0xFFFF;
 
 		Val = ReadRegister(DeviceID, 0x28);
-		KernalPrintf("  Prefetchable Base Upper 32 Bits %08X\n", Val);
+		KernalPrintf("  Prefetchable Memory Base %08X:%04X, ", Val, Base);
 
 		Val = ReadRegister(DeviceID, 0x2C);
-		KernalPrintf("  Prefetchable Limit Upper 32 Bits %08X\n", Val);
+		KernalPrintf("Limit %08X:%04X\n", Val, Limit);
 
 		Val = ReadRegister(DeviceID, 0x30);
-		KernalPrintf("  I/O Limit Upper 16 Bits  %04X, I/O Base Upper 16 Bits %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
+		KernalPrintf("  I/O Base %04X:%02X, I/O Limit %04X:%02X\n", Val & 0xFFFF, IOBase, (Val & 0xFFFF0000) >> 16, IOLimit);
 
-		Val = ReadRegister(DeviceID, 0x34);
-		KernalPrintf("  Reserved %06X, Capabilities Pointer %02X\n",  (Val & 0xFFFFFF00) >> 8, Val & 0x000000FF);
+		if(CapabilitiesList)
+		{
+			Val = ReadRegister(DeviceID, 0x34);
+			uint8_t CapRegister = Val & 0x000000FF;
+			KernalPrintf("  Capabilities Pointer %02X\n", CapRegister);
+
+			while(CapRegister != 00)
+			{
+				Val = ReadRegister(DeviceID, CapRegister);
+				KernalPrintf("    ID: %02X, Register: %02X\n",  Val & 0x000000FF, CapRegister);
+			
+				CapRegister = (Val & 0x0000FF00) >> 8;
+			};
+		}
 
 		Val = ReadRegister(DeviceID, 0x38);
 		KernalPrintf("  Expansion Rom Base %08X\n", Val);
@@ -349,7 +414,7 @@ bool PCI::DumpDeviceMemory(uint32_t DeviceID)
 			Buffer[Pos + 3] = Data[3];
 	}
 
-	KernalPrintf("\n");
+	KernalPrintf("   %s\n", Buffer);
 
 	return true;
 }

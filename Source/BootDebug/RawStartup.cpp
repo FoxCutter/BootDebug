@@ -805,6 +805,68 @@ void BuildGDT(CoreComplexObj *CoreComplex)
 	ASM_WriteReg(gs, TempSegment);
 }
 
+// The .bss section get's merged to the end of the .data section with Visual Studio, relying on the loader to 
+// clear the memory out at the end of the block. We need to make that work here.
+void ClearBSS(intptr_t ImageHeader)
+{
+	intptr_t Address = ImageHeader;
+	
+	KernalPrintf("Clear BSS Data for image at %08X\n", Address);
+
+	PEFile::IMAGE_DOS_HEADER * DOSHeader = reinterpret_cast<PEFile::IMAGE_DOS_HEADER *>(Address);
+	if (DOSHeader->e_magic != 0x5A4D)
+	{
+		// The magic number is bad, so whatever this is it's not a PE file
+		return;
+	}
+
+	Address += DOSHeader->e_lfanew;
+
+	PEFile::IMAGE_NT_HEADERS * NTHeader = reinterpret_cast<PEFile::IMAGE_NT_HEADERS *>(Address);
+	//KernalPrintf(" NT Header Loc: %08X\n", NTHeader);
+    if (NTHeader->Signature != 0x00004550)
+    {
+        // And the signature is wrong or missing, so shut 'er down.
+		KernalPrintf("     NO NT\n");
+		return;
+    }
+
+	Address += sizeof(PEFile::IMAGE_NT_HEADERS);
+
+    // And read in the optional header
+    PEFile::IMAGE_OPTIONAL_HEADER32 * OptionalHeader = reinterpret_cast<PEFile::IMAGE_OPTIONAL_HEADER32 *>(Address);
+
+    if (OptionalHeader->Magic != PEFile::OptionSignature::NT_32Bit)
+    {
+        // We only work with 32 bit headers at the moment
+		KernalPrintf("     NO 32\n");
+        return;
+    }
+
+	Address += sizeof(PEFile::IMAGE_OPTIONAL_HEADER32);
+	Address += sizeof(PEFile::IMAGE_DATA_DIRECTORY) * OptionalHeader->NumberOfRvaAndSizes;
+
+	for(unsigned int x = 0; x < NTHeader->FileHeader.NumberOfSections; x++)
+	{
+		PEFile::IMAGE_SECTION_HEADER * SectionHeader = reinterpret_cast<PEFile::IMAGE_SECTION_HEADER *>(Address);
+		//KernalPrintf("  %8.8s\n", SectionHeader->Name);
+		if(strncmp(SectionHeader->Name, ".data", 5) == 0)
+		{
+			void * Ptr = reinterpret_cast<void *>(ImageHeader + SectionHeader->VirtualAddress + SectionHeader->SizeOfRawData);
+			if(SectionHeader->SizeOfRawData < SectionHeader->VirtualSize)
+			{
+				//KernalPrintf("  Patch. Base %08X, RD %08X, VS %08X, %08X\n", Ptr, SectionHeader->SizeOfRawData, SectionHeader->VirtualSize, SectionHeader->VirtualSize - SectionHeader->SizeOfRawData);
+				memset(Ptr, 0x00, SectionHeader->VirtualSize - SectionHeader->SizeOfRawData);
+			}
+		}
+
+		Address += sizeof(PEFile::IMAGE_SECTION_HEADER);
+	}
+	
+	//NTHeader->FileHeader.NumberOfSections
+}
+
+
 extern "C" void MultiBootMain(void *Address, uint32_t Magic) 
 {
 	// At this point we are officially alive, but we're still a long ways away from being up and running.
@@ -826,6 +888,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	KernalPrintf("Starting up BootDebug...\n");
 	KernalPrintf(" MultiBoot v%u %s\n", MBReader.Type, MBReader.BootLoader);
 
+	ClearBSS(MB1Header.load_address);
+	
 	// Step 1: Build the memory map in physical memory
 	KernalPrintf(" Building Memory Map...\n");
 	MemoryPageMap TempMap = BuildMemoryPageMap(MBReader);

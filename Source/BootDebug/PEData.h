@@ -184,8 +184,6 @@ namespace PEFile
         uint32_t SizeOfHeapCommit;
         uint32_t LoaderFlags;
         uint32_t NumberOfRvaAndSizes;
-
-		IMAGE_DATA_DIRECTORY DataDirectory[1];
     };
 
     struct IMAGE_OPTIONAL_HEADER64

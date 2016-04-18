@@ -32,7 +32,7 @@ ExitLoop:
 
 MultiBootEntry EndP
 
-.data?
+.data
 MyStack byte StackSize dup(?)
 
 END

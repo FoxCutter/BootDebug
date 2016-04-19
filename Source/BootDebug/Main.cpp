@@ -553,7 +553,37 @@ void main(int argc, char *argv[])
 						for(TableAddress = 0xc0000; TableAddress < 0x100000; TableAddress += 0x800)
 						{
 							if(*reinterpret_cast<uint16_t *>(TableAddress) == 0xAA55)
+							{
 								printf("   %08X\n", TableAddress);
+								uint16_t *Data = reinterpret_cast<uint16_t *>(TableAddress);
+								char * ExpansionAddress = reinterpret_cast<char *>(TableAddress);
+								if(Data[12] != 0000)
+								{
+									ExpansionAddress += Data[12];
+
+									// This should point to the PCIR data
+									if(strncmp(ExpansionAddress, "PCIR", 4) == 0)
+										printf("    PCIR: %08X\n", ExpansionAddress);
+								}
+								
+								ExpansionAddress = reinterpret_cast<char *>(TableAddress);
+
+								if(Data[13] != 0000)
+								{
+									// Expansion header, should be $PnP, but video can point to the $VBT data
+									ExpansionAddress += Data[13];
+									if(strncmp(ExpansionAddress, "$PnP", 4) == 0)
+										printf("    $PnP: %08X\n", ExpansionAddress);
+									else if(strncmp(ExpansionAddress, "$VBT", 4) == 0)
+										printf("    $VBT: %08X\n", ExpansionAddress);
+								}
+
+								uint32_t PMID = SeachMemory(TableAddress, (Data[1] & 0xFF) * 512, "PMID", 4);
+								if(PMID != UINT32_MAX)
+								{
+									printf("    PMID: %08X\n", PMID);
+								}
+							}
 						}
 
 						printf("\n");
@@ -584,7 +614,7 @@ void main(int argc, char *argv[])
 
 						TableAddress = SearchBIOS("_MP_", 4, 0x10);
 						if(TableAddress != UINT32_MAX)
-							printf("   %08X: \"_MP_\" - MultiBoot Table Pointer\n", TableAddress);
+							printf("   %08X: \"_MP_\" - MultiProcessor Table Pointer\n", TableAddress);
 
 						TableAddress = SearchBIOS("_32_", 4, 0x10);
 						if(TableAddress != UINT32_MAX)
@@ -607,13 +637,37 @@ void main(int argc, char *argv[])
 							printf("   %08X: \"RDS PTR \" - ACPI Root Pointer\n", TableAddress);
 
 
-						//uint32_t LastAddress = 0xE0000;
-						//
-						//while((LastAddress = SeachMemory(LastAddress, 0x20000, "$", 1, 0x10)) != UINT32_MAX)
-						//{
-						//	printf("  %08X: %4.4s\n", LastAddress, LastAddress);
-						//	LastAddress +=4;
-						//};
+						/*
+						uint32_t LastAddress = 0xC0000;
+						
+						while((LastAddress = SeachMemory(LastAddress, 0x40000, "$", 1, 0x01)) != UINT32_MAX)
+						{
+							if(LastAddress >= 0x100000)
+								break;
+
+							if((LastAddress & 0xF) == 0)
+							{
+								char *Data = reinterpret_cast<char *>(LastAddress);
+
+								if(isalnum(Data[1]) && isalnum(Data[2]) && isalnum(Data[3]))
+								{							
+									printf("  %08X: %4.4s\n", LastAddress, LastAddress);
+								}
+							}
+							else if((LastAddress & 0xF) == 3)
+							{
+								char *Data = reinterpret_cast<char *>(LastAddress-3);
+
+								if(isalnum(Data[0]) && isalnum(Data[1]) && isalnum(Data[2]))
+								{							
+									printf("  %08X: %4.4s\n", LastAddress-4, LastAddress-4);
+								}
+							
+							}
+
+							LastAddress +=1;
+						};
+						*/
 
 
 					}

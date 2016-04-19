@@ -94,6 +94,15 @@ void SystemTrap(InterruptContext * Context, uintptr_t * Data)
 
 		MMUManager->PrintAddressInformation(CR2);
 	}
+	else if(Context->InterruptNumber == 0x12)
+	{
+		KernalPrintf("\nMachine Check at %08X\n", Context->SourceEIP);
+		uint64_t Error;
+		
+		Error = ReadMSR(0x17A); // IA32_MCG_STATUS
+		if(Error & 0x01)
+			return;
+	}
 	else
 	{	
 		KernalPrintf("\nSystem Error: %02X (%08X) at %08X\n", Context->InterruptNumber, Context->ErrorCode, Context->SourceEIP);

@@ -618,12 +618,12 @@ void PrintFlags(uint16_t Flags)
 
 
 void PrintMemoryBlock(void *Address, int Length, uint8_t Align);
+ACPI_HANDLE RootNode;
 
 void ACPI::Dump(char *Options)
 {
 	AcpiGbl_EnableAmlDebugObject = FALSE;
 	AcpiGbl_DbOutputFlags = ACPI_DB_DISABLE_OUTPUT;
-	AcpiGbl_DisableSsdtTableInstall = FALSE;
 
 	//AcpiDbgLevel & AcpiDbgLayer
 	//AcpiGbl_DbOutputFlags ACPI_DB_CONSOLE_OUTPUT
@@ -635,6 +635,7 @@ void ACPI::Dump(char *Options)
 	Status = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
 	Status = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
 	
+	// One of my test platfroms has the reset regester value, but dosn't set the flag, so handle that here.
 	if(AcpiGbl_FADT.ResetRegister.Address >= 0x0000 && AcpiGbl_FADT.ResetRegister.Address <= 0xFFFF)
 	{
 		AcpiGbl_FADT.Flags |= ACPI_FADT_RESET_REGISTER;
@@ -666,19 +667,79 @@ void ACPI::Dump(char *Options)
 	else if(_stricmp("OFF", Options) == 0)
 	{
 		Status = AcpiEnterSleepStatePrep(5);
-		KernalPrintf("%02X-", Status);
 		AcpiEnterSleepState(5);
-		KernalPrintf("%02X\n", Status);
 	}
 	else if(_stricmp("RESET", Options) == 0)
 	{
 		Status = AcpiReset();
-		KernalPrintf("%02X\n", Status);
 	}
 	else if(_stricmp("DSDT", Options) == 0)
 	{
 		bool Res = false;
 		AcpiWalkNamespace(0, ACPI_ROOT_OBJECT, UINT32_MAX, WalkCallback, nullptr, &Res, nullptr);
+	}
+	else if(_stricmp("PRT", Options) == 0 || _stricmp("APRT", Options) == 0)
+	{
+		auto Callback = [](ACPI_HANDLE Object, UINT32 NestingLevel, void *Context, void **ReturnValue){RootNode = Object; return AE_OK;};
+
+		AcpiGetDevices(PCI_ROOT_HID_STRING, Callback, nullptr, nullptr);
+						
+		ACPI_BUFFER IRQ;
+		IRQ.Length = ACPI_ALLOCATE_BUFFER;
+		
+		if(_stricmp("APRT", Options) == 0)
+		{
+			ACPI_OBJECT Input;
+			Input.Type = ACPI_TYPE_INTEGER;
+			Input.Integer.Type = ACPI_TYPE_INTEGER;
+			Input.Integer.Value = 1;
+			
+			ACPI_OBJECT_LIST Params;
+			Params.Count = 1;
+			Params.Pointer = &Input;
+			
+			AcpiEvaluateObject(ACPI_ROOT_OBJECT, "_PIC", &Params, nullptr);
+			//KernalPrintf("%02X\n", Status);
+		}
+		
+		if(AcpiGetIrqRoutingTable(RootNode, &IRQ) == AE_OK)
+		{
+			uint32_t CurrentEntry = reinterpret_cast<uint32_t>(IRQ.Pointer);
+			
+			ACPI_PCI_ROUTING_TABLE *Table = nullptr;
+			Table = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(CurrentEntry);
+			
+			while(Table->Length != 0)
+			{
+				printf("%08llX-%02X", Table->Address, Table->Pin);
+				if(Table->Source[0] == 0)
+					printf(" Global Interrupt: %02X\n", Table->SourceIndex);
+				else
+					printf(" Interrupt Source: %s\n", Table->Source);
+				
+				CurrentEntry += Table->Length;
+				Table = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(CurrentEntry);
+			}
+
+			//printf("!%08X\n", RootNode);
+
+			ACPI_FREE(IRQ.Pointer);
+		}
+
+		if(_stricmp("APRT", Options) == 0)
+		{
+			ACPI_OBJECT Input;
+			Input.Type = ACPI_TYPE_INTEGER;
+			Input.Integer.Type = ACPI_TYPE_INTEGER;
+			Input.Integer.Value = 0;
+			
+			ACPI_OBJECT_LIST Params;
+			Params.Count = 1;
+			Params.Pointer = &Input;
+			
+			AcpiEvaluateObject(ACPI_ROOT_OBJECT, "_PIC", &Params, nullptr);
+		}
+
 	}
 	else if(_stricmp("DEV", Options) == 0)
 	{

@@ -28,7 +28,41 @@ extern InterruptControler m_InterruptControler;
 
 #define FPTR_TO_32(p) ((p & 0xFFFF0000) >> 12) + (p & 0xFFFF)
 
+#pragma pack(push, 1)
 
+struct IRQEntry
+{
+	uint8_t LinkValue;
+	uint16_t IRQBitmap;
+};
+
+struct PIREntry
+{
+	uint8_t Bus;
+	uint8_t Device;
+	IRQEntry INT[4];
+	uint8_t SlotNum;
+	uint8_t Reserved;
+};
+
+struct PIRTable
+{
+	uint8_t Signature[4];
+	uint16_t Version;
+	uint16_t Size;
+	uint8_t RounterBus;
+	uint8_t RounterDevFunction;
+	uint16_t PCIExcuslveIRQ;
+	uint16_t RounterVenderID;
+	uint16_t RounterDeviceID;
+	uint32_t MiniportData;
+	uint8_t Reserved[11];
+	uint8_t Chucksum;
+
+	PIREntry Entries[1];
+};
+
+#pragma pack(pop)
 
 char * TrimChar(char *String, char Value)
 {
@@ -529,6 +563,71 @@ void main(int argc, char *argv[])
 					else if(_stricmp("MP", CurrentData) == 0)
 					{
 						MPData.Initilize();
+					}
+					else if(_stricmp("PIR", CurrentData) == 0)
+					{
+						uint32_t TableAddress = SearchBIOS("$PIR", 4, 0x10);
+						if(TableAddress == UINT32_MAX)
+						{
+							printf(" No $PIR table\n");
+						}
+						else
+						{
+							printf(" %08X: PCI Interrupt Routing Table\n", TableAddress);
+							PIRTable * Table = reinterpret_cast<PIRTable *>(TableAddress);
+							size_t Count = (Table->Size - 32) / 16;
+							printf("  IRQ Rounter: %02X:%02X:%02X, Vender:Dev %04X:%04X\n", Table->RounterBus, Table->RounterDevFunction >> 3, Table->RounterDevFunction & 0x07, Table->RounterVenderID, Table->RounterDeviceID);
+							
+							printf("  PCI Only IRQs: ");
+							for(int x = 0; x < 16; x++)
+							{
+								if(Table->PCIExcuslveIRQ & 0x1 << x)
+								{
+									printf("%02X ", x);
+								}
+							}
+
+							printf("\n");
+							
+							for(size_t x = 0; x < Count; x++)
+							{
+								printf("   DEV %02X:%02X", Table->Entries[x].Bus, Table->Entries[x].Device >> 3);
+								for(int y = 0; y < 4; y++)
+								{
+									if(Table->Entries[x].INT[y].LinkValue == 0)
+										break;
+
+									printf(", INT%c: %02X", 'A' + y, Table->Entries[x].INT[y].LinkValue);
+								}
+
+								printf("\n");
+							}
+
+							/*
+ 							for(size_t x = 0; x < Count; x++)
+							{
+								for(int y = 0; y < 4; y++)
+								{
+									if(Table->Entries[x].INT[y].LinkValue == 0)
+										break;
+
+									printf("   DEV %02X:%02X", Table->Entries[x].Bus, Table->Entries[x].Device >> 3);
+	
+									printf(", INT%c: %02X IRQS: ", 'A' + y, Table->Entries[x].INT[y].LinkValue);
+
+									for(int z = 0; z < 16; z++)
+									{
+										if(Table->Entries[x].INT[y].IRQBitmap & 0x1 << z)
+										{
+											printf("%02X ", z);
+										}
+									}
+
+									printf("\n");
+								}
+							}
+							*/
+						}
 					}
 					else if(_stricmp("BIOS", CurrentData) == 0)
 					{

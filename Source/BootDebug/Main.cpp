@@ -817,8 +817,29 @@ void main(int argc, char *argv[])
 						if(CurrentData == nullptr)
 						{
 							ReadCPUID(0, 0, &Res);
+							uint32_t LeafCount = Res.EAX;
+							uint32_t ExtendedLeafCount = 0;
+							bool Extended = false;
 							printf(" Signature: %4.4s%4.4s%4.4s\n", &Res.EBX, &Res.EDX, &Res.ECX);
-							printf(" Basic Leaf Count: %X\n", Res.EAX);
+							
+							Res.EAX = 0;
+							ReadCPUID(0x80000000, 0, &Res);
+							Extended = Res.EAX != 0;
+							ExtendedLeafCount = Res.EAX;
+
+							if(Extended)							
+							{
+								ReadCPUID(0x80000002, 0, &Res);
+								printf(" Brand: %4.4s%4.4s%4.4s%4.4s", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
+								ReadCPUID(0x80000003, 0, &Res);
+								printf("%4.4s%4.4s%4.4s%4.4s", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
+								ReadCPUID(0x80000004, 0, &Res);
+								printf("%4.4s%4.4s%4.4s%4.4s\n", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
+							}
+
+
+							printf(" Basic Leaf Count: %X\n", LeafCount);
+							printf(" Extended Leaf Count: %X\n", ExtendedLeafCount);
 
 							ReadCPUID(1, 0, &Res);
 							printf(" CPU Type %X, Family %X, Model %X, Stepping %X\n", (Res.EAX & 0xF000) >> 12, (Res.EAX & 0xF00) >> 8, (Res.EAX & 0xF0) >> 4, Res.EAX & 0x0F);
@@ -828,6 +849,20 @@ void main(int argc, char *argv[])
 							printf(" Initial APIC ID: %02X\n", (Res.EBX & 0xFF000000) >> 24);
 							printf(" Features 1: %08X\n", Res.EDX);
 							printf(" Features 2: %08X\n", Res.ECX);
+
+							if(Extended)							
+							{
+								ReadCPUID(0x80000001, 0, &Res);
+								printf(" Extended Features 1: %08X\n", Res.ECX);
+								printf(" Extended Features 2: %08X\n", Res.EDX);
+
+								if(ExtendedLeafCount >= 0x80000008)
+								{
+									ReadCPUID(0x80000008, 0, &Res);
+									printf(" Physical Address Bits: %u\n", Res.EAX & 0xFF);
+									printf(" Linear Address Bits: %u\n", (Res.EAX & 0xFF00) >> 8);
+								}
+							}
 						}
 						else
 						{

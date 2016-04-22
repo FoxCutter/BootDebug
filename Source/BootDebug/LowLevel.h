@@ -115,7 +115,7 @@ namespace CPUFlags
 		FPUEmulation						= 0x00000004,
 		TaskSwitched						= 0x00000008,
 		ExtensionType						= 0x00000010,
-		NumericError						= 0x00000020,
+		NumericException					= 0x00000020,
 		WriteProtection						= 0x00010000,
 		AlignmentMask						= 0x00040000,
 		NotWriteThrough						= 0x20000000,
@@ -136,13 +136,13 @@ namespace CPUFlags
 		MachineCheckEnable					= 0x00000040,
 		PageGlobalEnable					= 0x00000080,
 		PreformanceCounterEnabled			= 0x00000100,
-		OSFXSR								= 0x00000200,
-		OSXMMEXCPT							= 0x00000400,
+		OSFXSR								= 0x00000200, // Operating System Support for FXSAVE and FXRSTOR instructions
+		OSXMMEXCPT							= 0x00000400, // Operating System Support for Unmasked SIMD Floating-Point Exceptions 
 		VMXEnable							= 0x00002000,
 		SMXEnable							= 0x00004000,
 		FSGSBASEEnable						= 0x00010000,
 		PCIDEnable							= 0x00020000,
-		OSXSAVEEnabled						= 0x00040000, // Check
+		OSXSAVEEnabled						= 0x00040000, // XSAVE and Processor Extended States-Enable Bit
 		SMEPEnable							= 0x00100000,	
 		
 		// XCR0
@@ -216,6 +216,74 @@ namespace CPUFlags
 		AVXInstuctions						= 0x10000000,		// 28
 		F16C								= 0x20000000,		// 29
 		RDRAND								= 0x40000000,		// 30
+		// Reserved							= 0x80000000,		// 31
+
+		// CPUID 80000001 - EDX
+		// Reserved							= 0x00000001,		// 0
+		// Reserved							= 0x00000002,		// 1
+		// Reserved							= 0x00000004,		// 2
+		// Reserved							= 0x00000008,		// 3
+		// Reserved							= 0x00000010,		// 4
+		// Reserved							= 0x00000020,		// 5
+		// Reserved							= 0x00000040,		// 6
+		// Reserved							= 0x00000080,		// 7
+		// Reserved							= 0x00000100,		// 8
+		// Reserved							= 0x00000200,		// 9
+		// Reserved							= 0x00000400,		// 10
+		SYSCALL 							= 0x00000800,		// 11
+		// Reserved							= 0x00001000,		// 12
+		// Reserved							= 0x00002000,		// 13
+		// Reserved							= 0x00004000,		// 14
+		// Reserved							= 0x00008000,		// 15
+		// Reserved							= 0x00010000,		// 16
+		// Reserved							= 0x00020000,		// 17
+		// Reserved							= 0x00040000,		// 18
+		// Reserved							= 0x00080000,		// 19
+		ExecuteDisable						= 0x00100000,		// 20
+		// Reserved							= 0x00200000,		// 21
+		// Reserved							= 0x00400000,		// 22
+		// Reserved							= 0x00800000,		// 23
+		// Reserved							= 0x01000000,		// 24
+		// Reserved							= 0x02000000,		// 25
+		GBytePages							= 0x04000000,		// 26
+		RDSTCP								= 0x08000000,		// 27
+		// Reserved							= 0x10000000,		// 28
+		EMT64								= 0x20000000,		// 29
+		// Reserved							= 0x40000000,		// 30
+		// Reserved							= 0x80000000,		// 31
+
+		// CPUID 80000001 - ECX
+		LAHF								= 0x00000001,		// 0
+		// Reserved							= 0x00000002,		// 1
+		// Reserved							= 0x00000004,		// 2
+		// Reserved							= 0x00000008,		// 3
+		// Reserved							= 0x00000010,		// 4
+		LZCNT								= 0x00000020,		// 5
+		// Reserved							= 0x00000040,		// 6
+		// Reserved							= 0x00000080,		// 7
+		PREFETCHW							= 0x00000100,		// 8
+		// Reserved							= 0x00000200,		// 9
+		// Reserved							= 0x00000400,		// 10
+		// Reserved							= 0x00000800,		// 11
+		// Reserved							= 0x00001000,		// 12
+		// Reserved							= 0x00002000,		// 13
+		// Reserved							= 0x00004000,		// 14
+		// Reserved							= 0x00008000,		// 15
+		// Reserved							= 0x00010000,		// 16
+		// Reserved							= 0x00020000,		// 17
+		// Reserved							= 0x00040000,		// 18
+		// Reserved							= 0x00080000,		// 19
+		// Reserved							= 0x00100000,		// 20
+		// Reserved							= 0x00200000,		// 21
+		// Reserved							= 0x00400000,		// 22
+		// Reserved							= 0x00800000,		// 23
+		// Reserved							= 0x01000000,		// 24
+		// Reserved							= 0x02000000,		// 25
+		// Reserved							= 0x04000000,		// 26
+		// Reserved							= 0x08000000,		// 27
+		// Reserved							= 0x10000000,		// 28
+		// Reserved							= 0x20000000,		// 29
+		// Reserved							= 0x40000000,		// 30
 		// Reserved							= 0x80000000,		// 31
 
 	};

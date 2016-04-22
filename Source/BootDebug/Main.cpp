@@ -26,6 +26,148 @@ OpenHCI * USBManager = nullptr;
 extern InterruptControler m_InterruptControler;
 
 
+char * CPUIDFlags[] = 
+{
+	// Features - EDX
+	"Floating Point Unit On-Chip",
+	"Virtual 8086 Mode Enhancements",
+	"Debugging Extensions",
+	"Page Size Extension",
+	"Time Stamp Counter",
+	"Model Specific Registers",
+	"Physical Address Extension",
+	"Machine Check Exception",
+	"CMPXCHG8B Instruction",
+	"APIC On-Chip",
+	"",
+	"SYSENTER and SYSEXIT Instructions",
+	"Memory Type Range Registers",
+	"Page Global Bit",
+	"Machine Check Architecture",
+	"Conditional Move Instructions",
+	"Page Attribute Table",
+	"36-Bit Page Size Extension",
+	"Processor Serial Number",
+	"CLFLUSH Instruction",
+	"",
+	"Debug Store",
+	"Thermal Monitor and Software Controlled Clock Facilities",
+	"Intel MMX Technology",
+	"FXSAVE and FXRSTOR Instructions",
+	"SSE",
+	"SSE2",
+	"Self Snoop",
+	"Max APIC IDs reserved field is Valid",
+	"Thermal Monitor",
+	"",
+	"Pending Break Enable",
+	
+	// Features - ECX
+	"SSE3",
+	"PCLMULQDQ",
+	"64-Bit DS Area",
+	"MONITOR/MWAIT",
+	"CPL Qualified Debug Store",
+	"Virtual Machine Extensions",
+	"Safer Mode Extensions",
+	"Enhanced Intel SpeedStep technology",
+	"Thermal Monitor 2",
+	"SSSE3",
+	"L1 Context ID",
+	"IA32_DEBUG_INTERFACE MSR",
+	"FMA extensions",
+	"CMPXCHG16B Available",
+	"xTPR Update Control",
+	"Perfmon and Debug Capability",
+	"",
+	"Process-context identifiers",
+	"Memory Map Prefech",
+	"SSE4.1",
+	"SSE4.2",
+	"x2APIC",
+	"MOVBE Instruction",
+	"POPCNT Instruction",
+	"TSC Deadline",
+	"AESNI",
+	"XSAVE/XRSTOR Instructions",
+	"OSXSAVE Enabled",
+	"AVX",
+	"16-Bit Floating Point Conversion",
+	"RDRAND Instruction",
+	"",
+
+	// Extended Features - EDX
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"SYSCALL/SYSRET available (64-bit)",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"Execute Disable available",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"1-GByte Pages",
+	"RDTSCP Avaliable",
+	"",
+	"EMT64",
+	"",
+	"",
+
+	// Extended Features - ECX
+	"LAHF/SAHF Available (64 bit)",
+	"CmpLegacy",
+	"Secure Virtual Machine",
+	"",
+	"AltMovCR8",
+	"LZCNT Instruction",
+	"",
+	"",
+	"PREFETCHW Instruction",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+};
+
+
+
+
 #define FPTR_TO_32(p) ((p & 0xFFFF0000) >> 12) + (p & 0xFFFF)
 
 #pragma pack(push, 1)
@@ -489,7 +631,22 @@ void main(int argc, char *argv[])
 					if(CurrentData == nullptr)
 					{
 						puts("Information Type Missing");
-						puts(" Valid: MB, MP, CPUID, USB");
+						puts(" Valid Types");
+						puts("  ACPI:   ACPI tables and information");
+						puts("  APIC:   Advanced Interrupt Controler Information");
+						puts("  BIOS:   Bios information");
+						puts("  CMOS:   Contents of the CMOS");
+						puts("  CPUID:  CPUID information");
+						puts("  HW:     Hardware Tree");
+						puts("  IOAPIC: I/O APIC Information");
+						puts("  MB:     Multiboot Data");
+						puts("  MEM:    Memory Map");
+						puts("  MP:     Multiprocessor Table");
+						puts("  PIC:    Interrupt Controler Information");
+						puts("  PIR:    PCI Interrupt Routing Table");
+						puts("  TI:     Thread Information");
+						puts("  USB:    USB1-OHCI information");
+
 						continue;
 
 					}
@@ -548,7 +705,7 @@ void main(int argc, char *argv[])
 					else if(_stricmp("USB", CurrentData) == 0)
 					{
 						if(USBManager == nullptr)
-							printf(" No USB1 Device\n");
+							printf(" No USB1-OHCI Device\n");
 						else
 							USBManager->Dump();
 					}
@@ -841,6 +998,9 @@ void main(int argc, char *argv[])
 							printf(" Basic Leaf Count: %X\n", LeafCount);
 							printf(" Extended Leaf Count: %X\n", ExtendedLeafCount);
 
+							uint32_t Features[4];
+							Features[0] = Features[1] = Features[2] = Features[3] = 0;
+
 							ReadCPUID(1, 0, &Res);
 							printf(" CPU Type %X, Family %X, Model %X, Stepping %X\n", (Res.EAX & 0xF000) >> 12, (Res.EAX & 0xF00) >> 8, (Res.EAX & 0xF0) >> 4, Res.EAX & 0x0F);
 							printf(" Brand Index: %02X\n", Res.EBX & 0xFF);
@@ -850,11 +1010,17 @@ void main(int argc, char *argv[])
 							printf(" Features 1: %08X\n", Res.EDX);
 							printf(" Features 2: %08X\n", Res.ECX);
 
+							Features[0] = Res.EDX;
+							Features[1] = Res.ECX;
+
 							if(Extended)							
 							{
 								ReadCPUID(0x80000001, 0, &Res);
-								printf(" Extended Features 1: %08X\n", Res.ECX);
-								printf(" Extended Features 2: %08X\n", Res.EDX);
+								printf(" Extended Features 1: %08X\n", Res.EDX);
+								printf(" Extended Features 2: %08X\n", Res.ECX);
+
+								Features[2] = Res.EDX;
+								Features[3] = Res.ECX;
 
 								if(ExtendedLeafCount >= 0x80000008)
 								{
@@ -862,6 +1028,18 @@ void main(int argc, char *argv[])
 									printf(" Physical Address Bits: %u\n", Res.EAX & 0xFF);
 									printf(" Linear Address Bits: %u\n", (Res.EAX & 0xFF00) >> 8);
 								}
+							}
+
+							uint32_t Mask = 0;
+							for(int x = 0; x < 32 * 4; x++)
+							{
+								if(Mask == 0)
+									Mask = 0x00000001;
+
+								if(Features[x / 32] & Mask)
+									printf("  %s\n", CPUIDFlags[x]);
+
+								Mask = Mask << 1;
 							}
 						}
 						else

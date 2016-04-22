@@ -270,9 +270,16 @@ AcpiHwRead (
      * into number of bits based
      */
     *Value = 0;
-    AccessWidth = Reg->AccessWidth ? Reg->AccessWidth : 1;
-    AccessWidth = 1 << (AccessWidth + 2);
-    BitWidth = ACPI_ROUND_UP (Reg->BitOffset + Reg->BitWidth, AccessWidth);
+    if(Reg->AccessWidth == 0)
+	{
+		AccessWidth = Reg->BitWidth;
+	}
+	else
+	{
+		AccessWidth = Reg->AccessWidth ? Reg->AccessWidth : 1;
+		AccessWidth = 1 << (AccessWidth + 2);
+	}
+    BitWidth = Reg->BitOffset + Reg->BitWidth;
     BitOffset = Reg->BitOffset;
 
     /*
@@ -373,9 +380,16 @@ AcpiHwWrite (
 
     /* Convert AccessWidth into number of bits based */
 
-    AccessWidth = Reg->AccessWidth ? Reg->AccessWidth : 1;
-    AccessWidth = 1 << (AccessWidth + 2);
-    BitWidth = ACPI_ROUND_UP (Reg->BitOffset + Reg->BitWidth, AccessWidth);
+    if(Reg->AccessWidth == 0)
+	{
+		AccessWidth = Reg->BitWidth;
+	}
+	else
+	{
+		AccessWidth = Reg->AccessWidth ? Reg->AccessWidth : 1;
+		AccessWidth = 1 << (AccessWidth + 2);
+	}
+    BitWidth = Reg->BitOffset + Reg->BitWidth;
     BitOffset = Reg->BitOffset;
 
     /*

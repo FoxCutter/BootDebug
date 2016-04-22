@@ -6,6 +6,9 @@
 #include <string.h>
 #include "KernalLib.h"
 #include "LowLevel.h"
+#include "InterruptControler.h"
+
+extern InterruptControler m_InterruptControler;
 
 #include "..\StdLib\c99-snprintf-1.1\system.h"
 
@@ -15,282 +18,23 @@ extern "C"
 	#include <accommon.h>
 }
 
-
-#pragma pack(push, 1)
-
-namespace ACPIData
+void PrintGenAddress(ACPI_GENERIC_ADDRESS &Address)
 {
-	const uint8_t RSDPSig[] = "RSD PTR ";
-
-	struct RSDP
+	switch(Address.SpaceId)
 	{
-		uint8_t		Signature[8];
-		uint8_t		Checksum;
-		uint8_t		OEMID[6];
-		uint8_t		Revision;
-		uint32_t	RSDTAddress;
-		uint32_t	Length;
-		uint64_t	XSDTAddress;
-		uint8_t		ExtendedChecksum;
-		uint8_t		Reserved[3];
-	};
-	
-	struct GenAddress
-	{
-		uint8_t		AddressSpaceID;
-		uint8_t		RegisterBitWith;
-		uint8_t		RegisterBitOffset;
-		uint8_t		AccessSize;
-		uint64_t	Address;
-	};
+		case 0:
+			KernalPrintf("Mem: %08llX", Address.Address);
+			break;
 
-	struct DescriptionHeader
-	{
-		uint8_t		Signature[4];
-		uint32_t	Length;
-		uint8_t		Revision;
-		uint8_t		Checksum;
-		uint8_t		OEMID[6];
-		uint8_t		OEMTableID[8];
-		uint32_t	OEMRevision;
-		uint32_t	CreatorID;
-		uint32_t	CreatorRevision;
-	};
+		case 1:
+			KernalPrintf("I/O: %08llX, Bit: %02X Width: %02X", Address.Address, Address.BitOffset, Address.BitWidth);
+			break;
 
-	const uint8_t RSDTTableSig[] = "RSDT";
-
-	struct RSDTTable
-	{
-		uint8_t		Signature[4];
-		uint32_t	Length;
-		uint8_t		Revision;
-		uint8_t		Checksum;
-		uint8_t		OEMID[6];
-		uint8_t		OEMTableID[8];
-		uint32_t	OEMRevision;
-		uint8_t		CreatorID[4];
-		uint32_t	CreatorRevision;
-
-		//----------
-		uint32_t	Entry[1];
-	};
-
-	const uint8_t XSDTTableSig[] = "XSDT";
-
-	struct XSDTTable
-	{
-		DescriptionHeader Header;
-
-		//----------
-		uint64_t	Entry[1];
-	};
-
-	const uint8_t FADTTableSig[] = "FACP";
-
-	struct FADTTable
-	{
-		DescriptionHeader Header;
-
-		uint32_t	FACSAddress;
-		uint32_t	DSDTAddress;
-		uint8_t		Reserved;
-		uint8_t		PreferredPowerProfile;
-		uint16_t	SCI_Int;
-		uint32_t	SMI_Cmd;
-		uint8_t		ACPI_Enable;
-		uint8_t		ACPI_Disable;
-		uint8_t		S4Bios_Req;
-		uint8_t		PState_Cnt;
-
-		uint32_t	PM1a_EventBlock;
-		uint32_t	PM1b_EventBlock;
-		uint32_t	PM1a_ControlBlock;
-		uint32_t	PM1b_ControlBlock;
-		uint32_t	PM2_ControlBlock;
-		uint32_t	PM_TimerBlock;
-		uint32_t	GPE0_Block;
-		uint32_t	GPE1_Block;
-		uint8_t		PM1_EventLength;
-		uint8_t		PM1_ControlLength;
-		uint8_t		PM2_ControlLength;
-		uint8_t		PM_TimeLength;
-		uint8_t		GPE0_BlockLength;
-		uint8_t		GPE1_BlockLength;
-		uint8_t		GPE1_Base;
-		uint8_t		CST_CNT;
-		uint16_t	Level2Latency;
-		uint16_t	Level3Latency;
-		uint16_t	FlushSize;
-		uint16_t	FlushStride;
-		uint8_t		DutyOffset;
-		uint8_t		DutyWidth;
-		uint8_t		DayAlarm;
-		uint8_t		MonthAlarm;
-		uint8_t		Centry;
-		uint16_t	BootArchitectureFlags;
-		uint8_t		Reserved2;
-		uint32_t	Flags;
-
-		// Extended data
-		GenAddress	ResetReg;
-		uint8_t		ResetValue;
-		uint8_t		Reserved3[3];
-		uint64_t	ExFACSAddress;
-		uint64_t	ExDSDTAddress;
-		GenAddress	ExPM1a_EventBlock;
-		GenAddress	ExPM1b_EventBlock;
-		GenAddress	ExPM1a_ControlBlock;
-		GenAddress	ExPM1b_ControlBlock;
-		GenAddress	ExPM2_ControlBlock;
-		GenAddress	ExPM_TimerBlock;
-		GenAddress	ExGPE0_Block;
-		GenAddress	ExGPE1_Block;
-		
-	};
-
-	const uint8_t FACSTableSig[] = "FACS";
-
-	struct FACSTable
-	{
-		uint8_t		Signature[4];
-		uint32_t	Length;
-		uint32_t	HardwareSignature;
-		uint32_t	FirmwareWakingVector;
-		uint32_t	GlobalLock;
-		uint32_t	Flags;
-		uint64_t	ExFirmwareWakingVector;
-		uint8_t		Version;
-		uint8_t		Reserved[3];
-		uint32_t	OSPMFlags;
-	};
-
-
-	const uint8_t MultiACPITableSig[] = "APIC";
-
-	struct MultiACPITable
-	{
-		DescriptionHeader	Header;
-		uint32_t			LocalACPIAddress;
-		uint32_t			Flags;
-	};
-
-	struct MultiACPITableEntry
-	{
-		uint8_t		Type;
-		uint8_t		Length;
-
-		union
-		{
-			struct
-			{
-				uint8_t	ACPIProcessorID;
-				uint8_t	APICID;
-				uint32_t Flags;
-			} ProcessorLocalAPIC;
-
-			struct
-			{
-				uint8_t	IOAPICID;
-				uint8_t Reserved;
-				uint32_t IOAPCIAddress;
-				uint32_t GlobalSystemIntBase;
-			} IOAPIC;
-
-			struct
-			{
-				uint8_t	Bus;
-				uint8_t Source;
-				uint32_t GlobalSystemInt;
-				uint16_t Flags;
-			} IntSourceOverride;
-
-			struct
-			{
-				uint16_t Flags;
-				uint32_t GlobalSystemInt;
-			} NMISource;
-
-			struct
-			{
-				uint8_t		ACPIProcessorID;
-				uint16_t	Flags;
-				uint8_t		LINT;
-			} LocalAPICNMI;
-
-			struct
-			{
-				uint16_t	Reserved;
-				uint64_t	LocalAPICAddress;
-			} LocalAPICAddressOverride;
-
-			struct
-			{
-				uint8_t		IOSAPICID;
-				uint8_t		Reserved;
-				uint32_t	GlobalSystemIntBase;
-				uint64_t	IOAPCIAddress;
-			} IOSAPIC;
-
-			struct
-			{
-				uint8_t		ACPIProcessorID;
-				uint8_t		LocalSAPICID;
-				uint8_t		Reserved[3];
-				uint32_t	Flags;
-				uint32_t	ACPIProcessorUID;
-				uint8_t		ACPIProcessorUIDString[1];
-			} LocalSAPIC;
-			
-			struct
-			{
-				uint16_t	Flags;
-				uint8_t		Type;
-				uint8_t		ProcessorID;
-				uint8_t		ProcessorEID;
-				uint8_t		IOSAPICVector;
-				uint32_t	GloablSystemInt;
-				uint32_t	PlatformIntFlags;
-			} PlatfromIntSource;
-
-			struct
-			{
-				uint16_t	Reserved;
-				uint32_t	x2APICID;
-				uint32_t	Flags;
-				uint32_t	ACPIProcessorUID;
-			} ProcessorLocalx2APIC;
-
-			struct
-			{
-				uint16_t	Flags;
-				uint32_t	ACPIProcessorUID;
-				uint8_t		LINT;
-				uint8_t		Reserved[3];
-			} Localx2APICNMI;
-		};
-	};
-
-	void PrintGenAddress(ACPI_GENERIC_ADDRESS &Address)
-	{
-		switch(Address.SpaceId)
-		{
-			case 0:
-				KernalPrintf("Mem: %08llX", Address.Address);
-				break;
-
-			case 1:
-				KernalPrintf("I/O: %08llX, Bit: %02X Width: %02X", Address.Address, Address.BitOffset, Address.BitWidth);
-				break;
-
-			case 2:
-				KernalPrintf("PCI: 00:%02X:%02X %02X", ((Address.Address & 0xffff00000000) >> 32), ((Address.Address & 0x0000ffff0000) >> 16), (Address.Address & 0x00000000ffff));
-				break;
-		}
+		case 2:
+			KernalPrintf("PCI: 00:%02X:%02X %02X", ((Address.Address & 0xffff00000000) >> 32), ((Address.Address & 0x0000ffff0000) >> 16), (Address.Address & 0x00000000ffff));
+			break;
 	}
-};
-
-
-#pragma pack(pop)
+}
 
 ACPI::ACPI(void)
 {
@@ -574,13 +318,16 @@ ACPI_STATUS WalkCallback (ACPI_HANDLE Object, UINT32 NestingLevel, void *Context
 }
 
 
-void PrintFlags(uint16_t Flags)
+void PrintFlags(uint16_t Flags, bool PCI = false)
 {
 	//printf("%04X ", Flags);
 	switch (Flags & 0x03)
 	{
 		case 0:
-			KernalPrintf("CONF ");
+			if(PCI)
+				KernalPrintf("low ");
+			else
+				KernalPrintf("high ");
 			break;
 
 		case 1:
@@ -599,7 +346,10 @@ void PrintFlags(uint16_t Flags)
 	switch ((Flags >> 2) & 0x03)
 	{
 		case 0:
-			KernalPrintf("CONF");
+			if(PCI)
+				KernalPrintf("lvl ");
+			else
+				KernalPrintf("edge");
 			break;
 
 		case 1:
@@ -620,22 +370,118 @@ void PrintFlags(uint16_t Flags)
 void PrintMemoryBlock(void *Address, int Length, uint8_t Align);
 ACPI_HANDLE RootNode;
 
+ACPI_STATUS Evaluate(ACPI_STRING Root, ACPI_STRING Object, ACPI_BUFFER *Return = nullptr)
+{
+	ACPI_HANDLE RootHandle = nullptr;
+	
+	ACPI_STATUS Status = AcpiGetHandle(ACPI_ROOT_OBJECT, Root, &RootHandle);
+	if(Status != AE_OK)
+		return Status;
+
+	return AcpiEvaluateObject(RootHandle, Object, nullptr, Return);
+}
+	
+ACPI_STATUS Evaluate(ACPI_STRING Root, ACPI_STRING Object, uint32_t Arg0, ACPI_BUFFER *Return = nullptr)
+{
+	ACPI_HANDLE RootHandle = nullptr;
+	
+	ACPI_STATUS Status = AcpiGetHandle(ACPI_ROOT_OBJECT, Root, &RootHandle);
+	if(Status != AE_OK)
+		return Status;
+	
+	ACPI_OBJECT Args[1];
+	Args[0].Integer.Type = ACPI_TYPE_INTEGER;
+	Args[0].Integer.Value = Arg0;
+			
+	ACPI_OBJECT_LIST Params;
+	Params.Count = 1;
+	Params.Pointer = Args;
+			
+	return AcpiEvaluateObject(RootHandle, Object, &Params, Return);
+}
+
+void PrintObject(ACPI_OBJECT *Object, uint32_t NestingLevel = 1)
+{
+	KernalPrintf("%*s%08X: ", NestingLevel, " ", Object);
+	
+	switch(Object->Type)
+	{
+		case ACPI_TYPE_INTEGER:		
+			KernalPrintf("Integer: "); PrintLongAddress(Object->Integer.Value);
+			break;
+
+		case ACPI_TYPE_STRING:
+			KernalPrintf("String: %s", Object->String.Pointer);
+			break;
+
+		case ACPI_TYPE_BUFFER:
+			KernalPrintf("Buffer: %08X, Len: %08X", Object->Buffer.Pointer, Object->Buffer.Length);
+			break;
+
+		case ACPI_TYPE_PACKAGE:
+			KernalPrintf("Package: %08X\n", Object->Package.Count);
+			for(uint32_t x = 0; x < Object->Package.Count; x++)
+			{
+				PrintObject(&Object->Package.Elements[x], NestingLevel + 1);
+			}
+			break;
+
+		case ACPI_TYPE_LOCAL_REFERENCE:
+			{
+				KernalPrintf("Reference: ");
+				PrintType(Object->Reference.ActualType);
+				
+				ACPI_BUFFER Temp;
+				Temp.Length = ACPI_ALLOCATE_BUFFER;
+				AcpiGetName(Object->Reference.Handle, ACPI_FULL_PATHNAME, &Temp);
+				KernalPrintf(" %s", Temp.Pointer);
+				ACPI_FREE(Temp.Pointer);
+			}
+			break;
+
+		case ACPI_TYPE_PROCESSOR:
+			KernalPrintf("Processor: %08X", Object->Processor.ProcId);
+			break;
+
+		case ACPI_TYPE_POWER:
+			KernalPrintf("Power: ", Object->PowerResource.SystemLevel, Object->PowerResource.ResourceOrder);
+			break;
+
+		default:
+		case ACPI_TYPE_ANY:
+			KernalPrintf("Any: (null) ");
+			break;
+	}
+
+	KernalPrintf("\n");
+}
+
+UINT32 PowerEvent(void *Context)
+{
+	KernalPrintf("------EVENT!!------");
+	return AE_OK;
+}
+
 void ACPI::Dump(char *Options)
 {
-	AcpiGbl_EnableAmlDebugObject = FALSE;
 	AcpiGbl_DbOutputFlags = ACPI_DB_DISABLE_OUTPUT;
-
-	//AcpiDbgLevel & AcpiDbgLayer
-	//AcpiGbl_DbOutputFlags ACPI_DB_CONSOLE_OUTPUT
 
 	ACPI_STATUS Status;
 	Status = AcpiInitializeSubsystem ();
-	Status = AcpiInitializeTables(nullptr, 16, false);
+	Status = AcpiInitializeTables(nullptr, 32, false);
 	Status = AcpiLoadTables();
+	
 	Status = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
 	Status = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
+	AcpiEnable();
+	AcpiInstallFixedEventHandler(2, PowerEvent, nullptr);
 	
-	// One of my test platfroms has the reset regester value, but dosn't set the flag, so handle that here.
+	// One of my test machines has some... interesting erros in the FADT. First off the it cuts off the middle, so the size is wrong, this results in the
+	// Bootflags getting cleared. So we assume a hopefully sane default heer. 
+	if (AcpiGbl_FADT.Header.Length <= ACPI_FADT_V2_SIZE)
+		AcpiGbl_FADT.BootFlags = ACPI_FADT_LEGACY_DEVICES | ACPI_FADT_8042;
+
+	// On the machine above the Reset registeris populated, but the flag isn't set, so handle that here as well.
 	if(AcpiGbl_FADT.ResetRegister.Address >= 0x0000 && AcpiGbl_FADT.ResetRegister.Address <= 0xFFFF)
 	{
 		AcpiGbl_FADT.Flags |= ACPI_FADT_RESET_REGISTER;
@@ -655,7 +501,7 @@ void ACPI::Dump(char *Options)
 
 
 	if(Options == nullptr)
-	{
+	{		
 		ACPI_TABLE_HEADER *Blob;
 		int x = 0;
 		while(AcpiGetTableByIndex(x, &Blob) != AE_BAD_PARAMETER)
@@ -689,17 +535,7 @@ void ACPI::Dump(char *Options)
 		
 		if(_stricmp("APRT", Options) == 0)
 		{
-			ACPI_OBJECT Input;
-			Input.Type = ACPI_TYPE_INTEGER;
-			Input.Integer.Type = ACPI_TYPE_INTEGER;
-			Input.Integer.Value = 1;
-			
-			ACPI_OBJECT_LIST Params;
-			Params.Count = 1;
-			Params.Pointer = &Input;
-			
-			AcpiEvaluateObject(ACPI_ROOT_OBJECT, "_PIC", &Params, nullptr);
-			//KernalPrintf("%02X\n", Status);
+			Status = Evaluate("\\", "_PIC", 1);
 		}
 		
 		if(AcpiGetIrqRoutingTable(RootNode, &IRQ) == AE_OK)
@@ -713,7 +549,7 @@ void ACPI::Dump(char *Options)
 			{
 				printf("%08llX-%02X", Table->Address, Table->Pin);
 				if(Table->Source[0] == 0)
-					printf(" Global Interrupt: %02X\n", Table->SourceIndex);
+					printf(" Global Interrupt: 0x%02X\n", Table->SourceIndex);
 				else
 					printf(" Interrupt Source: %s\n", Table->Source);
 				
@@ -728,16 +564,7 @@ void ACPI::Dump(char *Options)
 
 		if(_stricmp("APRT", Options) == 0)
 		{
-			ACPI_OBJECT Input;
-			Input.Type = ACPI_TYPE_INTEGER;
-			Input.Integer.Type = ACPI_TYPE_INTEGER;
-			Input.Integer.Value = 0;
-			
-			ACPI_OBJECT_LIST Params;
-			Params.Count = 1;
-			Params.Pointer = &Input;
-			
-			AcpiEvaluateObject(ACPI_ROOT_OBJECT, "_PIC", &Params, nullptr);
+			Status = Evaluate("\\", "_PIC", 0u);
 		}
 
 	}
@@ -765,10 +592,10 @@ void ACPI::Dump(char *Options)
 		printf(" GP0 Event Block   %08X, Length: %02x\n", AcpiGbl_FADT.Gpe0Block, AcpiGbl_FADT.Gpe0BlockLength);
 		printf(" GP1 Event Block   %08X, Length: %02x, Base: %02X\n", AcpiGbl_FADT.Gpe1Block, AcpiGbl_FADT.Gpe1BlockLength, AcpiGbl_FADT.Gpe1Base);
 		printf(" Boot Flags: %04X\n", AcpiGbl_FADT.BootFlags);
-		printf("  Legacy: %c, 8042: %c\n", AcpiGbl_FADT.BootFlags & 0x01 ? 'Y' : 'N', AcpiGbl_FADT.BootFlags & 0x02 ? 'Y' : 'N');
+		printf("  Legacy: %c, 8042: %c\n", AcpiGbl_FADT.BootFlags & ACPI_FADT_LEGACY_DEVICES ? 'Y' : 'N', AcpiGbl_FADT.BootFlags & ACPI_FADT_8042 ? 'Y' : 'N');
 		printf(" Flags: %08X\n", AcpiGbl_FADT.Flags);
 		printf(" Reset Reg ");
-		ACPIData::PrintGenAddress(AcpiGbl_FADT.ResetRegister);
+		PrintGenAddress(AcpiGbl_FADT.ResetRegister);
 		printf(", Reset Value: %02X\n", AcpiGbl_FADT.ResetValue);
 
 	}
@@ -779,56 +606,103 @@ void ACPI::Dump(char *Options)
 		if(Blob == nullptr)
 			return;
 		
-		ACPIData::MultiACPITable *Header = reinterpret_cast<ACPIData::MultiACPITable *>(Blob);
+		ACPI_TABLE_MADT *Header = reinterpret_cast<ACPI_TABLE_MADT *>(Blob);
 
-		KernalPrintf(" Local APIC: %08X %s\n", Header->LocalACPIAddress, (Header->Flags & 0x01) == 0x01 ? "- 8259 Compatability" : "");
+		KernalPrintf(" Local APIC: %08X %s\n", Header->Address, (Header->Flags & 0x01) == 0x01 ? "- 8259 Compatability" : "");
 				
-		uint32_t Offset = sizeof(ACPIData::MultiACPITable);
+		uint32_t Offset = sizeof(ACPI_TABLE_MADT);
 
 		while(Offset < Blob->Length)
 		{
-			ACPIData::MultiACPITableEntry *Entry = reinterpret_cast<ACPIData::MultiACPITableEntry *>((uint32_t)Blob + Offset);
+			ACPI_SUBTABLE_HEADER *Entry = reinterpret_cast<ACPI_SUBTABLE_HEADER *>((uint32_t)Blob + Offset);
 
 			switch(Entry->Type)
 			{
 				case 0:
-					KernalPrintf(" Processor ID: %02X, APIC ID: %02X %s\n", Entry->ProcessorLocalAPIC.ACPIProcessorID, Entry->ProcessorLocalAPIC.APICID, Entry->ProcessorLocalAPIC.Flags ? "Enabled" : "");
+					{
+						ACPI_MADT_LOCAL_APIC *Entry = reinterpret_cast<ACPI_MADT_LOCAL_APIC *>((uint32_t)Blob + Offset);
+						KernalPrintf(" Processor ID: %02X, APIC ID: %02X %s\n", Entry->ProcessorId, Entry->Id, Entry->LapicFlags ? "Enabled" : "");
+					}
 					break;
 
 				case 1:
-					KernalPrintf(" I/O APCI: ID %02X, Address: %08X, Global Int Base: %02X\n", Entry->IOAPIC.IOAPICID, Entry->IOAPIC.IOAPCIAddress, Entry->IOAPIC.GlobalSystemIntBase);
+					{
+						ACPI_MADT_IO_APIC *Entry = reinterpret_cast<ACPI_MADT_IO_APIC*>((uint32_t)Blob + Offset);
+						KernalPrintf(" I/O APCI: ID %02X, Address: %08X, Global Int Base: %02X\n", Entry->Id, Entry->Address, Entry->GlobalIrqBase);
+					}
 					break;
 
 				case 2:
-					KernalPrintf(" APIC Source: ISA:%02X, Global Int: %02X, Flags: ", Entry->IntSourceOverride.Source, Entry->IntSourceOverride.GlobalSystemInt);
-					PrintFlags(Entry->IntSourceOverride.Flags);
-					KernalPrintf("\n");
+					{
+						ACPI_MADT_INTERRUPT_OVERRIDE *Entry = reinterpret_cast<ACPI_MADT_INTERRUPT_OVERRIDE*>((uint32_t)Blob + Offset);
+						KernalPrintf(" APIC Source: IRQ: %02X, Global Int: %02X, Flags: ", Entry->SourceIrq, Entry->GlobalIrq);
+						PrintFlags(Entry->IntiFlags);
+						KernalPrintf("\n");
+					}
 					break;
 
 				case 3:
-					KernalPrintf(" NMI: Global Int: %08X, Flags: ", Entry->NMISource.GlobalSystemInt);
-					PrintFlags(Entry->NMISource.Flags);
-					KernalPrintf("\n");
+					{
+						ACPI_MADT_NMI_SOURCE *Entry = reinterpret_cast<ACPI_MADT_NMI_SOURCE*>((uint32_t)Blob + Offset);
+						KernalPrintf(" NMI: Global Int: %08X, Flags: ", Entry->GlobalIrq);
+						PrintFlags(Entry->IntiFlags);
+						KernalPrintf("\n");
+					}
 					break;
 
 				case 4:
-					KernalPrintf(" ACPI NMI Proc ID: %02X, Local APIC LINT#: %02X, Flags: ", Entry->LocalAPICNMI.ACPIProcessorID, Entry->LocalAPICNMI.LINT);
-					PrintFlags(Entry->LocalAPICNMI.Flags);
-					KernalPrintf("\n");
+					{
+						ACPI_MADT_LOCAL_APIC_NMI *Entry = reinterpret_cast<ACPI_MADT_LOCAL_APIC_NMI*>((uint32_t)Blob + Offset);
+						KernalPrintf(" ACPI NMI Proc ID: %02X, Local APIC LINT#: %02X, Flags: ", Entry->ProcessorId, Entry->Lint);
+						PrintFlags(Entry->IntiFlags);
+						KernalPrintf("\n");
+					}
 					break;
 
 				case 5:
-					KernalPrintf(" ACPI Override: Address %08X\n", Entry->LocalAPICAddressOverride.LocalAPICAddress);
+					{
+						ACPI_MADT_LOCAL_APIC_OVERRIDE *Entry = reinterpret_cast<ACPI_MADT_LOCAL_APIC_OVERRIDE*>((uint32_t)Blob + Offset);
+						KernalPrintf(" ACPI Override: Address %08X\n", Entry->Address);
+					}
+					break;
+
+				case 6:
+					{
+						ACPI_MADT_IO_SAPIC *Entry = reinterpret_cast<ACPI_MADT_IO_SAPIC*>((uint32_t)Blob + Offset);
+						KernalPrintf(" I/O SAPCI: ID %02X, Address: %08X, Global Int Base: %02X\n", Entry->Id, Entry->Address, Entry->GlobalIrqBase);
+					}
+					break;
+
+				case 7:
+					{
+						ACPI_MADT_LOCAL_SAPIC *Entry = reinterpret_cast<ACPI_MADT_LOCAL_SAPIC*>((uint32_t)Blob + Offset);
+						KernalPrintf(" Processor ID: %02X, SAPIC ID: %02X %s\n", Entry->ProcessorId, Entry->Id, Entry->LapicFlags ? "Enabled" : "");
+					}
+					break;
+
+				case 8:
+					{
+						ACPI_MADT_INTERRUPT_SOURCE *Entry = reinterpret_cast<ACPI_MADT_INTERRUPT_SOURCE*>((uint32_t)Blob + Offset);
+						KernalPrintf(" SAPIC Source: Vector: %02X, Global Int: %02X, Flags: ", Entry->IoSapicVector, Entry->GlobalIrq);
+						PrintFlags(Entry->IntiFlags);
+						KernalPrintf("\n");
+					}
 					break;
 
 				case 9:
-					KernalPrintf(" x2APIC Processor ID: %02X, APIC ID: %02X %s\n", Entry->ProcessorLocalx2APIC.ACPIProcessorUID, Entry->ProcessorLocalx2APIC.x2APICID, Entry->ProcessorLocalx2APIC.Flags ? "Enabled" : "");
+					{
+						ACPI_MADT_LOCAL_X2APIC *Entry = reinterpret_cast<ACPI_MADT_LOCAL_X2APIC*>((uint32_t)Blob + Offset);
+						KernalPrintf(" x2APIC Processor ID: %02X, APIC ID: %02X %s\n", Entry->LocalApicId, Entry->Uid, Entry->LapicFlags ? "Enabled" : "");
+					}
 					break;
 
-				case 0x0A:
-					KernalPrintf(" x2ACPI NMI Proc ID: %02X, Local APIC LINT#: %02X, Flags: ", Entry->Localx2APICNMI.ACPIProcessorUID, Entry->Localx2APICNMI.LINT);
-					PrintFlags(Entry->Localx2APICNMI.Flags);
-					KernalPrintf("\n");
+				case 10:
+					{
+						ACPI_MADT_LOCAL_X2APIC_NMI *Entry = reinterpret_cast<ACPI_MADT_LOCAL_X2APIC_NMI*>((uint32_t)Blob + Offset);
+						KernalPrintf(" x2ACPI NMI Proc ID: %02X, Local APIC LINT#: %02X, Flags: ", Entry->Uid, Entry->Lint);
+						PrintFlags(Entry->IntiFlags);
+						KernalPrintf("\n");
+					}
 					break;
 						
 				default:
@@ -849,6 +723,14 @@ void ACPI::Dump(char *Options)
 			Instance = ('0' - Options[4]) + 1;
 		}
 
+		for(int x = 0; x < 4; x++)
+		{
+			if(Options[x] == 0)
+				break;
+
+			Options[x] = toupper(Options[x]);
+		}
+
 		if(AcpiGetTable(Options, Instance, &Blob) == AE_OK)
 		{
 			PrintMemoryBlock(Blob, Blob->Length, 1);
@@ -859,7 +741,7 @@ void ACPI::Dump(char *Options)
 		}
 	}
 
-	AcpiTerminate();
+	//AcpiTerminate();
 }
 
 //******************************************************************************************
@@ -1325,12 +1207,29 @@ AcpiOsReleaseLock (
  *
  *****************************************************************************/
 
+ACPI_OSD_HANDLER ISR = nullptr;
+
+void ACPIInterruptCallback(InterruptContext * Context, uintptr_t * Data)
+{
+	//printf("---ISR----\n");
+
+	if(ISR == nullptr)
+		return;
+
+	ISR(Data);
+}
+
 UINT32
 AcpiOsInstallInterruptHandler (
     UINT32                  InterruptNumber,
     ACPI_OSD_HANDLER        ServiceRoutine,
     void                    *Context)
 {
+	ISR = ServiceRoutine;
+	m_InterruptControler.SetIRQInterrupt(InterruptNumber, ACPIInterruptCallback, reinterpret_cast<uintptr_t *>(Context));
+	//m_InterruptControler.EnableIRQ(InterruptNumber);
+	
+	//printf("---Enabled %02X----\n", InterruptNumber);
 
 	return (AE_OK);
 }
@@ -1353,6 +1252,12 @@ AcpiOsRemoveInterruptHandler (
     UINT32                  InterruptNumber,
     ACPI_OSD_HANDLER        ServiceRoutine)
 {
+	m_InterruptControler.DisableIRQ(InterruptNumber);
+	m_InterruptControler.SetIRQInterrupt(InterruptNumber, nullptr);
+	m_InterruptControler.DisableIRQ(InterruptNumber);
+	ISR = nullptr;
+
+	//printf("---Disabled %02X----\n", InterruptNumber);
 
 	return (AE_OK);
 }
@@ -1380,7 +1285,9 @@ AcpiOsReadMemory (
     UINT64                  *Value,
     UINT32                  Width)
 {
-    switch (Width)
+    KernalPrintf("!!!!!");
+	
+	switch (Width)
     {
     case 8:
     case 16:
@@ -1491,7 +1398,7 @@ AcpiOsWritePort (
     UINT32                  Value,
     UINT32                  Width)
 {
-    ACPI_FUNCTION_NAME (OsWritePort);
+	ACPI_FUNCTION_NAME (OsWritePort);
 
 	switch(Width)
 	{
@@ -1744,7 +1651,6 @@ AcpiOsSignal (
     UINT32                  Function,
     void                    *Info)
 {
-
 	return (AE_OK);
 }
 

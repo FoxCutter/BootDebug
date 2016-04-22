@@ -115,7 +115,7 @@ char * TypeToString(uint8_t Type)
 	}
 }
 
-void PrintFlags(uint16_t Flags);
+void PrintFlags(uint16_t Flags, bool PCI = false);
 
 
 bool MPConfig::Initilize()
@@ -193,12 +193,17 @@ bool MPConfig::Initilize()
 					MPData::MPConfigTableInteruptEntry *Entry = (MPData::MPConfigTableInteruptEntry *)Data;
 
 					printf("I/O Int: Type %s ", TypeToString(Entry->IntType));
-					PrintFlags(Entry->Flags);
 					
 					if(Entry->SourceBusID >= FirstPCIBus && Entry->SourceBusID <= LastPCIBus)
+					{
+						PrintFlags(Entry->Flags, true);
 						printf(", Source Bus:Dev %02X:%02X-%02X", Entry->SourceBusID, (Entry->SourceBusIRQ & 0x7C) >> 2, (Entry->SourceBusIRQ & 0x03) );
+					}
 					else
+					{
+						PrintFlags(Entry->Flags);
 						printf(", Source Bus:IRQ %02X:%02X", Entry->SourceBusID, Entry->SourceBusIRQ);
+					}
 					
 					printf(", Dest I/O:INT %02X:%02X\n", Entry->DestIOAPICID, Entry->DestIOAPICINT);
 					

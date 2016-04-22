@@ -391,7 +391,7 @@ void InterruptControler::PrintAPICIntStatus(ACPIOffsets StartIndex)
 	RealIndex++;
 	
 	uint32_t Mask = 0x010000;
-	for(int x = 0x10; x < 0x100; x++, Mask << 1)
+	for(int x = 0x10; x < 0x100; x++)
 	{
 		if(Value & Mask)
 			printf(" %02X", x);
@@ -401,6 +401,10 @@ void InterruptControler::PrintAPICIntStatus(ACPIOffsets StartIndex)
 			Mask = 0x01;
 			Value = GetAPICRegister(static_cast<ACPIOffsets>(RealIndex));
 			RealIndex++;
+		}
+		else
+		{
+			Mask <<= 1;
 		}
 	}
 }

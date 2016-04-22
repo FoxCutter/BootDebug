@@ -14,6 +14,11 @@ struct HardwareTree : ListNode<HardwareTree>
 
 	// A text name of the device
 	char Name[32];
+
+	uint32_t BusID;
+	uint32_t DeviceAddress; 
+	
+	uint32_t Reserved[24];
 };
 
 struct HardwareComplexObj
@@ -72,7 +77,7 @@ struct HardwareComplexObj
 
 		while(Entry != nullptr)
 		{
-			KernalPrintf("%*.0s %s - %s\n", Depth, " ", Entry->ID, Entry->Name);
+			KernalPrintf("%*.0s (%02X:%08X) %s - %s\n", Depth, " ", Entry->BusID, Entry->DeviceAddress, Entry->ID, Entry->Name);
 			if(Entry->Child != nullptr)
 				Dump(Entry->Child, Depth + 1);
 

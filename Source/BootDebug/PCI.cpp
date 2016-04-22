@@ -53,7 +53,7 @@ PCINameEntry DeviceNameList[] =
 	{0x040000, "Video Device"},
 	{0x040100, "Audio Device"},
 	{0x040200, "Computer Telephony Device"},
-	{0x040400, "High Definition Audio Device"},
+	{0x040300, "High Definition Audio Device"},
 	{0x048000, "Other Multimedia Controller"},
 
 	// Class 5
@@ -208,8 +208,8 @@ bool PCI::Initilize(HardwareTree * PCIRoot)
 {
 	ObjectManager::Current()->AddObject("PCI", 3, this);
 	
-	for(int x = 0; x < 256; x++)
-		EnumerateBus(x, PCIRoot);
+	//for(int x = 0; x < 256; x++)
+	EnumerateBus(0, PCIRoot);
 
 	return true;
 }
@@ -260,10 +260,17 @@ bool PCI::EnumerateBus(uint8_t Bus, HardwareTree * Root)
 			KernalSprintf(ID, 16, "PCI_%04X:%04X", VenderID, DeviceID);
 
 			Val = ReadRegister(CurrentDeviceID, 0x08);
-			KernalSprintf(Name, 32, "%06X_%06X", CurrentDeviceID, (Val & 0xFFFFFF00) >> 8);
-
-			CoreComplexObj::GetComplex()->HardwareComplex.Add(ID, Name, Root);
+			PCINameEntry * DevName = FindPCIClassName(Val >> 8);
 			
+			if(DevName != nullptr)
+				KernalSprintf(Name, 32, "%.32s", DevName->Name);
+			else
+				KernalSprintf(Name, 32, "%06X", Val >> 8);
+
+			HardwareTree * Node = CoreComplexObj::GetComplex()->HardwareComplex.Add(ID, Name, Root);
+			Node->BusID = Bus;
+			Node->DeviceAddress = CurrentDevice << 16 | CurrentFunction;			
+
 			Val = ReadRegister(CurrentDeviceID, 0x0C);			
 			Val = (Val & 0x00FF0000) >> 16;
 
@@ -276,6 +283,17 @@ bool PCI::EnumerateBus(uint8_t Bus, HardwareTree * Root)
 			{
 				CurrentDevice ++;
 				CurrentFunction = 0;
+			}
+
+			// Check for a bus
+			if((Val & 0x7F) == 0x01)
+			{
+				Val = ReadRegister(CurrentDeviceID, 0x18);
+				uint8_t SecondaryBus = (Val & 0x0000FF00) >> 8;
+				uint8_t SubBus =       (Val & 0x00FF0000) >> 16;
+
+				for(; SecondaryBus <= SubBus; SecondaryBus++)
+					EnumerateBus(SecondaryBus, Node);
 			}
 		}
 	} 

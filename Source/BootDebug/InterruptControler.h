@@ -5,6 +5,8 @@ struct InterruptContext;
 class IDTManager;
 typedef void (*InterruptCallbackPtr)(InterruptContext * Context, uintptr_t * Data);
 
+enum class ACPIOffsets;
+
 class InterruptControler
 {
 	enum PICMode
@@ -16,21 +18,28 @@ class InterruptControler
 
 	struct MappingData
 	{
+		uint16_t Vector;	// The vector that the IRQ is mapped to 
+		uint16_t Mapping;	// What I/O APIC slot this IRQ is mapped with (IRQ 0 is usualy Slot 2)
 		InterruptCallbackPtr InterruptCallback;
 		uintptr_t * Data;
-	} Mapping[0x10];
+	} Mapping[0x20];
 
 	// The base of the two IRQ blocks
 	PICMode Mode;
 	uint32_t APICRegisterBase;
+	uint32_t IOAPICRegisterBase;
 	uint8_t IRQBase1;
 	uint8_t IRQBase2;
 
 	IDTManager *m_IDTManager;
 
-	uint32_t GetAPICRegister(int Reg);
-	void SetAPICRegister(int Reg, uint32_t Value);
-	void PrintAPICIntStatus(int StartIndex);
+	uint32_t GetAPICRegister(ACPIOffsets Reg);
+	void SetAPICRegister(ACPIOffsets Reg, uint32_t Value);
+	void PrintAPICIntStatus(ACPIOffsets StartIndex);
+
+	uint32_t GetIOAPICRegister(int Reg);
+	void SetIOAPICRegister(int Reg, uint32_t Value);
+
 
 public:
 	InterruptControler(void);

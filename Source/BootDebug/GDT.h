@@ -6,16 +6,16 @@ namespace GDT
 {
 	enum GDTAttributes
 	{
-		Accessed			= 0x0001,
-		ReadWrite			= 0x0002,
-		DirectionConforming = 0x0004,
-		Executable			= 0x0008,
+		Accessed								= 0x0001,
+		ReadWrite								= 0x0002,
+		DirectionConforming						= 0x0004,
+		Executable								= 0x0008,
 
-		NonSystemFlag		= 0x0010,
-		Present				= 0x0080,
-		AvaliableBit		= 0x1000,
-		LongMode			= 0x2000,
-		Operand32Bit		= 0x4000,
+		NonSystemFlag							= 0x0010,
+		Present									= 0x0080,
+		AvaliableBit							= 0x1000,
+		LongMode								= 0x2000,
+		Operand32Bit							= 0x4000,
 	};
 
 	enum GDTTypes
@@ -39,22 +39,22 @@ namespace GDT
 		CodeExecuteReadConformingAccessed		= Executable | DirectionConforming | ReadWrite | Accessed,
 
 		// System Types
-		//ReservedSegment		= 0x0,
-		TSS16BitSegment			= 0x1,
-		LDTSegment				= 0x2,
-		TSS16BitSegmentBusy		= 0x3,
-		CallGate16BitSegment	= 0x4,
-		TaskGateSegment			= 0x5,
-		IntGate16BitSegment		= 0x6,
-		TrapGate16BitSegment	= 0x7,
-		//ReservedSegment		= 0x8,
-		TSS32BitSegment			= 0x9,
-		//ReservedSegment		= 0xA,
-		TSS32BitSegmentBusy		= 0xB,
-		CallGate32BitSegment	= 0xC,
-		//ReservedSegment		= 0xD,
-		IntGate32BitSegment		= 0xE,
-		TrapGate32BitSegment	= 0xF,
+		//ReservedSegment						= 0x0,
+		TSS16BitSegment							= 0x1,
+		LDTSegment								= 0x2,
+		TSS16BitSegmentBusy						= 0x3,
+		CallGate16BitSegment					= 0x4,
+		TaskGateSegment							= 0x5,
+		IntGate16BitSegment						= 0x6,
+		TrapGate16BitSegment					= 0x7,
+		//ReservedSegment						= 0x8,
+		TSS32BitSegment							= 0x9,
+		//ReservedSegment						= 0xA,
+		TSS32BitSegmentBusy						= 0xB,
+		CallGate32BitSegment					= 0xC,
+		//ReservedSegment						= 0xD,
+		IntGate32BitSegment						= 0xE,
+		TrapGate32BitSegment					= 0xF,
 	};
 	
 	struct GDTEntry
@@ -67,26 +67,40 @@ namespace GDT
 				uint16_t BaseLow;
 				uint8_t  BaseMid;
 		
-				uint16_t Type : 4;
-				uint16_t NonSystem : 1;
-				uint16_t DLP : 2;
-				uint16_t Present : 1;
+				// Attributes
+				uint8_t  Type : 4;
+				uint8_t  NonSystem : 1;
+				uint8_t  DLP : 2;
+				uint8_t  Present : 1;
 				
-				uint16_t LimitHigh : 4;
-				uint16_t Avaliable : 1;
-				uint16_t Long : 1;
-				uint16_t Big : 1;
-				uint16_t Granularity : 1;
+				uint8_t  LimitHigh : 4;
+
+				// Flags
+				uint8_t  Avaliable : 1;
+				uint8_t  Long : 1;
+				uint8_t  Big : 1;
+				uint8_t  Granularity : 1;
 		
 				uint8_t  BaseHigh;
 			};
 			
+			// Used when Preseset = false			
 			struct
 			{
 				uint32_t Avaliable1;
 				uint8_t  Avaliable2;
 				uint8_t  Reserved;		// Overlaps the Type, NonSystem, DLP and Present bits.
 				uint16_t Avaliable3;
+			};
+			
+			// Used with Gates
+			struct
+			{
+				uint16_t OffsetLow;
+				uint16_t Selector;
+				uint8_t  ParamCount;
+				uint8_t  Reserved;		// Overlaps the Type, NonSystem, DLP and Present bits.
+				uint16_t OffsetHigh;
 			};
 		};
 	};

@@ -101,22 +101,6 @@ void GDTManager::PrintSelector(uint16_t Selector)
 		return;
 	
 	GDT::GDTEntry *Entry = &GDTTable[Selector];
-	
-	unsigned int Base = 0;
-	unsigned int Limit = 0;
-
-	Base = Entry->BaseLow;
-	Base |= Entry->BaseMid << 16;
-	Base |= Entry->BaseHigh << 24;
-
-	Limit = Entry->LimitLow;
-	Limit |= Entry->LimitHigh << 16;
-
-	if(Entry->Granularity)
-	{
-		Limit *= 0x1000;
-		Limit += 0x0FFF;
-	}
 
 	printf(" %04X", Selector * 8);
 
@@ -125,94 +109,113 @@ void GDTManager::PrintSelector(uint16_t Selector)
 	else
 		printf("  ");
 	
+	bool CallGate = false;
+
 	if(Entry->NonSystem)
 	{
 		if(Entry->Type & GDT::Executable)
 		{
 			if(Entry->Big)
-				printf(" Code32 E");
+				printf(" 32-Bit Code      E");
 			else
-				printf(" Code16 E");
+				printf(" 16-Bit Code      E");
 			
 			if(Entry->Type & GDT::ReadWrite)
 				printf("R");
 			else
-				printf(" ");
+				printf("-");
+
+			if(Entry->Type & GDT::DirectionConforming)
+				printf("C");
+			else
+				printf("-");
 
 		}
 		else
 		{
 
 			if(Entry->Big)
-				printf(" Data32 R");
+				printf(" 32-Bit Data      R");
 			else
-				printf(" Data16 R");
+				printf(" 16-Bit Data      R");
 
 			if(Entry->Type & GDT::ReadWrite)
 				printf("W");
 			else
-				printf(" ");
+				printf("-");
+
+			if(Entry->Type & GDT::DirectionConforming)
+				printf("D");
+			else
+				printf("-");
 		}
 
 		if(Entry->Type & GDT::Accessed)
 			printf("A");
 		else
-			printf(" ");
+			printf("-");
 	}
 	else
 	{
 		switch(Entry->Type)
 		{
 			case GDT::TSS16BitSegment:
-				printf(" TSS 16 A  ");
+				printf(" 16-Bit TSS       ----");
 				break;
 
 			case GDT::LDTSegment:
-				printf(" LDT       ");
+				printf("        LDT       ----");
 				break;
 
 			case GDT::TSS16BitSegmentBusy:
-				printf(" TSS 16 B  ");
+				printf(" 16-Bit TSS       B---");
 				break;
 
 			case GDT::CallGate16BitSegment:
-				printf(" Call16    ");
+				printf(" 16-Bit Call Gate ----");
+				CallGate = true;
 				break;
 
 			case GDT::TaskGateSegment:
-				printf(" Task Gate ");
+				printf("        Task Gate ----");
+				CallGate = true;
 				break;
 
 			case GDT::IntGate16BitSegment:
-				printf(" Int 16    ");
+				printf(" 16-Bit Int Gate- ----");
+				CallGate = true;
 				break;
 
 			case GDT::TrapGate16BitSegment:
-				printf(" Trap16    ");
+				printf(" 16-Bit Trap Gate ----");
+				CallGate = true;
 				break;
 
 			case GDT::TSS32BitSegment:
-				printf(" TSS 32 A  ");
+				printf(" 32-Bit TSS       ----");
 				break;
 
 			case GDT::TSS32BitSegmentBusy:
-				printf(" TSS 32 B  ");
+				printf(" 32-Bit TSS       B---");
 				break;
 
 			case GDT::CallGate32BitSegment:
-				printf(" Call32    ");
+				printf(" 32-Bit Call Gate ----");
+				CallGate = true;
 				break;
 
 			case GDT::IntGate32BitSegment:
-				printf(" Int 32    ");
+				printf(" 32-Bit Int Gate  ----");
+				CallGate = true;
 				break;
 
 			case GDT::TrapGate32BitSegment:
-				printf(" Trap32    ");
+				printf(" 32-Bit Trap Gate ----");
+				CallGate = true;
 				break;
 
 			default:
-				printf(" Reserved  ");
+				printf("        Reserved  ----");
 				break;
 		}
 
@@ -226,18 +229,43 @@ void GDTManager::PrintSelector(uint16_t Selector)
 		return;
 	}
 
-	printf(" Base = %08X", Base);
-	printf(" Limit = %08X", Limit);
+	if(CallGate)
+	{
+		printf(" Selector = %04X", Entry->Selector);
+		if(Entry->Type != GDT::TaskGateSegment)
+			printf(" Offset = %04X%04X", Entry->OffsetHigh, Entry->OffsetLow);
+		else
+			printf("                  ");
+	}
+	else
+	{	
+		unsigned int Base = 0;
+		unsigned int Limit = 0;
+
+		Base = Entry->BaseLow;
+		Base |= Entry->BaseMid << 16;
+		Base |= Entry->BaseHigh << 24;
+
+		Limit = Entry->LimitLow;
+		Limit |= Entry->LimitHigh << 16;
+
+		if(Entry->Granularity)
+		{
+			Limit *= 0x1000;
+			Limit += 0x0FFF;
+		}
+	
+		printf(" Base = %08X", Base);
+		printf(" Limit = %08X ", Limit);
+	}
 	
 	if(Entry->Granularity)
 		printf(" G");
 	else
-		printf("  ");
+		printf(" -");
 
-	if(Entry->Big)
-		printf(" B");
-	else
-		printf("  ");
+	if(!CallGate)
+		printf(" AVL=%X", Entry->Avaliable);
 
-	printf(" AVL=%X\n", Entry->Avaliable);
+	printf("\n");
 }

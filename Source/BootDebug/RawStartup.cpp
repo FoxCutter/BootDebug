@@ -975,9 +975,11 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	// Step 3: Remap IRQs
 	KernalPrintf(" Setting up IRQs...\n");
-	m_InterruptControler.RemapIRQBase(0x20);
+	//m_InterruptControler.RemapIRQBase(0x20);
 
-	m_InterruptControler.SetIDT(0x20, &IDTData);
+	m_InterruptControler.Initialize(nullptr, 0x020);
+
+	m_InterruptControler.SetIDT(&IDTData);
 	m_InterruptControler.SetIRQInterrupt(0x01, KeyboardInterrupt);
 	
 	CoreComplex->HardwareComplex.Add("KB", "PS/2 Keyboard");	
@@ -1089,6 +1091,9 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	TextTerm.SetPauseFullScreen(true);
 	KernalPrintf(" Starting Monitor\n\n");
 	
+	while(KBBufferFirst != KBBufferLast)
+		FetchKeyboardBuffer();
+
 	for(;;)
 		main(1, argv);
 	

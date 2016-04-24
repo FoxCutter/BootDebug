@@ -599,10 +599,10 @@ void ACPI::Dump(char *Options)
 		printf(", Reset Value: %02X\n", AcpiGbl_FADT.ResetValue);
 
 	}
-	else if(_stricmp("APIC", Options) == 0)
+	else if(_stricmp(ACPI_SIG_MADT, Options) == 0)
 	{
 		ACPI_TABLE_HEADER *Blob;
-		AcpiGetTable("APIC", 0, &Blob);
+		AcpiGetTable(ACPI_SIG_MADT, 0, &Blob);
 		if(Blob == nullptr)
 			return;
 		

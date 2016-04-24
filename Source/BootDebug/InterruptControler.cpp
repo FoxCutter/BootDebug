@@ -1,6 +1,7 @@
 #include "InterruptControler.h"
 #include "LowLevel.h"
 #include "IDT.h"
+#include "KernalLib.h"
 
 #include <stdio.h>
 
@@ -115,34 +116,124 @@ static void IRQInterrupt(InterruptContext * Context, uintptr_t * Data)
 
 InterruptControler::InterruptControler(void)
 {
-	Mode = ePIC;
-	APICRegisterBase = 0;
-	IOAPICRegisterBase = 0;
+}
 
-	for(int x = 0; x < 0x20; x++)
+void InterruptControler::Initialize(ACPI_TABLE_MADT *MADT, uint8_t LowestVector)
+{
+	// Start with the full I/O APIC mode
+	Mode = PICMode::IOAPIC;
+	APICRegisterBase = 0xFFFFFFFF;
+	IOAPICRegisterBase = 0xFFFFFFFF;
+	
+	IOAPICRegisterBase = 0xFEC00000;
+
+	if(IOAPICRegisterBase != 0xFFFFFFFF)
 	{
-		Mapping[x].Vector = 0xFFFF;
+		uint32_t Val = GetIOAPICRegister(0x01);
+		VectorCount = ((Val & 0x00FF0000) >> 16) + 1;
+	}
+	else
+	{
+		Mode = PICMode::Mixed;
+		VectorCount = 0x10;
+	}
+
+	for(int x = 0; x < VectorCount; x++)
+	{
+		Mapping[x].Vector = LowestVector + x;
 		Mapping[x].Mapping = x;
 		Mapping[x].Data = nullptr;
 		Mapping[x].InterruptCallback = nullptr;
+		Mapping[x].VectorMode = LVTPinPolarityHigh | LVTTriggerModeEdge;
 	}
 
-	// Use the APIC if it exits
-	Registers Res;
-	ReadCPUID(1, 0, &Res);
+	Mapping[0].Mapping = 2;
+	Mapping[2].Mapping = 0;
+	Mapping[9].VectorMode = LVTPinPolarityHigh | LVTTriggerModeLevel;
 
-	if((Res.EDX & CPUFlags::APICOnChip))
+	// If you don't have CPUID there isn't much we can do anyways.
 	{
-		uint64_t APICBase = ReadMSR(0x1B);
+		Registers Res;
+		ReadCPUID(1, 0, &Res);
 
-		if(APICBase & 0x800)
+		if((Res.EDX & CPUFlags::APICOnChip))
 		{
-			// Grab the register
-			APICRegisterBase = APICBase & 0xFFFFF000;
-			Mode = eAPIC;
+			uint64_t APICBase = ReadMSR(0x1B);
+
+			if(APICBase & 0x800)
+			{
+				// Grab the register
+				APICRegisterBase = APICBase & 0xFFFFF000;
+			}
 		}
 	}
+
+	// Step back what more we are in depending on what hardware we found
+	if(APICRegisterBase == 0xFFFFFFFF)
+		Mode = PICMode::Legacy;
+
+	// Disable the old PIC chip.
+	BaseVector = LowestVector;
+	OutPortb(0x21, 0xFF);
+	OutPortb(0xA1, 0xFF);
+
+	if(Mode == PICMode::IOAPIC)
+	{
+		// Setup the IOAPIC chip
+		for(int x = 0; x < VectorCount; x++)
+		{
+			SetIOAPICVector(Mapping[x].Mapping, LVTMasked | LVTDeliveryModePhysical | Mapping[x].VectorMode | Mapping[x].Vector);
+		}
+	}
+
+	if(Mode == PICMode::IOAPIC || Mode == PICMode::Mixed)
+	{
+
+		// Officially turn the APIC on and set the Spuriouse Interrupt Vector as 0x1F
+		SetAPICRegister(ACPIOffsets::SpuriousInterruptVector, GetAPICRegister(ACPIOffsets::SpuriousInterruptVector) | 0x11F);	
+
+		SetAPICRegister(ACPIOffsets::LVTInt0, 0xFF | LVTMasked | LVTDeliveryModeExtINT	| LVTPinPolarityHigh | LVTTriggerModeLevel);
+		SetAPICRegister(ACPIOffsets::LVTInt1, 0x00 | LVTMasked | LVTDeliveryModeNMI		| LVTPinPolarityHigh | LVTTriggerModeEdge);
+	}
+
+	if(Mode == PICMode::Mixed)
+	{
+		// Set up the APIC
+		SetAPICRegister(ACPIOffsets::LVTInt0, 0xFF | LVTDeliveryModeExtINT	| LVTPinPolarityHigh | LVTTriggerModeLevel);
+		SetAPICRegister(ACPIOffsets::LVTInt1, 0x00 | LVTDeliveryModeNMI		| LVTPinPolarityHigh | LVTTriggerModeEdge);
+
+	}
+
+	if(Mode == PICMode::Mixed || Mode == PICMode::Legacy)
+	{
+		// Set up the PIC
+
+		// Start with the Initialize code
+		OutPortb(0x20, 0x11);
+		OutPortb(0xA0, 0x11);
+    
+		// When we remap the IRQs we will make them linear
+		IRQBase1 = LowestVector;
+		IRQBase2 = LowestVector + 8;
+
+		// ICW2 Is the vector offset
+		OutPortb(0x21, IRQBase1);
+		OutPortb(0xA1, IRQBase2);
+    
+		// ICW3 is the master slave relationship
+		OutPortb(0x21, 0x04);	// Tell chip one that it has a slave on IRQ 2
+		OutPortb(0xA1, 0x02);   
+    
+		// ICW4 is the environment info
+		OutPortb(0x21, 0x01);	// We are still x86
+		OutPortb(0xA1, 0x01);
+
+		// Disable all IRQ (except for 2 which needs to be on to correctly route them)
+		OutPortb(0x21, 0xFB);
+		OutPortb(0xA1, 0xFF);
+	}	
 }
+
 
 uint32_t InterruptControler::GetAPICRegister(ACPIOffsets Reg)
 {
@@ -186,6 +277,17 @@ void InterruptControler::SetIOAPICRegister(int Reg, uint32_t Value)
 	RegisterBase[4] = Value;
 }
 
+void InterruptControler::SetIOAPICVector(int Vector, uint64_t Value)
+{
+	if(IOAPICRegisterBase == 0)
+		return;
+
+	uint32_t Index = 0x10 + (Vector * 2);
+
+	SetIOAPICRegister(Index, Value & 0xFFFFFFFF);
+	SetIOAPICRegister(Index + 1, (Value >> 32) & 0xFFFFFFFF);
+}
+
 
 InterruptControler::~InterruptControler(void)
 {
@@ -194,8 +296,8 @@ InterruptControler::~InterruptControler(void)
 void InterruptControler::Interrupt(InterruptContext * Context)
 {
 	uint8_t IRQ = MapIntToIRQ(Context->InterruptNumber);
-
-	if(IRQ < 0x10)
+	//printf("IRQ %02X, %02X ", IRQ, Context->InterruptNumber);
+	if(IRQ < VectorCount)
 	{
 		if(Mapping[IRQ].InterruptCallback != nullptr)
 		{
@@ -210,12 +312,12 @@ void InterruptControler::Interrupt(InterruptContext * Context)
 	}
 }
 
-void InterruptControler::SetIDT(int InterruptBase, IDTManager *oIDTManager)
+void InterruptControler::SetIDT(IDTManager *oIDTManager)
 {
 	m_IDTManager = oIDTManager;
 
 	// Set up the handlers for IRQs
-	for(int x = InterruptBase; x < InterruptBase + 0x10; x++)
+	for(int x = BaseVector; x < BaseVector + VectorCount; x++)
 	{
 		m_IDTManager->SetInterupt(x, IRQInterrupt, reinterpret_cast<uintptr_t *>(this));
 	}
@@ -223,7 +325,7 @@ void InterruptControler::SetIDT(int InterruptBase, IDTManager *oIDTManager)
 
 void InterruptControler::SetIRQInterrupt(uint8_t IRQ, InterruptCallbackPtr InterruptCallback, uintptr_t * Data)
 {
-	if(IRQ < 0x10)
+	if(IRQ < VectorCount)
 	{
 		Mapping[IRQ].InterruptCallback = InterruptCallback;
 		Mapping[IRQ].Data = Data;
@@ -234,85 +336,37 @@ void InterruptControler::SetIRQInterrupt(uint8_t IRQ, InterruptCallbackPtr Inter
 
 uint8_t InterruptControler::MapIntToIRQ(uint8_t Int)
 {
-	if(Int >= IRQBase1 && Int < IRQBase1 + 8)
+	for(int x = 0; x < VectorCount; x++)
 	{
-		return Int - IRQBase1;
+		if(Mapping[x].Vector == Int)
+			return x;
 	}
-
-	if(Int >= IRQBase2 && Int < IRQBase2 + 8)
-	{
-		return (Int - IRQBase2) + 8;
-	}
-
+	
 	return 0xFF;
 }
 
 uint8_t InterruptControler::MapIRQToInt(uint8_t IRQ)
 {
-	if(IRQ >= 8)
-		return IRQBase2 + (IRQ - 8);
-
-	return IRQBase1 + IRQ;
+	return BaseVector + IRQ;
 }
 
 void InterruptControler::SetSpuriousInterruptVector(uint8_t Vector)
 {
-	if(Mode == ePIC)
+	if(Mode == PICMode::Legacy)
 		return;
 
 	SetAPICRegister(ACPIOffsets::SpuriousInterruptVector, (GetAPICRegister(ACPIOffsets::SpuriousInterruptVector) & 0xFFFFFF00) | Vector);	
 }
 
-void InterruptControler::RemapIRQBase(uint8_t NewBase)
-{
-	// Start with the Initialize code
-	OutPortb(0x20, 0x11);
-    OutPortb(0xA0, 0x11);
-    
-	// When we remap the IRQs we will make them linear
-	IRQBase1 = NewBase;
-	IRQBase2 = NewBase + 8;
-
-	// ICW2 Is the vector offset
-	OutPortb(0x21, IRQBase1);
-    OutPortb(0xA1, IRQBase2);
-    
-	// ICW3 is the master slave relationship
-	OutPortb(0x21, 0x04);	// Tell chip one that it has a slave on IRQ 2
-    OutPortb(0xA1, 0x02);   
-    
-	// ICW4 is the environment info
-	OutPortb(0x21, 0x01);	// We are still x86
-    OutPortb(0xA1, 0x01);
-    
-	if(Mode != ePIC)
-	{
-		//SetAPICRegister(ACPIOffsets::LVTInt0, 0x87FF);
-		//SetAPICRegister(ACPIOffsets::LVTInt1, 0x0400);
-
-		SetAPICRegister(ACPIOffsets::LVTInt0, 0xFF | LVTDeliveryModeExtINT	| LVTPinPolarityHigh | LVTTriggerModeLevel);
-		SetAPICRegister(ACPIOffsets::LVTInt1, 0x00 | LVTDeliveryModeNMI		| LVTPinPolarityHigh | LVTTriggerModeEdge);
-
-		// Officially turn the APIC on
-		SetAPICRegister(ACPIOffsets::SpuriousInterruptVector, GetAPICRegister(ACPIOffsets::SpuriousInterruptVector) | 0x100);	
-
-		for(int x = 0; x < 0x20; x++)
-			Mapping[x].Vector = NewBase + x;
-	}
-
-	// Disable all IRQ (except for 2 which needs to be on to correctly route them)
-	OutPortb(0x21, 0xFB);
-	OutPortb(0xA1, 0xFF);
-
-}
 
 void InterruptControler::ClearIRQ(uint8_t IRQ)
 {
-	if(Mode == eAPIC)
+	if(Mode == PICMode::IOAPIC || Mode == PICMode::Mixed)
 	{
 		SetAPICRegister(ACPIOffsets::EndOfInterrupt, 1);
 	}
-	//else
+	
+	if(Mode == PICMode::Mixed || Mode == PICMode::Legacy)
 	{
 		if (IRQ >= 8)
 			OutPortb(0xA0, 0x20);
@@ -323,10 +377,17 @@ void InterruptControler::ClearIRQ(uint8_t IRQ)
 
 void InterruptControler::EnableIRQ(uint8_t IRQ)
 {
-	//if(UsingAPIC)
-	//{
-	//}
-	//else
+	if(Mode == PICMode::IOAPIC)
+	{
+		if(IRQ < VectorCount)
+		{
+			uint32_t Index = 0x10 + (Mapping[IRQ].Mapping * 2);
+
+			uint32_t Value = GetIOAPICRegister(Index);
+			SetIOAPICRegister(Index, Value & ~LVTMasked);
+		}
+	}
+	else
 	{
 		if (IRQ >= 8)
 		{
@@ -347,10 +408,17 @@ void InterruptControler::EnableIRQ(uint8_t IRQ)
 
 void InterruptControler::DisableIRQ(uint8_t IRQ)
 {
-	//if(UsingAPIC)
-	//{
-	//}
-	//else
+	if(Mode == PICMode::IOAPIC)
+	{
+		if(IRQ < VectorCount)
+		{
+			uint32_t Index = 0x10 + (IRQ * 2);
+
+			uint32_t Value = GetIOAPICRegister(Index);
+			SetIOAPICRegister(Index, Value | LVTMasked);
+		}
+	}
+	else
 	{
 		if (IRQ >= 8)
 		{
@@ -371,7 +439,7 @@ void InterruptControler::DisableIRQ(uint8_t IRQ)
 
 void InterruptControler::SignalInterrupt(uint8_t Int)
 {
-	if(Mode != ePIC)
+	if(Mode != PICMode::Legacy)
 	{
 		SetAPICRegister(ACPIOffsets::InterruptCommandHigh, 0x0);
 		SetAPICRegister(ACPIOffsets::InterruptCommandLow, LVTDestinationShorthandSelf | LVTDeliveryModeFixed | Int);
@@ -379,6 +447,7 @@ void InterruptControler::SignalInterrupt(uint8_t Int)
 	else
 	{
 		Registers Res;
+		Res.EAX = Res.EBX = Res.ECX = Res.EDX = 0;
 		FireInt(Int, &Res);
 	}
 }
@@ -416,25 +485,25 @@ void PrintInt(uint32_t Value, bool Internal = false)
 	switch((Value & 0x700) >> 8)
 	{
 		case 0:
-			printf("Fixed    ");
+			printf("Fixed   ");
 			break;
 		case 1:
-			printf("Lowest   ");
+			printf("Lowest  ");
 			break;
 		case 2:
-			printf("SMI      ");
+			printf("SMI     ");
 			break;
 		case 4:
-			printf("NMI      ");
+			printf("NMI     ");
 			break;
 		case 5:
-			printf("INIT     ");
+			printf("INIT    ");
 			break;
 		case 7:
-			printf("ExtINT   ");
+			printf("ExtINT  ");
 			break;
 		default:
-			printf("Invalid  ");
+			printf("Invalid ");
 			break;			
 	}
 	
@@ -464,7 +533,7 @@ void PrintInt(uint32_t Value, bool Internal = false)
 void InterruptControler::DumpPIC()
 {
 	uint16_t Port;
-	printf("Mode: %0X\n", Mode);
+	printf("Mode: %02X, Count: %08X\n", Mode, VectorCount);
 	printf("IRQ        0 1 2 3 4 5 6 7 8 9 A B C D E F\n");
 	Port = InPortb(0x21);
 	Port += InPortb(0xA1) << 8;
@@ -527,7 +596,7 @@ void InterruptControler::DumpPIC()
 
 void InterruptControler::DumpAPIC()
 {
-	printf("Mode: %0X\n", Mode);
+	printf("Mode: %02X, Count: %08X\n", Mode, VectorCount);
 	printf("APIC (%08X) ID: %02X, Logical ID %02X, Version: %08X\n", APICRegisterBase, GetAPICRegister(ACPIOffsets::LocalACPIID) >> 24, (GetAPICRegister(ACPIOffsets::LocalACPIVersion) & 0xFF000000) >> 24, GetAPICRegister(ACPIOffsets::LocalACPIVersion));
 	printf(" Spurious Interrupt Vector: %02X, Error Status %03X\n", GetAPICRegister(ACPIOffsets::SpuriousInterruptVector) & 0xFF, GetAPICRegister(ACPIOffsets::ErrorStatus) & 0x1FF);
 	printf(" Task Priority: %02X, Arbitration Priority: %02X, Processor Priority: %02X\n", GetAPICRegister(ACPIOffsets::TaskPriority) & 0xFF, GetAPICRegister(ACPIOffsets::ArbitrationPriority) & 0xFF, GetAPICRegister(ACPIOffsets::ProcessorPriority) & 0xFF);
@@ -586,7 +655,7 @@ void InterruptControler::DumpIOAPIC()
 
 	Temp = GetIOAPICRegister(0);
 
-	printf("Mode: %0X\n", Mode);
+	printf("Mode: %02X, Count: %08X\n", Mode, VectorCount);
 	printf("I/O APIC ID: %02X\n", Temp >> 24); 
 
 	Temp = GetIOAPICRegister(1);

@@ -31,6 +31,8 @@ $RECYCLE.BIN/
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
+AcpiSubsystem/
+AcpiSubsystem[Dd]ebug/
 x64/
 build/
 bld/

@@ -803,7 +803,7 @@ bool OpenHCI::StartUp(uint32_t DeviceID, InterruptControler *IntControler)
 	}
 
 	m_IRQ = PCI::ReadRegister(m_DeviceID, 0x3C) & 0x000000FF;
-	m_IntControler->SetIRQInterrupt(m_IRQ, OpenHCIInterupt, reinterpret_cast<uintptr_t *>(this));
+	m_IntControler->SetIRQInterrupt(m_IRQ, IntPriority::Any, OpenHCIInterupt, reinterpret_cast<uintptr_t *>(this));
 	m_IntControler->EnableIRQ(m_IRQ);
 
 	uint16_t temp = Registers->FrameInterval;

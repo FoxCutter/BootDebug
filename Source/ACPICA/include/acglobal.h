@@ -382,7 +382,7 @@ ACPI_GLOBAL (UINT32,                    AcpiGbl_OriginalDbgLayer);
  *
  ****************************************************************************/
 
-ACPI_INIT_GLOBAL (UINT8,                AcpiGbl_DbOutputFlags, ACPI_DB_CONSOLE_OUTPUT);
+ACPI_INIT_GLOBAL (UINT8,                AcpiGbl_DbOutputFlags, ACPI_DB_DISABLE_OUTPUT);
 
 #ifdef ACPI_DISASSEMBLER
 

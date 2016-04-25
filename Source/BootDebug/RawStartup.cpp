@@ -875,6 +875,7 @@ void ClearBSS(intptr_t ImageHeader)
 	//NTHeader->FileHeader.NumberOfSections
 }
 
+ACPI_TABLE_DESC TempTables[0x20];
 
 extern "C" void MultiBootMain(void *Address, uint32_t Magic) 
 {
@@ -973,14 +974,20 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	_atexit_init();
 	_initterm();
 
+	KernalPrintf(" Loading ACPI...\n");
+	ACPI_STATUS Status = AcpiInitializeTables(TempTables, 0x20, false);
+	ACPI_TABLE_HEADER *Blob = nullptr;
+	AcpiGetTable(ACPI_SIG_MADT, 0, &Blob);
+
 	// Step 3: Remap IRQs
 	KernalPrintf(" Setting up IRQs...\n");
 	//m_InterruptControler.RemapIRQBase(0x20);
 
-	m_InterruptControler.Initialize(nullptr, 0x020);
+	m_InterruptControler.Initialize(&IDTData, reinterpret_cast<ACPI_TABLE_MADT *>(Blob));
+	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
 
-	m_InterruptControler.SetIDT(&IDTData);
-	m_InterruptControler.SetIRQInterrupt(0x01, KeyboardInterrupt);
+	AcpiTerminate();
+
 	
 	CoreComplex->HardwareComplex.Add("KB", "PS/2 Keyboard");	
 
@@ -1048,7 +1055,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	OutPortb(0x40, ClockSpeed & 0xFF); // Low Byte
 	OutPortb(0x40, ClockSpeed >> 8); // High Byte
 
-	m_InterruptControler.SetIRQInterrupt(0x00, (InterruptCallbackPtr)ClockInterrupt);	
+	m_InterruptControler.SetIRQInterrupt(0x00, IntPriority::System, (InterruptCallbackPtr)ClockInterrupt);	
 
 	//m_InterruptControler.EnableIRQ(2);
 	//m_InterruptControler.EnableIRQ(9);

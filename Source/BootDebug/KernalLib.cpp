@@ -11,12 +11,12 @@ RawTerminal * KernalTerminal;
 
 void * KernalAlloc(uint32_t Size)
 {
-	return nullptr;
+	return CoreComplexObj::GetComplex()->KernalHeap.malloc(Size, false);
 }
 
 void KernalFree(void * Address)
 {
-	return;
+	CoreComplexObj::GetComplex()->KernalHeap.free(Address);
 }
 
 int KernalSprintf(char * Dest, uint32_t cCount, const char * format, ...)

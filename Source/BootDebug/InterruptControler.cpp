@@ -3,6 +3,10 @@
 #include "IDT.h"
 #include "KernalLib.h"
 
+extern "C" {
+	#include <acpi.h>
+}
+
 #include <stdio.h>
 
 enum class ACPIOffsets
@@ -104,7 +108,7 @@ enum ACPIErrors
 	ACPIIllegalRegisterAddress		= 0x0080,	
 };
 
-static void IRQInterrupt(InterruptContext * Context, uintptr_t * Data)
+void InterruptControler::IRQInterrupt(InterruptContext * Context, uintptr_t * Data)
 {
 	if(Data == nullptr)
 		return;
@@ -118,14 +122,36 @@ InterruptControler::InterruptControler(void)
 {
 }
 
-void InterruptControler::Initialize(ACPI_TABLE_MADT *MADT, uint8_t LowestVector)
+void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MADT)
 {
+	m_IDTManager = oIDTManager;
+
 	// Start with the full I/O APIC mode
 	Mode = PICMode::IOAPIC;
 	APICRegisterBase = 0xFFFFFFFF;
 	IOAPICRegisterBase = 0xFFFFFFFF;
 	
-	IOAPICRegisterBase = 0xFEC00000;
+	//IOAPICRegisterBase = 0xFEC00000;
+
+	if(MADT != nullptr && strncmp(MADT->Header.Signature, ACPI_SIG_MADT, 4) == 0)
+	{
+		// Quick step over the MADT table to pull out the lowest I/O Apic chip.	
+		uint32_t Offset = sizeof(ACPI_TABLE_MADT);
+		while(Offset < MADT->Header.Length)
+		{
+			ACPI_MADT_IO_APIC *Entry = reinterpret_cast<ACPI_MADT_IO_APIC*>((uint32_t)MADT + Offset);
+			if(Entry->Header.Type == ACPI_MADT_TYPE_IO_APIC)
+			{
+				if(Entry->GlobalIrqBase == 0)
+				{
+					IOAPICRegisterBase = Entry->Address;
+					break;
+				}
+			}
+
+			Offset += Entry->Header.Length;
+		}
+	}
 
 	if(IOAPICRegisterBase != 0xFFFFFFFF)
 	{
@@ -135,21 +161,60 @@ void InterruptControler::Initialize(ACPI_TABLE_MADT *MADT, uint8_t LowestVector)
 	else
 	{
 		Mode = PICMode::Mixed;
-		VectorCount = 0x10;
+		VectorCount = 0x10;		
 	}
+
+	Mapping = reinterpret_cast<MappingData *>(KernalAlloc(sizeof(MappingData) * VectorCount));
 
 	for(int x = 0; x < VectorCount; x++)
 	{
-		Mapping[x].Vector = LowestVector + x;
+		if(Mode == PICMode::IOAPIC)
+			Mapping[x].Vector = 0xF0 - x;
+		else
+			Mapping[x].Vector = 0x20 + x;
+
 		Mapping[x].Mapping = x;
 		Mapping[x].Data = nullptr;
 		Mapping[x].InterruptCallback = nullptr;
 		Mapping[x].VectorMode = LVTPinPolarityHigh | LVTTriggerModeEdge;
 	}
 
-	Mapping[0].Mapping = 2;
-	Mapping[2].Mapping = 0;
-	Mapping[9].VectorMode = LVTPinPolarityHigh | LVTTriggerModeLevel;
+	//Mapping[0].Mapping = 2;
+	//Mapping[2].Mapping = 0xFF;
+	//Mapping[9].VectorMode = LVTPinPolarityHigh | LVTTriggerModeLevel;
+
+	if(Mode == PICMode::IOAPIC && MADT != nullptr)
+	{
+		// Quick step over the MADT table to pull out the lowest I/O Apic chip.	
+		uint32_t Offset = sizeof(ACPI_TABLE_MADT);
+		while(Offset < MADT->Header.Length)
+		{
+			ACPI_MADT_INTERRUPT_OVERRIDE *Entry = reinterpret_cast<ACPI_MADT_INTERRUPT_OVERRIDE*>((uint32_t)MADT + Offset);
+			if(Entry->Header.Type == ACPI_MADT_TYPE_INTERRUPT_OVERRIDE)
+			{				
+				if(Entry->SourceIrq != Entry->GlobalIrq)
+				{
+					Mapping[Entry->SourceIrq].Mapping = Entry->GlobalIrq;
+					Mapping[Entry->GlobalIrq].Mapping = 0xFF;
+				}
+
+				if((Entry->IntiFlags & 0x03) == 0 || (Entry->IntiFlags & 0x03) == 1)
+					Mapping[Entry->SourceIrq].VectorMode |= LVTPinPolarityHigh;
+
+				else
+					Mapping[Entry->SourceIrq].VectorMode |= LVTPinPolarityLow;
+
+				
+				if(((Entry->IntiFlags >> 2) & 0x03) == 0 || ((Entry->IntiFlags >> 2) & 0x03) == 1)
+					Mapping[Entry->SourceIrq].VectorMode |= LVTTriggerModeEdge;
+
+				else
+					Mapping[Entry->SourceIrq].VectorMode |= LVTTriggerModeLevel;
+			}
+
+			Offset += Entry->Header.Length;
+		}
+	}
 
 	// If you don't have CPUID there isn't much we can do anyways.
 	{
@@ -173,16 +238,23 @@ void InterruptControler::Initialize(ACPI_TABLE_MADT *MADT, uint8_t LowestVector)
 		Mode = PICMode::Legacy;
 
 	// Disable the old PIC chip.
-	BaseVector = LowestVector;
+	BaseVector = 0x20;
 	OutPortb(0x21, 0xFF);
 	OutPortb(0xA1, 0xFF);
 
 	if(Mode == PICMode::IOAPIC)
 	{
+		SetIOAPICVector(0, LVTMasked | LVTDeliveryModePhysical);
+
 		// Setup the IOAPIC chip
 		for(int x = 0; x < VectorCount; x++)
 		{
-			SetIOAPICVector(Mapping[x].Mapping, LVTMasked | LVTDeliveryModePhysical | Mapping[x].VectorMode | Mapping[x].Vector);
+			if(Mapping[x].Mapping != 0xFF)
+			{
+				SetIOAPICVector(Mapping[x].Mapping, LVTMasked | LVTDeliveryModePhysical | Mapping[x].VectorMode | Mapping[x].Vector);
+
+				m_IDTManager->SetInterupt(Mapping[x].Vector, IRQInterrupt, reinterpret_cast<uintptr_t *>(this));
+			}
 		}
 	}
 
@@ -213,8 +285,8 @@ void InterruptControler::Initialize(ACPI_TABLE_MADT *MADT, uint8_t LowestVector)
 		OutPortb(0xA0, 0x11);
     
 		// When we remap the IRQs we will make them linear
-		IRQBase1 = LowestVector;
-		IRQBase2 = LowestVector + 8;
+		IRQBase1 = 0x20;
+		IRQBase2 = 0x20 + 8;
 
 		// ICW2 Is the vector offset
 		OutPortb(0x21, IRQBase1);
@@ -231,7 +303,30 @@ void InterruptControler::Initialize(ACPI_TABLE_MADT *MADT, uint8_t LowestVector)
 		// Disable all IRQ (except for 2 which needs to be on to correctly route them)
 		OutPortb(0x21, 0xFB);
 		OutPortb(0xA1, 0xFF);
+
+		// Set up the handlers for IRQs
+		for(int x = BaseVector; x < BaseVector + VectorCount; x++)
+		{
+			m_IDTManager->SetInterupt(x, IRQInterrupt, reinterpret_cast<uintptr_t *>(this));
+		}
 	}	
+
+
+	switch(Mode)
+	{
+		case PICMode::IOAPIC:
+			KernalPrintf("  I/O APIC Mode\n");
+			break;
+
+		case PICMode::Mixed:
+			KernalPrintf("  Mixed Mode\n");
+			break;
+
+		case PICMode::Legacy:
+			KernalPrintf("  Legary Mode\n");
+			break;
+	}
+
 }
 
 
@@ -312,25 +407,15 @@ void InterruptControler::Interrupt(InterruptContext * Context)
 	}
 }
 
-void InterruptControler::SetIDT(IDTManager *oIDTManager)
+
+void InterruptControler::SetIRQInterrupt(uint8_t IntLine, IntPriority Priority, InterruptCallbackPtr InterruptCallback, uintptr_t * Data)
 {
-	m_IDTManager = oIDTManager;
-
-	// Set up the handlers for IRQs
-	for(int x = BaseVector; x < BaseVector + VectorCount; x++)
+	if(IntLine < VectorCount)
 	{
-		m_IDTManager->SetInterupt(x, IRQInterrupt, reinterpret_cast<uintptr_t *>(this));
-	}
-}
+		Mapping[IntLine].InterruptCallback = InterruptCallback;
+		Mapping[IntLine].Data = Data;
 
-void InterruptControler::SetIRQInterrupt(uint8_t IRQ, InterruptCallbackPtr InterruptCallback, uintptr_t * Data)
-{
-	if(IRQ < VectorCount)
-	{
-		Mapping[IRQ].InterruptCallback = InterruptCallback;
-		Mapping[IRQ].Data = Data;
-
-		EnableIRQ(IRQ);
+		EnableIRQ(IntLine);
 	}
 }
 

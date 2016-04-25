@@ -9,13 +9,37 @@ typedef struct acpi_table_madt ACPI_TABLE_MADT;
 
 enum class ACPIOffsets;
 
+// Priority level for the interupts, using the APIC fixed int rules (High number has higher priority)
+// If it's in Mixed or PIC mode these don't matter AT ALL.
+enum class IntPriority
+{
+	System		= 0xF0,	// 0xF0 - 0xFF
+
+	Higest		= 0xE0, // 0xE0 - 0xEF
+	Higher		= 0xD0,	// 0xD0 - 0xDF
+	High		= 0xA0, // 0xA0 - 0xCF
+
+	Any			= 0x70, // 0x70 - 0x9F
+	
+	Low			= 0x40, // 0x40 - 0x6F
+	Lower		= 0x30, // 0X30 - 0x3F
+	Lowest		= 0x20, // 0x20 - 0x2F
+};
+
 class InterruptControler
 {
 	enum class PICMode
 	{
-		Legacy = 0xFF,
-		Mixed  = 0x80,		
+		// Use the full I/O APIC, supports multi-processor, Intlines variable (based on what the IOAPIC supports)
+		// Also does automatic rerouting of the old IRQs (0x0 - 0xF) to the new intlines if there is mapping defined in the
+		// APIC table. INT vectors will be allocated based on Priority and need.
 		IOAPIC = 0x0F,
+
+		// Mixed Mode, Use the APIC with default routing and the PIC with fixed Priorty
+		Mixed  = 0x80,		
+	
+		// Old PIC mode, Intlines 0x0-0xF, With fixed priority (0, 1, 2, 8, 9, A, B, C, D, E, F, 3, 4, 5, 6, 7)
+		Legacy = 0xFF,
 	};
 
 	struct MappingData
@@ -27,7 +51,9 @@ class InterruptControler
 		
 		uint32_t VectorMode;	// High/Low, Edge/Level
 
-	} Mapping[0x20];
+	};
+	
+	MappingData *Mapping;
 
 	// The base of the two IRQ blocks
 	PICMode Mode;
@@ -50,19 +76,17 @@ class InterruptControler
 
 	void SetIOAPICVector(int Vector, uint64_t Value);
 
+	static void IRQInterrupt(InterruptContext * Context, uintptr_t * Data);
+	void Interrupt(InterruptContext * Context);
 
 public:
 	InterruptControler(void);
 	~InterruptControler(void);
-
-	void Initialize(ACPI_TABLE_MADT *MADT, uint8_t LowestVector);
-
 	
-	
-	void Interrupt(InterruptContext * Context);
+	void Initialize(IDTManager *IDTManager, ACPI_TABLE_MADT *MADT);
 
-	void SetIDT(IDTManager *IDTManager);
-	void SetIRQInterrupt(uint8_t IRQ, InterruptCallbackPtr InterruptCallback, uintptr_t * Data = nullptr);
+
+	void SetIRQInterrupt(uint8_t IntLine, IntPriority Priority, InterruptCallbackPtr InterruptCallback, uintptr_t * Data = nullptr);
 
 	void SetSpuriousInterruptVector(uint8_t Vector);
 

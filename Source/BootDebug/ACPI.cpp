@@ -1226,7 +1226,7 @@ AcpiOsInstallInterruptHandler (
     void                    *Context)
 {
 	ISR = ServiceRoutine;
-	m_InterruptControler.SetIRQInterrupt(InterruptNumber, ACPIInterruptCallback, reinterpret_cast<uintptr_t *>(Context));
+	m_InterruptControler.SetIRQInterrupt(InterruptNumber, IntPriority::Any, ACPIInterruptCallback, reinterpret_cast<uintptr_t *>(Context));
 	//m_InterruptControler.EnableIRQ(InterruptNumber);
 	
 	//printf("---Enabled %02X----\n", InterruptNumber);
@@ -1253,7 +1253,7 @@ AcpiOsRemoveInterruptHandler (
     ACPI_OSD_HANDLER        ServiceRoutine)
 {
 	m_InterruptControler.DisableIRQ(InterruptNumber);
-	m_InterruptControler.SetIRQInterrupt(InterruptNumber, nullptr);
+	m_InterruptControler.SetIRQInterrupt(InterruptNumber, IntPriority::Any, nullptr);
 	m_InterruptControler.DisableIRQ(InterruptNumber);
 	ISR = nullptr;
 

@@ -48,7 +48,7 @@ extern "C" void HandleInterrupt(InterruptContext * Context)
 	if(InterruptCallbackTable[Context->InterruptNumber].InterruptCallback != nullptr)
 		InterruptCallbackTable[Context->InterruptNumber].InterruptCallback(Context, InterruptCallbackTable[Context->InterruptNumber].Data);
 	else
-		printf("INT %02X ", Context->InterruptNumber);
+		printf("!INT %02X ", Context->InterruptNumber);
 
 	return;
 }

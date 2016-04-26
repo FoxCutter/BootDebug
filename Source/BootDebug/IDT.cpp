@@ -1,5 +1,6 @@
 #include "IDT.h"
-#include <stdio.h>
+#include "KernalLib.h"
+
 #include <string.h>
 #include "LowLevel.h"
 
@@ -48,7 +49,7 @@ extern "C" void HandleInterrupt(InterruptContext * Context)
 	if(InterruptCallbackTable[Context->InterruptNumber].InterruptCallback != nullptr)
 		InterruptCallbackTable[Context->InterruptNumber].InterruptCallback(Context, InterruptCallbackTable[Context->InterruptNumber].Data);
 	else
-		printf("!INT %02X ", Context->InterruptNumber);
+		KernalPrintf("!INT %02X ", Context->InterruptNumber);
 
 	return;
 }
@@ -57,18 +58,23 @@ IDTManager::IDTManager()
 {
 }
 
-void IDTManager::SetSelectors(uint16_t CodeSelector, uint16_t DataSelector)
+
+void IDTManager::Initilize(uint16_t CodeSelector, uint16_t DataSelector)
 {
+	DescriptorTable::Initilize(256, true);
+
+	m_CodeSelector = CodeSelector;
+	m_DataSelector = DataSelector;
+
 	IntData = DataSelector;
 	IntCallback = (uint32_t)HandleInterrupt;
 	
-	memset(IDTTable, 0, sizeof(IDT::IDTEntry) * 256);
 	memset(InterruptCallback, 0, sizeof(InterruptData) * 256);
 
 	int Pos = 0;
 	while(IntTable[Pos] != 0)
 	{
-		BuildIDTEntry(&IDTTable[Pos], CodeSelector, IntTable[Pos], IDT::Present, IDT::InteruptGate_32Bit, 0);
+		BuildGateEntry(GetEntry(Pos), CodeSelector, IntTable[Pos], 0, true, DescriptiorData::IntGate32BitSegment, 0);
 		Pos++;
 	}
 }
@@ -93,11 +99,9 @@ void IDTManager::SetInterupt(unsigned int IntNum, InterruptCallbackPtr CallBack,
 		InterruptCallback[IntNum].InterruptCallback = CallBack;
 		InterruptCallback[IntNum].Data = Data;
 
-		IDT::IDTEntry & Entry = IDTTable[IntNum];
+		DescriptiorData::TableEntry * Entry = GetEntry(IntNum);
 
-		Entry.Attributes &= ~IDT::TypeMask;
-	
-		Entry.Attributes |= (Type & IDT::TypeMask);
+		Entry->Type = Type;
 	}
 	ASM_STI
 }
@@ -113,27 +117,25 @@ void IDTManager:: SetInteruptDPL(unsigned int  IntNum, InterruptCallbackPtr Call
 		InterruptCallback[IntNum].InterruptCallback = CallBack;
 		InterruptCallback[IntNum].Data = Data;
 
-		IDT::IDTEntry & Entry = IDTTable[IntNum];
+		DescriptiorData::TableEntry * Entry = GetEntry(IntNum);
 
-		printf("ATR %02X ", Entry.Attributes);
+		KernalPrintf("DPL %02X ", Entry->DPL);
 		
-		Entry.Attributes &= ~IDT::DPLMask;
-		Entry.Attributes |= DPL << 5;
+		Entry->DPL = DPL;
 	
-		printf("ATR %02X\n", Entry.Attributes);
+		KernalPrintf("DPL %02X ", Entry->DPL);
 
 	}
 	ASM_STI
 }
 
-IDT::IDTPtr IDTManager::SetActive()
+DescriptiorData::TablePtr IDTManager::SetActive()
 {
-	IDT::IDTPtr TablePtr;
+	DescriptiorData::TablePtr  TablePtr;
 	
-	TablePtr.Address = (uint32_t)&IDTTable;
-	TablePtr.Limit = (256 * sizeof(IDT::IDTEntry)) - 1;
+	PopulateTablePointer(TablePtr);
 
-	IDT::IDTPtr OldValue;
+	DescriptiorData::TablePtr  OldValue;
 
 	ASM_SIDT(OldValue);
 	
@@ -144,15 +146,16 @@ IDT::IDTPtr IDTManager::SetActive()
 	return OldValue;
 }
 
-void IDTManager::BuildIDTEntry(IDT::IDTEntry *Entry, uint16_t Segment, uint32_t Offset, uint8_t Attributes, uint8_t Type, uint8_t DPL)
-{
-	Entry->Attributes = Attributes;
-	
-	Entry->OffsetLow  = (Offset & 0x0000FFFF);
-	Entry->OffsetHigh = (Offset & 0xFFFF0000) >> 16;
-	Entry->Segment = Segment;
-	Entry->Reserved = 0;
 
-	Entry->Attributes |= (Type & IDT::TypeMask);
-	Entry->Attributes |= (DPL << 4);
+void IDTManager::Dump()
+{
+	for(int x = 0; x < 256; x++)
+	{
+		if(InterruptCallback[x].InterruptCallback != nullptr)
+		{
+			KernalPrintf(" %02X", x);
+
+			PrintSelector(GetEntry(x));
+		}
+	}
 }

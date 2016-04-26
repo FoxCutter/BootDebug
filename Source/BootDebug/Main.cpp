@@ -659,6 +659,10 @@ void main(int argc, char *argv[])
 					{
 						m_InterruptControler.DumpPIC();
 					}
+					else if(_stricmp("IDT", CurrentData) == 0)
+					{
+						CoreComplexObj::GetComplex()->IDTTable.Dump();
+					}
 					else if(_stricmp("GDT", CurrentData) == 0)
 					{
 						CoreComplexObj::GetComplex()->GDTTable.Dump();

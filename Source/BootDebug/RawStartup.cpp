@@ -631,7 +631,7 @@ void ClockInterrupt(volatile InterruptContext * Context, uintptr_t * Data)
 
 		uint16_t OldFS;
 		ASM_ReadReg(fs, OldFS);
-		GDTManager::UpdateGDTEntry(OldFS, reinterpret_cast<uint32_t>(NextThread), sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 3);
+		GDTManager::UpdateGDTEntry(OldFS, reinterpret_cast<uint32_t>(NextThread), sizeof(ThreadInformation), DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
 		ASM_WriteReg(fs, OldFS);
 	}
 	else
@@ -681,10 +681,9 @@ extern MulitBoot::Header MB1Header;
 // * Start the monitor
 
 // Eventual all of this will be in the Core Complex
-IDTManager IDTData;
 OpenHCI USB;
 
-GDT::TSS MyTSS;
+DescriptiorData::TaskStateSegment MyTSS;
 
 MemoryPageMap BuildMemoryPageMap(MultiBootInfo &MBReader)
 {
@@ -790,17 +789,17 @@ CoreComplexObj *BuildCoreComplex(MemoryPageMap &MemoryMap)
 void BuildGDT(CoreComplexObj *CoreComplex)
 {
 	// The NULL Segment is automatically added for us
-	CoreComplex->CodeSegment0	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeExecuteRead, 0);
-	CoreComplex->DataSegment0	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 0);
-	CoreComplex->CodeSegment3	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeExecuteRead, 3);
-	CoreComplex->DataSegment3	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 3);
-	CoreComplex->CodeSegment2	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeExecuteRead, 2);
-	CoreComplex->DataSegment2	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 2);
-	CoreComplex->CodeSegment1	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::CodeExecuteRead, 1);
-	CoreComplex->DataSegment1	= CoreComplex->GDTTable.AddGDTEntry(0, 0xFFFFFFFF, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 1);
-	CoreComplex->CoreSegment	= CoreComplex->GDTTable.AddGDTEntry(reinterpret_cast<uint32_t>(CoreComplex), 0x10000, GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 0);
-	CoreComplex->ThreadSegment	= CoreComplex->GDTTable.AddGDTEntry(0, sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 3);
-	//CoreComplex->TaskSegment	= CoreComplex->GDTTable.AddGDTEntry(reinterpret_cast<uint32_t>(&MyTSS), sizeof(GDT::TSS), GDT::Present, GDT::TSS32BitSegment, 0);
+	CoreComplex->CodeSegment0	= CoreComplex->GDTTable.AddMemoryEntry(0, 0xFFFFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::CodeExecuteRead, 0);
+	CoreComplex->DataSegment0	= CoreComplex->GDTTable.AddMemoryEntry(0, 0xFFFFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 0);
+	CoreComplex->CodeSegment3	= CoreComplex->GDTTable.AddMemoryEntry(0, 0xFFFFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::CodeExecuteRead, 3);
+	CoreComplex->DataSegment3	= CoreComplex->GDTTable.AddMemoryEntry(0, 0xFFFFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
+	CoreComplex->CodeSegment2	= CoreComplex->GDTTable.AddMemoryEntry(0, 0xFFFFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::CodeExecuteRead, 2);
+	CoreComplex->DataSegment2	= CoreComplex->GDTTable.AddMemoryEntry(0, 0xFFFFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 2);
+	CoreComplex->CodeSegment1	= CoreComplex->GDTTable.AddMemoryEntry(0, 0xFFFFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::CodeExecuteRead, 1);
+	CoreComplex->DataSegment1	= CoreComplex->GDTTable.AddMemoryEntry(0, 0xFFFFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 1);
+	CoreComplex->CoreSegment	= CoreComplex->GDTTable.AddMemoryEntry(reinterpret_cast<uint32_t>(CoreComplex), 0x10000, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 0);
+	CoreComplex->ThreadSegment	= CoreComplex->GDTTable.AddMemoryEntry(0, sizeof(ThreadInformation), DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
+	//CoreComplex->TaskSegment	= CoreComplex->GDTTable.AddMemoryEntry(reinterpret_cast<uint32_t>(&MyTSS), sizeof(DescriptiorData::TSS), DescriptiorData::Present, DescriptiorData::TSS32BitSegment, 0);
 	
 	// Switch to our GDT
 	KernalPrintf("  GDT %08X, Entries %02X\n", &CoreComplex->GDTTable, CoreComplex->GDTTable.TableSize());
@@ -915,15 +914,15 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	// Step 2: Set our IDT
 	KernalPrintf(" Setting up IDT...\n");
-	IDTData.SetSelectors(CoreComplex->CodeSegment0, CoreComplex->DataSegment0);
+	CoreComplex->IDTTable.Initilize(CoreComplex->CodeSegment0, CoreComplex->DataSegment0);
 
 	// Set up the handlers for System errors
 	for(int x = 0; x < 0x20; x++)
 	{
-		IDTData.SetInterupt(x, SystemTrap);
+		CoreComplex->IDTTable.SetInterupt(x, SystemTrap);
 	}
 
-	IDTData.SetActive();
+	CoreComplex->IDTTable.SetActive();
 
 	// Step 4: Bring up the MMU for the kernel space
 	KernalPrintf(" Setting up Memory Manager...\n");
@@ -983,7 +982,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	KernalPrintf(" Setting up IRQs...\n");
 	//m_InterruptControler.RemapIRQBase(0x20);
 
-	m_InterruptControler.Initialize(&IDTData, reinterpret_cast<ACPI_TABLE_MADT *>(Blob));
+	m_InterruptControler.Initialize(&CoreComplex->IDTTable, reinterpret_cast<ACPI_TABLE_MADT *>(Blob));
 	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
 
 	AcpiTerminate();
@@ -1043,7 +1042,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	ThreadListHead->InsertLast(MyThread);
 
-	CoreComplex->GDTTable.UpdateGDTEntry(CoreComplex->ThreadSegment, reinterpret_cast<uint32_t>(MyThread), sizeof(ThreadInformation), GDT::Present | GDT::Operand32Bit | GDT::NonSystemFlag, GDT::DataReadWrite, 3);
+	CoreComplex->GDTTable.UpdateGDTEntry(CoreComplex->ThreadSegment, reinterpret_cast<uint32_t>(MyThread), sizeof(ThreadInformation), DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
 	uint16_t TempSegment = CoreComplex->ThreadSegment;
 	ASM_WriteReg(fs, TempSegment);
 

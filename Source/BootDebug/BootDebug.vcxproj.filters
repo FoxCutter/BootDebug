@@ -107,6 +107,9 @@
     <ClCompile Include="AHCI.cpp">
       <Filter>Drivers\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DescriptorTable.cpp">
+      <Filter>Kernal\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RawTerminal.h">
@@ -206,6 +209,9 @@
       <Filter>Drivers\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HardwareTree.h">
+      <Filter>Kernal\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DescriptorTable.h">
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
   </ItemGroup>

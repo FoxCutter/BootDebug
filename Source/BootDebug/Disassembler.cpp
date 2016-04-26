@@ -559,9 +559,9 @@ Disassembler::OpcodeData Disassembler::ReadOpcode(uint8_t *Address, uint32_t OpS
 	bool RexW = false;
 
 
-	ASMTableEntry *OpEntry = nullptr;
-	ASMTableEntry *GroupBlock = nullptr;
-	ASMTableEntry *GroupEntry = nullptr;
+	const ASMTableEntry *OpEntry = nullptr;
+	const ASMTableEntry *GroupBlock = nullptr;
+	const ASMTableEntry *GroupEntry = nullptr;
 	uint8_t GroupIndex = 0;
 
 	do

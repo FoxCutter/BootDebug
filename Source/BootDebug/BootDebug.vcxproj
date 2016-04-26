@@ -125,6 +125,7 @@
     <ClCompile Include="ACPI.cpp" />
     <ClCompile Include="AHCI.cpp" />
     <ClCompile Include="BootHeader.cpp" />
+    <ClCompile Include="DescriptorTable.cpp" />
     <ClCompile Include="Disassembler.cpp" />
     <ClCompile Include="EnhancedHCI.cpp" />
     <ClCompile Include="ExtensibleHCI.cpp" />
@@ -152,6 +153,7 @@
     <ClInclude Include="ACPI.h" />
     <ClInclude Include="AHCI.h" />
     <ClInclude Include="CoreComplex.h" />
+    <ClInclude Include="DescriptorTable.h" />
     <ClInclude Include="Disassembler.h" />
     <ClInclude Include="EnhancedHCI.h" />
     <ClInclude Include="ExtensibleHCI.h" />

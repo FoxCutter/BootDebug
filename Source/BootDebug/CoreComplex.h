@@ -43,10 +43,7 @@ struct CoreComplexObj
 	
 	ObjectManager ObjectComplex;
 
-	ALIGN_32BIT
 	GDTManager GDTTable;
-
-	ALIGN_32BIT
 	IDTManager IDTTable;
 
 	static CoreComplexObj *GetComplex()

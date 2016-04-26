@@ -8,6 +8,8 @@ enum class KernalCode : uint32_t
 {
 	NoError = 0,
 
+	MemoryError  = 0x80000001,
+
 	GeneralError = 0xFFFFFFFF,
 };
 

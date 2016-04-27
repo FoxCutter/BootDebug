@@ -42,8 +42,9 @@ extern "C" void __cdecl mainCRTStartup( void )
 	errno = 0;
 	
 	int mainret, argc;
+	char * argv[129];
 
-    argc = _ConvertCommandLineToArgcArgv( GetCommandLine() );
+    argc = _ConvertCommandLineToArgcArgv( GetCommandLine(), argv, 128 );
 
     // set up our minimal cheezy atexit table
     _atexit_init();
@@ -51,7 +52,7 @@ extern "C" void __cdecl mainCRTStartup( void )
     // Call C++ constructors
     _initterm();
 
-    mainret = main( argc, _ppszArgv, 0 );
+    mainret = main( argc, argv, 0 );
 
     _DoExit();
 

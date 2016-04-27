@@ -132,6 +132,16 @@ WriteCR4 PROC C
 	ret
 WriteCR4 ENDP
 
+;extern "C" uint64_t WriteXCR0(uint62_t Value);
+WriteXCR0 PROC C
+	mov ecx, 0
+	mov edx, [esp + 8]
+	mov eax, [esp + 4]
+
+	XSETBV
+	ret
+WriteXCR0 ENDP
+
 ASSUME FS:Nothing
 ASSUME GS:Nothing
 

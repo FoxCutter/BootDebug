@@ -110,45 +110,81 @@ namespace CPUFlags
 	enum IDs
 	{
 		// CR0
-		ProtectedMode						= 0x00000001,
-		MonitorCoprocessor					= 0x00000002,
-		FPUEmulation						= 0x00000004,
-		TaskSwitched						= 0x00000008,
-		ExtensionType						= 0x00000010,
-		NumericException					= 0x00000020,
-		WriteProtection						= 0x00010000,
-		AlignmentMask						= 0x00040000,
-		NotWriteThrough						= 0x20000000,
-		CachingDisabled						= 0x40000000,
-		PagingEnabled						= 0x80000000,
+		ProtectedMode						= 0x00000001,		// 0
+		MonitorCoprocessor					= 0x00000002,		// 1
+		FPUEmulation						= 0x00000004,		// 2
+		TaskSwitched						= 0x00000008,		// 3
+		ExtensionType						= 0x00000010,		// 4
+		NumericException					= 0x00000020,		// 5
+		// Reserved							= 0x00000040,		// 6
+		// Reserved							= 0x00000080,		// 7
+		// Reserved							= 0x00000100,		// 8
+		// Reserved							= 0x00000200,		// 9
+		// Reserved							= 0x00000400,		// 10
+		// Reserved							= 0x00000800,		// 11
+		// Reserved							= 0x00001000,		// 12
+		// Reserved							= 0x00002000,		// 13
+		// Reserved							= 0x00004000,		// 14
+		// Reserved							= 0x00008000,		// 15
+		WriteProtection						= 0x00010000,		// 16
+		// Reserved							= 0x00020000,		// 17
+		AlignmentMask						= 0x00040000,		// 18
+		// Reserved							= 0x00080000,		// 19
+		// Reserved							= 0x00100000,		// 20
+		// Reserved							= 0x00200000,		// 21
+		// Reserved							= 0x00400000,		// 22
+		// Reserved							= 0x00800000,		// 23
+		// Reserved							= 0x01000000,		// 24
+		// Reserved							= 0x02000000,		// 25
+		// Reserved							= 0x04000000,		// 26
+		// Reserved							= 0x08000000,		// 27
+		// Reserved							= 0x10000000,		// 28
+		NotWriteThrough						= 0x20000000,		// 29
+		CachingDisabled						= 0x40000000,		// 30
+		PagingEnabled						= 0x80000000,		// 31
 
 		// CR3		
 		PageLevelWriteThrough				= 0x00000008,
 		PageLevelCatchDisabled				= 0x00000010,
 
 		// CR4
-		Virtual8086Extentions				= 0x00000001,
-		ProtectedModeVirtualIntperrupts		= 0x00000002,
-		TimeStampDisable					= 0x00000004,
-		DebuggingExtensionsEnable			= 0x00000008, // Check
-		PageSizeExtensionsEnable			= 0x00000010, // Check
-		PhysicalAddressExtensionsEnable 	= 0x00000020, // Check
-		MachineCheckEnable					= 0x00000040,
-		PageGlobalEnable					= 0x00000080,
-		PreformanceCounterEnabled			= 0x00000100,
-		OSFXSR								= 0x00000200, // Operating System Support for FXSAVE and FXRSTOR instructions
-		OSXMMEXCPT							= 0x00000400, // Operating System Support for Unmasked SIMD Floating-Point Exceptions 
-		VMXEnable							= 0x00002000,
-		SMXEnable							= 0x00004000,
-		FSGSBASEEnable						= 0x00010000,
-		PCIDEnable							= 0x00020000,
-		OSXSAVEEnabled						= 0x00040000, // XSAVE and Processor Extended States-Enable Bit
-		SMEPEnable							= 0x00100000,	
-		
+		Virtual8086Extentions				= 0x00000001,		// 0
+		ProtectedModeVirtualIntperrupts		= 0x00000002,		// 1
+		TimeStampDisable					= 0x00000004,		// 2
+		DebuggingExtensionsEnable			= 0x00000008,		// 3	Check
+		PageSizeExtensionsEnable			= 0x00000010,		// 4	Check
+		PhysicalAddressExtensionsEnable 	= 0x00000020,		// 5	Check
+		MachineCheckEnable					= 0x00000040,		// 6
+		PageGlobalEnable					= 0x00000080,		// 7
+		PreformanceCounterEnabled			= 0x00000100,		// 8
+		OSFXSR								= 0x00000200,		// 9	Operating System Support for FXSAVE and FXRSTOR instructions
+		OSXMMEXCPT							= 0x00000400,		// 10	Operating System Support for Unmasked SIMD Floating-Point Exceptions 
+		// Reserved							= 0x00000800,		// 11
+		// Reserved							= 0x00001000,		// 12
+		VMXEnable							= 0x00002000,		// 13
+		SMXEnable							= 0x00004000,		// 14
+		// Reserved							= 0x00008000,		// 15
+		FSGSBASEEnable						= 0x00010000,		// 16
+		PCIDEnable							= 0x00020000,		// 17
+		OSXSAVEEnabled						= 0x00040000,		// 18	XSAVE and Processor Extended States-Enable Bit
+		// Reserved							= 0x00080000,		// 19
+		SMEPEnable							= 0x00100000,		// 20
+		// Reserved							= 0x00200000,		// 21
+		// Reserved							= 0x00400000,		// 22
+		// Reserved							= 0x00800000,		// 23
+		// Reserved							= 0x01000000,		// 24
+		// Reserved							= 0x02000000,		// 25
+		// Reserved							= 0x04000000,		// 26
+		// Reserved							= 0x08000000,		// 27
+		// Reserved							= 0x10000000,		// 28
+		// Reserved							= 0x20000000,		// 29
+		// Reserved							= 0x40000000,		// 30
+		// Reserved							= 0x80000000,		// 31
+
 		// XCR0
-		X87FPUState							= 0x00000001,
-		SSEState							= 0x00000002,
-		AVXState							= 0x00000004,
+		X87FPUState							= 0x00000001,		// 0
+		SSEState							= 0x00000002,		// 1
+		AVXState							= 0x00000004,		// 2
 
 		// CPUID - EDX
 		FPUOnChip							= 0x00000001,		// 0
@@ -216,6 +252,40 @@ namespace CPUFlags
 		AVXInstuctions						= 0x10000000,		// 28
 		F16C								= 0x20000000,		// 29
 		RDRAND								= 0x40000000,		// 30
+		// Reserved							= 0x80000000,		// 31
+
+		// CPUID 7 - EBX
+		FSGSBASE							= 0x00000001,		// 0
+		IA32_TSC_ADJUST						= 0x00000002,		// 1
+		// Reserved							= 0x00000004,		// 2
+		BMI1								= 0x00000008,		// 3
+		HLE									= 0x00000010,		// 4
+		AVX2								= 0x00000020,		// 5
+		// Reserved							= 0x00000040,		// 6
+		SMEP								= 0x00000080,		// 7
+		BMI2								= 0x00000100,		// 8
+		Enhanced_MOVSB						= 0x00000200,		// 9
+		INVPCID								= 0x00000400,		// 10
+		RTM									= 0x00000800,		// 11
+		PQM									= 0x00001000,		// 12
+		FPU_CS_DS_Deprecated				= 0x00002000,		// 13
+		PQE									= 0x00004000,		// 14
+		// Reserved							= 0x00008000,		// 15
+		// Reserved							= 0x00010000,		// 16
+		// Reserved							= 0x00020000,		// 17
+		// Reserved							= 0x00040000,		// 18
+		// Reserved							= 0x00080000,		// 19
+		// Reserved							= 0x00100000,		// 20
+		// Reserved							= 0x00200000,		// 21
+		// Reserved							= 0x00400000,		// 22
+		// Reserved							= 0x00800000,		// 23
+		// Reserved							= 0x01000000,		// 24
+		// Reserved							= 0x02000000,		// 25
+		// Reserved							= 0x04000000,		// 26
+		// Reserved							= 0x08000000,		// 27
+		// Reserved							= 0x10000000,		// 28
+		// Reserved							= 0x20000000,		// 29
+		// Reserved							= 0x40000000,		// 30
 		// Reserved							= 0x80000000,		// 31
 
 		// CPUID 80000001 - EDX
@@ -352,6 +422,7 @@ extern "C"
 	void WriteCR2(uint32_t Value);
 	void WriteCR3(uint32_t Value);
 	void WriteCR4(uint32_t Value);
+	void WriteXCR0(uint64_t Value);
 
 	uint32_t ReadFS(uint32_t Offset);
 	uint32_t ReadGS(uint32_t Offset);

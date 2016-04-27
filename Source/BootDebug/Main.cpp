@@ -96,6 +96,40 @@ char * CPUIDFlags[] =
 	"RDRAND Instruction",
 	"",
 
+	// Structured Extended Feature - EBX
+	"FS and GS Base",
+	"IA32_TSC_ADJUST MSR Supported",
+	"",
+	"BMI1",
+	"Hardware Lock Elision",
+	"AVX2",
+	"",
+	"Supervisor-Mode Execution Prevention",
+	"BMI2",
+	"Enhanced REP MOVSB/STOSB",
+	"INVPCID",
+	"Restricted Transactional Memory",
+	"Platform Quality of Service Monitoring",
+	"Deprecates FPU CS and FPU DS (64-Bit)",
+	"",
+	"Platform Quality of Service Enforcement",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+
 	// Extended Features - EDX
 	"",
 	"",
@@ -386,6 +420,125 @@ uint32_t SearchBIOS(const void *Search, uint32_t DataLength, uint32_t Alignment)
 }
 
 
+typedef void(CommandFunction)(int argc, char *argv[]);
+
+struct CommandEntry
+{
+	char Command;
+	uint8_t MaxLength;
+	CommandFunction *Function;
+	char * Help;
+};
+
+void DumpCommand(int argc, char *argv[]);
+
+CommandEntry Commands[] = {
+	{'D',	 2,		&DumpCommand,		"Dump Memory           D[Size] [Address] [Length]"},	
+	{'E',	 2,		nullptr,			"Enter Data            E[Size] Address Data"},	
+	{'S',	 2,		nullptr,			"Search Memory         S[Size] Address Length Data"},	
+	{'I',	 2,		nullptr,			"Read from a Port      I[Size] Port"},	
+	{'O',	 2,		nullptr,			"Write to a Port       O[Size] Port Value"},	
+	{'X',	 1,		nullptr,			"Memory Information    X Address"},	
+	{'R',	 1,		nullptr,			"Register Information  R Register [Value]"},	
+	{'N',	 1,		nullptr,			"General Information   N [Type]"},	
+	{'B',	 1,		nullptr,			"Object Information    B [Name]"},					
+	{'U',	 3,		nullptr,			"Disassemble           U[16] [Address] [Length]"},					
+	{0,		 0,		nullptr,			""},	
+};
+
+struct CommandSet
+{
+	uint32_t	CurrentAddress;
+	uint32_t	LastAddress;
+
+	uint32_t	ArgCount;
+	char *		ArgData[32];
+};
+
+void DumpCommand(int argc, char *argv[])
+{
+	int DumpSize = 1;
+	uint32_t Length = 0x80;
+	uint32_t Address = 0x00;
+
+	switch(toupper(argv[0][1]))
+	{
+		case 0:
+		case 'B':
+			DumpSize = 1;
+			break;
+						
+		case 'W':
+			DumpSize = 2;
+			break;
+
+		case 'D':
+			DumpSize = 4;
+			break;
+
+		case 'Q':
+			DumpSize = 8;
+			break;
+
+		case 'S':
+			DumpSize = 0;
+			Length = 128;
+			break;
+
+		default:
+			printf(" Unknown Option [%c]\n", argv[0][1]);
+			return;
+
+	}
+
+	if(argc > 1)
+	{
+		if(!ParseAddress(argv[1], Address))
+		{
+			printf(" Invalid Address [%s]\n", argv[1]);
+			return;
+		}
+	}
+
+	if(argc > 2)
+	{
+		if(!ParseHex(argv[2], Length))
+		{
+			printf(" Invalid Length [%s]\n", argv[2]);
+			return;
+		}
+	}
+
+	if(DumpSize == 0)
+	{
+		printf("\00307%0.8X:", Address);
+
+		for(uint32_t x = 0; x < Length; x++)
+		{
+			uint8_t Char = *reinterpret_cast<uint8_t *>(Address);
+			Address++;
+
+			if( Char == 0)
+				break;
+
+			printf("%c", Char);
+
+		}
+		printf("\00307\n");
+	}
+	else 
+	{
+		LastAddress = Address;
+
+		PrintMemoryBlock((void *)Address, Length, DumpSize);
+		Address += Length;
+	}
+					
+	//DumpAddress = Address;
+
+}
+
+
 void main(int argc, char *argv[])
 {
 	char InputBuffer[0x100];
@@ -398,15 +551,22 @@ void main(int argc, char *argv[])
 	do
 	{
 		printf("\00307%08X> ", DumpAddress);
-		gets_s(InputBuffer, 1024);
+		gets_s(InputBuffer, 0x100);
+
 
 		char * Input = TrimString(InputBuffer);		
+		//char * CmdArgv[33];
+		//int CmdArgc = _ConvertCommandLineToArgcArgv(Input, CmdArgv, 32);
+
 		char *CurrentData = NextToken(Input);
 		
 		switch(toupper(CurrentData[0]))
 		{
 			case 'D':
 				{
+					//DumpCommand(CmdArgc, CmdArgv);
+					//continue;
+
 					int DumpSize = 1;
 					uint32_t Length = 0x80;
 					uint32_t Address = DumpAddress;
@@ -981,7 +1141,8 @@ void main(int argc, char *argv[])
 							uint32_t LeafCount = Res.EAX;
 							uint32_t ExtendedLeafCount = 0;
 							bool Extended = false;
-							printf(" Signature: %4.4s%4.4s%4.4s\n", &Res.EBX, &Res.EDX, &Res.ECX);
+							////////123456789012345678901234
+							printf(" Signature:             %4.4s%4.4s%4.4s\n", &Res.EBX, &Res.EDX, &Res.ECX);
 							
 							Res.EAX = 0;
 							ReadCPUID(0x80000000, 0, &Res);
@@ -991,51 +1152,92 @@ void main(int argc, char *argv[])
 							if(Extended)							
 							{
 								ReadCPUID(0x80000002, 0, &Res);
-								printf(" Brand: %4.4s%4.4s%4.4s%4.4s", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
+								////////123456789012345678901234
+								printf(" Brand:                 %4.4s%4.4s%4.4s%4.4s", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
 								ReadCPUID(0x80000003, 0, &Res);
 								printf("%4.4s%4.4s%4.4s%4.4s", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
 								ReadCPUID(0x80000004, 0, &Res);
 								printf("%4.4s%4.4s%4.4s%4.4s\n", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
 							}
 
+							////////123456789012345678901234
+							printf(" Leaf Count:            %X\n", LeafCount);
+							printf(" Extended Leaf Count:   %X\n", ExtendedLeafCount);
 
-							printf(" Basic Leaf Count: %X\n", LeafCount);
-							printf(" Extended Leaf Count: %X\n", ExtendedLeafCount);
-
-							uint32_t Features[4];
-							Features[0] = Features[1] = Features[2] = Features[3] = 0;
+							uint32_t Features[5];
+							Features[0] = Features[1] = Features[2] = Features[3] = Features[4] = 0;
 
 							ReadCPUID(1, 0, &Res);
-							printf(" CPU Type %X, Family %X, Model %X, Stepping %X\n", (Res.EAX & 0xF000) >> 12, (Res.EAX & 0xF00) >> 8, (Res.EAX & 0xF0) >> 4, Res.EAX & 0x0F);
-							printf(" Brand Index: %02X\n", Res.EBX & 0xFF);
-							printf(" CLFLUSH Size: %02X\n", (Res.EBX & 0x0000FF00) >> 8);
-							printf(" Max ID: %02X\n", (Res.EBX & 0x00FF0000) >> 16);
-							printf(" Initial APIC ID: %02X\n", (Res.EBX & 0xFF000000) >> 24);
-							printf(" Features 1: %08X\n", Res.EDX);
-							printf(" Features 2: %08X\n", Res.ECX);
+							uint8_t Model = (Res.EAX & 0xF0) >> 4;
+							uint8_t FamilyID = (Res.EAX & 0xF00) >> 8;
+
+							if(FamilyID == 0x06 || FamilyID == 0x0F)
+							{
+								Model += (Res.EAX & 0xF0000) >> 12;
+							}
+
+							if(FamilyID == 0x0F)
+							{
+								FamilyID += (Res.EAX & 0xFF00000) >> 20;
+							}
+
+							////////123456789012345678901234
+							printf(" CPU Type %X, Family %X, Model %X, Stepping %X\n", (Res.EAX & 0xF000) >> 12, FamilyID, Model, Res.EAX & 0x0F);
+							printf(" Brand Index:           %02X\n", Res.EBX & 0xFF);
+							printf(" CLFLUSH Size:          %02X\n", (Res.EBX & 0x0000FF00) >> 8);
+							printf(" Max ID:                %02X\n", (Res.EBX & 0x00FF0000) >> 16);
+							printf(" Local APIC ID:         %02X\n", (Res.EBX & 0xFF000000) >> 24);
+							printf(" Features 1 (EDX):      %08X\n", Res.EDX);
+							printf(" Features 2 (ECX):      %08X\n", Res.ECX);
 
 							Features[0] = Res.EDX;
 							Features[1] = Res.ECX;
 
+							if(LeafCount >= 0x07)
+							{								
+								ReadCPUID(0x07, 0, &Res);
+								////////123456789012345678901234
+								printf(" Structured Features:   %08X\n", Res.EBX);
+								Features[2] = Res.EBX;
+
+							}
+							
+							if(LeafCount >= 0x0D)
+							{								
+								ReadCPUID(0x0D, 0, &Res);
+								////////123456789012345678901234
+								printf(" XCR0 Valid Bits:       %08X:%08X\n", Res.EDX, Res.EAX);
+								printf(" XSAVE/XRSTOR size:     %08X\n", Res.EBX);
+								printf(" XSAVE/XRSTOR Max:      %08X\n", Res.ECX);
+								ReadCPUID(0x0D, 1, &Res);
+								////////123456789012345678901234
+								printf(" XSAVE Flags (EAX):     %08X\n", Res.EAX);
+								printf(" XSAVE XSS size:        %08X\n", Res.EBX);
+								printf(" Valid IA32_XSS Bits:   %08X:%08X\n", Res.EDX, Res.ECX);
+							}
+
+
 							if(Extended)							
 							{
 								ReadCPUID(0x80000001, 0, &Res);
-								printf(" Extended Features 1: %08X\n", Res.EDX);
-								printf(" Extended Features 2: %08X\n", Res.ECX);
+								////////123456789012345678901234
+								printf(" ExFeatures 1 (EDX):    %08X\n", Res.EDX);
+								printf(" ExFeatures 2 (ECX):    %08X\n", Res.ECX);
 
-								Features[2] = Res.EDX;
-								Features[3] = Res.ECX;
+								Features[3] = Res.EDX;
+								Features[4] = Res.ECX;
 
 								if(ExtendedLeafCount >= 0x80000008)
 								{
 									ReadCPUID(0x80000008, 0, &Res);
-									printf(" Physical Address Bits: %u\n", Res.EAX & 0xFF);
-									printf(" Linear Address Bits: %u\n", (Res.EAX & 0xFF00) >> 8);
+									////////123456789012345678901234
+									printf(" Physical Address:      %u\n", Res.EAX & 0xFF);
+									printf(" Linear Address:        %u\n", (Res.EAX & 0xFF00) >> 8);
 								}
 							}
-
+							
 							uint32_t Mask = 0;
-							for(int x = 0; x < 32 * 4; x++)
+							for(int x = 0; x < 32 * 5; x++)
 							{
 								if(Mask == 0)
 									Mask = 0x00000001;
@@ -1045,6 +1247,7 @@ void main(int argc, char *argv[])
 
 								Mask = Mask << 1;
 							}
+							
 						}
 						else
 						{
@@ -1053,7 +1256,7 @@ void main(int argc, char *argv[])
 
 							uint32_t ParamID2 = 0;
 							CurrentData = NextToken(Input);
-							if(CurrentData == nullptr)
+							if(CurrentData != nullptr)
 							{
 								ParseHex(CurrentData, ParamID2);
 							}
@@ -1113,6 +1316,74 @@ void main(int argc, char *argv[])
 
 						WriteMSR(Register, Value);						
 					}
+					else if(_strnicmp("FPU", CurrentData, 3) == 0)
+					{
+						uint16_t Value = 0;					
+						__asm FSTCW [Value];
+						printf(" Control: %04X", Value);
+						__asm FSTSW [Value];
+						printf(" Status: %04X", Value);
+						
+						printf("\n");
+					}
+					else if(_strnicmp("SSE", CurrentData, 3) == 0)
+					{
+						if((ReadCR4() & CPUFlags::OSFXSR) != CPUFlags::OSFXSR)
+						{
+							printf(" SSE not avaliable\n");
+							continue;						
+						}
+
+						uint32_t Value = 0;					
+						__asm STMXCSR [Value];
+						printf(" MXCSR: %08X\n", Value);
+					}
+					else if(_strnicmp("AVX", CurrentData, 3) == 0)
+					{
+						if((ReadCR4() & CPUFlags::OSXSAVEEnabled) != CPUFlags::OSXSAVEEnabled || 
+							(ReadXCR0() & 0x06) != 0x06)
+						{
+							printf(" AVX not avaliable\n");
+							continue;
+						}
+						uint32_t Value = 0;					
+						__asm VSTMXCSR [Value];
+						printf(" MXCSR: %08X\n", Value);
+
+					}
+					else if(_strnicmp("XCR0", CurrentData, 4) == 0)
+					{
+						if((ReadCR4() & CPUFlags::OSXSAVEEnabled) != CPUFlags::OSXSAVEEnabled)
+						{
+							printf(" XCR0 not avaliable\n");
+							continue;
+						}
+						
+						uint64_t Value;					
+						bool Set = false;
+
+						CurrentData = NextToken(Input);
+						if(CurrentData != nullptr)
+						{
+							if(!ParseHex(CurrentData, Value))
+							{
+								printf(" Invalid Value [%s]\n", CurrentData);
+								continue;
+							}
+							Set = true;
+						}
+
+						if(Set)
+						{
+							WriteXCR0(Value);
+						}
+						else
+						{
+							Value = ReadXCR0();
+							printf(" %016llX\n", Value);
+						}
+						break;
+					}
 					else if(_strnicmp("CR", CurrentData, 2) == 0)
 					{
 						uint32_t Register = 0;
@@ -1133,7 +1404,7 @@ void main(int argc, char *argv[])
 							case '4':
 								Register = 4;
 								break;
-
+							
 							default:
 								printf(" Invalid Control Register [%s]\n", CurrentData);
 								continue;

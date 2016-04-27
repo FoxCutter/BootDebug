@@ -8,9 +8,9 @@
 
 #define _MAX_CMD_LINE_ARGS  128
 
-char * _ppszArgv[_MAX_CMD_LINE_ARGS + 1];
+//char * _ppszArgv[_MAX_CMD_LINE_ARGS + 1];
 
-int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine )
+int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine, char * _ppszArgv[], int CmdLineMax )
 {
     int cbCmdLine = 0;
     int argc;
@@ -28,12 +28,13 @@ int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine )
     // this copy, rather than the original command line.  Yes, this memory
     // currently doesn't explicitly get freed, but it goes away when the
     // process terminates.
-    pszCmdLine = (char *)malloc( cbCmdLine+1 );
+    pszCmdLine = pszSysCmdLine; 
+	//(pszCmdLine = char *)malloc( cbCmdLine+1 );
     if ( !pszCmdLine )
         return 0;
 
     // Copy the system version of the command line into our copy
-    strcpy( pszCmdLine, pszSysCmdLine );
+    //strcpy( pszCmdLine, pszSysCmdLine );
 
     if ( '"' == *pszCmdLine )   // If command line starts with a quote ("),
     {                           // it's a quoted filename.  Skip to next quote.
@@ -107,7 +108,7 @@ int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine )
                 *pszCmdLine++ = 0;  // Null terminate and advance to next char
         }
 
-        if ( argc >= (_MAX_CMD_LINE_ARGS) )
+        if ( argc >= (CmdLineMax) )
             return argc;
     }
 }

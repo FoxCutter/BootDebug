@@ -149,7 +149,7 @@ struct ASMTableEntry
 	ASMParamTypes Params[3];	// Information on each Parameter.
 };
 
-ASMTableEntry SingleByteOpCodes[256] =
+const ASMTableEntry SingleByteOpCodes[256] =
 {
 	// 00
 	{"ADD",		ParseModRMByte,			0,	2,	{ParamModRM, ParamReg}},
@@ -472,7 +472,7 @@ ASMTableEntry SingleByteOpCodes[256] =
 	{"\x05",	ParseModRM,				0,	1,	{ParamModRM}},
 };
 
-ASMTableEntry TwoByteOpCodes[256] =
+const ASMTableEntry TwoByteOpCodes[256] =
 {
 	// 00
 	{"\x06",	ParseModRM,				0,	1,	{ParamModRM}},
@@ -795,7 +795,7 @@ ASMTableEntry TwoByteOpCodes[256] =
 	{"",		ParseInvalid,			0,	0,	{}},
 };
 
-ASMTableEntry OpcodeGroups[][8] =
+const ASMTableEntry OpcodeGroups[][8] =
 {
 	// Group 1
 	{

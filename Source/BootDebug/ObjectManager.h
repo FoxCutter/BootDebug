@@ -23,12 +23,12 @@ public:
 	void Setup();
 	void AddObject(char *Name, char cbLength, ObjectCallback *Callback);
 
-	void DisplayObjects(char * Command, char *Param);
+	void DisplayObjects(uint32_t ArgCount, char *ArgData[]);
 
 	static ObjectManager * Current();
 
 private:
-	void DisplayObject(char * Command, char *Param);
+	void DisplayObject(uint32_t ArgCount, char *ArgData[]);
 
 	ObjectEntry * NewNode(char *Name, char cbLength, ObjectCallback *Callback);
 

@@ -337,10 +337,8 @@ bool ParseData(char *InputData, void *Data, uint32_t &DataLength, uint32_t DataS
 	return true;
 }
 
-static uint32_t LastAddress = 0x100000;
 
-
-bool ParseAddress(char *Value, uint32_t &Address)
+bool ParseAddress(char *Value, uint32_t &Address, uint32_t LastAddress)
 {
 	bool Error = false;
 	char * CurrentData = TrimString(Value);
@@ -419,33 +417,6 @@ uint32_t SearchBIOS(const void *Search, uint32_t DataLength, uint32_t Alignment)
 	return Address;
 }
 
-
-typedef void(CommandFunction)(int argc, char *argv[]);
-
-struct CommandEntry
-{
-	char Command;
-	uint8_t MaxLength;
-	CommandFunction *Function;
-	char * Help;
-};
-
-void DumpCommand(int argc, char *argv[]);
-
-CommandEntry Commands[] = {
-	{'D',	 2,		&DumpCommand,		"Dump Memory           D[Size] [Address] [Length]"},	
-	{'E',	 2,		nullptr,			"Enter Data            E[Size] Address Data"},	
-	{'S',	 2,		nullptr,			"Search Memory         S[Size] Address Length Data"},	
-	{'I',	 2,		nullptr,			"Read from a Port      I[Size] Port"},	
-	{'O',	 2,		nullptr,			"Write to a Port       O[Size] Port Value"},	
-	{'X',	 1,		nullptr,			"Memory Information    X Address"},	
-	{'R',	 1,		nullptr,			"Register Information  R Register [Value]"},	
-	{'N',	 1,		nullptr,			"General Information   N [Type]"},	
-	{'B',	 1,		nullptr,			"Object Information    B [Name]"},					
-	{'U',	 3,		nullptr,			"Disassemble           U[16] [Address] [Length]"},					
-	{0,		 0,		nullptr,			""},	
-};
-
 struct CommandSet
 {
 	uint32_t	CurrentAddress;
@@ -455,13 +426,47 @@ struct CommandSet
 	char *		ArgData[32];
 };
 
-void DumpCommand(int argc, char *argv[])
+typedef void(CommandFunction)(CommandSet & Data);
+
+struct CommandEntry
+{
+	char Command;
+	uint8_t MaxLength;
+	CommandFunction *Function;
+	char * Help;
+};
+
+void DumpCommand(CommandSet & Data);
+void EnterCommand(CommandSet & Data);
+void SearchCommand(CommandSet & Data);
+void PortCommand(CommandSet & Data);
+void MemoryCommand(CommandSet & Data);
+void RegisterCommand(CommandSet & Data);
+void InfoCommand(CommandSet & Data);
+void ObjectCommand(CommandSet & Data);
+void DisassembleCommand(CommandSet & Data);
+
+CommandEntry Commands[] = {
+	{'D',	 2,		&DumpCommand,		"Dump Memory           D[Size] [Address] [Length]"},	
+	{'E',	 2,		&EnterCommand,		"Enter Data            E[Size] Address Data"},	
+	{'S',	 2,		&SearchCommand,		"Search Memory         S[Size] Address Length Data"},	
+	{'I',	 2,		&PortCommand,		"Read from a Port      I[Size] Port"},	
+	{'O',	 2,		&PortCommand,		"Write to a Port       O[Size] Port Value"},	
+	{'X',	 1,		&MemoryCommand,		"Memory Information    X Address"},	
+	{'R',	 1,		&RegisterCommand,	"Register Information  R Register [Value]"},	
+	{'N',	 1,		&InfoCommand,		"General Information   N [Type]"},	
+	{'B',	 1,		&ObjectCommand,		"Object Information    B [Name]"},					
+	{'U',	 3,		&DisassembleCommand,"Disassemble           U[16] [Address] [Length]"},					
+	{0,		 0,		nullptr,			""},	
+};
+
+void DumpCommand(CommandSet & Data)
 {
 	int DumpSize = 1;
 	uint32_t Length = 0x80;
-	uint32_t Address = 0x00;
+	uint32_t Address = Data.CurrentAddress;
 
-	switch(toupper(argv[0][1]))
+	switch(toupper(Data.ArgData[0][1]))
 	{
 		case 0:
 		case 'B':
@@ -486,25 +491,25 @@ void DumpCommand(int argc, char *argv[])
 			break;
 
 		default:
-			printf(" Unknown Option [%c]\n", argv[0][1]);
+			printf(" Unknown Option [%c]\n", Data.ArgData[0][1]);
 			return;
 
 	}
 
-	if(argc > 1)
+	if(Data.ArgCount > 1)
 	{
-		if(!ParseAddress(argv[1], Address))
+		if(!ParseAddress(Data.ArgData[1], Address, Data.LastAddress))
 		{
-			printf(" Invalid Address [%s]\n", argv[1]);
+			printf(" Invalid Address [%s]\n", Data.ArgData[1]);
 			return;
 		}
 	}
 
-	if(argc > 2)
+	if(Data.ArgCount > 2)
 	{
-		if(!ParseHex(argv[2], Length))
+		if(!ParseHex(Data.ArgData[2], Length))
 		{
-			printf(" Invalid Length [%s]\n", argv[2]);
+			printf(" Invalid Length [%s]\n", Data.ArgData[2]);
 			return;
 		}
 	}
@@ -528,1345 +533,1210 @@ void DumpCommand(int argc, char *argv[])
 	}
 	else 
 	{
-		LastAddress = Address;
+		Data.LastAddress = Address;
 
 		PrintMemoryBlock((void *)Address, Length, DumpSize);
-		Address += Length;
+
+		Data.CurrentAddress = Address + Length;
+	}
+}
+
+void SearchCommand(CommandSet & Data)
+{
+	int DataSize = 1;
+					
+	switch(toupper(Data.ArgData[0][1]))
+	{
+		case 0:
+		case 'B':
+			DataSize = 1;
+			break;
+						
+		case 'W':
+			DataSize = 2;
+			break;
+
+		case 'D':
+			DataSize = 4;
+			break;
+
+		case 'Q':
+			DataSize = 8;
+			break;
+						
+		default:
+			printf(" Unknown Option [%c]\n", Data.ArgData[0][1]);
+			return;
+	}					
+					
+	uint32_t Start = Data.CurrentAddress;
+	uint32_t Count = 0;
+	uint32_t DataLength = 0;
+
+	if(Data.ArgCount < 2)
+	{
+		puts(" Address Missing");
+		return;
 	}
 					
-	//DumpAddress = Address;
+	if(!ParseAddress(Data.ArgData[1], Start, Data.LastAddress))
+	{
+		printf(" Invalid Address [%s]\n", Data.ArgData[1]);
+		return;
+	}
+
+	if(Data.ArgCount < 3)
+	{
+		puts(" Length Missing");
+		return;
+	}
+
+	if(!ParseHex(Data.ArgData[2], Count))
+	{
+		printf(" Invalid Length [%s]\n", Data.ArgData[2]);
+		return;
+	}
+					
+	if(Data.ArgCount < 4 || Data.ArgData[3][0] == 0)
+	{
+		puts(" Search Data Missing");
+		return;
+
+	}
+					
+	void * InputData = new uint8_t[32 * DataSize];
+
+	// We have a search string
+	if(Data.ArgData[3][0] == '"')
+	{
+		if(DataSize != 1)
+		{
+			printf(" String Data is only valid on Byte searches.\n");
+			delete InputData;
+			return;
+		}						
+		else if(Data.ArgData[3][strlen(Data.ArgData[3]) - 1] != '"')
+		{
+			printf(" Invalid String Data [%s]\n", Data.ArgData[3]);
+			delete InputData;
+			return;
+		}
+
+		char * TrimmedData = TrimChar(Data.ArgData[3], Data.ArgData[3][0]);
+		DataLength = strlen(TrimmedData);
+						
+		if(DataLength > 32)
+			DataLength = 32;
+
+		memcpy(InputData, TrimmedData, DataLength);
+	}
+	else
+	{
+		for(size_t x = 3; x < Data.ArgCount; x++)
+		{
+			bool Pass = true;
+
+			switch (DataSize)
+			{
+				case 1:
+					Pass = ParseHex(Data.ArgData[x], reinterpret_cast<uint8_t *>(InputData)[DataLength]);
+					break;
+
+				case 2:
+					Pass = ParseHex(Data.ArgData[x], reinterpret_cast<uint16_t *>(InputData)[DataLength]);
+					break;
+
+				case 4:
+					Pass = ParseHex(Data.ArgData[x], reinterpret_cast<uint32_t *>(InputData)[DataLength]);
+					break;
+
+				case 8:
+					Pass = ParseHex(Data.ArgData[x], reinterpret_cast<uint64_t *>(InputData)[DataLength]);
+					break;
+			}
+
+			DataLength++;
+
+			if(Pass == false)
+			{
+				printf(" Invalid Data [%s]\n", Data.ArgData[x]);	
+				return;
+			}
+		}
+	}
+
+	uint32_t Pos = Start;
+
+	while(true)
+	{
+		uint32_t Loc = SeachMemory(Pos, Count, InputData, DataLength * DataSize, DataSize);
+
+		if(Loc == UINT32_MAX)
+			break;
+
+		PrintMemoryBlock((void *)Loc, DataLength * DataSize, DataSize);
+						
+		Loc += DataLength * DataSize;
+						
+		Count = Count - (Loc - Pos);
+		Pos = Loc;
+	}					
+
+	Data.LastAddress = Start;
+
+	delete InputData;
+}
+
+void EnterCommand(CommandSet & Data)
+{
+	int DataSize = 1;
+					
+	switch(toupper(Data.ArgData[0][1]))
+	{
+		case 0:
+		case 'B':
+			DataSize = 1;
+			break;
+						
+		case 'W':
+			DataSize = 2;
+			break;
+
+		case 'D':
+			DataSize = 4;
+			break;
+
+		case 'Q':
+			DataSize = 8;
+			break;
+						
+		default:
+			printf(" Unknown Option [%c]\n", Data.ArgData[0][1]);
+			return;
+	}					
+					
+	uint32_t Start = Data.CurrentAddress;
+	uint32_t DataLength = 0;
+
+	if(Data.ArgCount < 2)
+	{
+		puts(" Address Missing");
+		return;
+	}
+					
+	if(!ParseAddress(Data.ArgData[1], Start, Data.LastAddress))
+	{
+		printf(" Invalid Address [%s]\n", Data.ArgData[1]);
+		return;
+	}
+
+	if(Data.ArgCount < 3 || Data.ArgData[2][0] == 0)
+	{
+		puts(" Input Data Missing");
+		return;
+
+	}
+
+	void * InputData = new uint8_t[32 * DataSize];
+
+	// We have a search string
+	if(Data.ArgData[2][0] == '"')
+	{
+		if(DataSize != 1)
+		{
+			printf(" String Data is only valid on Byte inputs.\n");
+			delete InputData;
+			return;
+		}						
+		else if(Data.ArgData[2][strlen(Data.ArgData[2]) - 1] != '"')
+		{
+			printf(" Invalid String Data [%s]\n", Data.ArgData[2]);
+			delete InputData;
+			return;
+		}
+
+		char * TrimmedData = TrimChar(Data.ArgData[2], Data.ArgData[2][0]);
+		DataLength = strlen(TrimmedData);
+						
+		if(DataLength > 32)
+			DataLength = 32;
+
+		memcpy(InputData, TrimmedData, DataLength);
+	}
+	else
+	{
+		for(size_t x = 2; x < Data.ArgCount; x++)
+		{
+			bool Pass = true;
+
+			switch (DataSize)
+			{
+				case 1:
+					Pass = ParseHex(Data.ArgData[x], reinterpret_cast<uint8_t *>(InputData)[DataLength]);
+					break;
+
+				case 2:
+					Pass = ParseHex(Data.ArgData[x], reinterpret_cast<uint16_t *>(InputData)[DataLength]);
+					break;
+
+				case 4:
+					Pass = ParseHex(Data.ArgData[x], reinterpret_cast<uint32_t *>(InputData)[DataLength]);
+					break;
+
+				case 8:
+					Pass = ParseHex(Data.ArgData[x], reinterpret_cast<uint64_t *>(InputData)[DataLength]);
+					break;
+			}
+
+			DataLength++;
+
+			if(Pass == false)
+			{
+				printf(" Invalid Data [%s]\n", Data.ArgData[x]);	
+				return;
+			}
+		}
+	}
+
+	for(uint32_t x = 0; x < DataLength; x++)
+	{
+		void *Loc = (void *)Start;
+		switch (DataSize)
+		{
+			case 1:
+				reinterpret_cast<uint8_t *>(Loc)[x] = reinterpret_cast<uint8_t *>(InputData)[x];
+				break;
+
+			case 2:
+				reinterpret_cast<uint16_t *>(Loc)[x] = reinterpret_cast<uint16_t *>(InputData)[x];
+				break;
+
+			case 4:
+				reinterpret_cast<uint32_t *>(Loc)[x] = reinterpret_cast<uint32_t *>(InputData)[x];
+				break;
+
+			case 8:
+				reinterpret_cast<uint64_t *>(Loc)[x] = reinterpret_cast<uint64_t *>(InputData)[x];
+				break;
+		}
+	}				
+
+	Data.LastAddress = Start;
+
+	delete InputData;
 
 }
 
+void PortCommand(CommandSet & Data)
+{
+	bool Write = false;
+	if(toupper(Data.ArgData[0][0]) == 'O')
+		Write = true;
+
+	int DataSize = 1;
+					
+	switch(toupper(Data.ArgData[0][1]))
+	{
+		case 'B':
+			DataSize = 1;
+			break;
+						
+		case 'W':
+			DataSize = 2;
+			break;
+
+		case 0:
+		case 'D':
+			DataSize = 4;
+			break;
+
+		default:
+			printf(" Unknown Option [%c]\n", Data.ArgData[0][1]);
+			return;
+
+	}					
+
+	if(Data.ArgCount < 2)
+	{
+		puts(" Port Missing");
+		return;
+	}
+
+	uint32_t Port, Value;
+	if(!ParseHex(Data.ArgData[1], Port))
+	{
+		printf(" Invalid Port [%s]\n", Data.ArgData[1]);
+		return;
+	}
+	
+	if(Write)
+	{
+		if(Data.ArgCount < 3)
+		{
+			puts(" Value Missing");
+			return;
+		}
+
+		if(!ParseHex(Data.ArgData[2], Value))
+		{
+			printf(" Invalid Value [%s]\n", Data.ArgData[2]);
+			return;
+		}
+
+		switch(DataSize)
+		{
+			case 1:
+				OutPortb(Port, Value);
+				break;
+
+			case 2:
+				OutPortw(Port, Value);
+				break;
+
+			case 4:
+				OutPortd(Port, Value);
+				break;
+		}
+	}
+	else
+	{
+		switch(DataSize)
+		{
+			case 1:
+				Value = InPortb(Port);
+				printf("%02X\n", Value);
+				break;
+
+			case 2:
+				Value = InPortw(Port);
+				printf("%04X\n", Value);
+				break;
+
+			case 4:
+				Value = InPortd(Port);
+				printf("%08X\n", Value);
+				break;
+		}
+	}
+}
+
+
+void MemoryCommand(CommandSet & Data)
+{
+	uint32_t Start = Data.CurrentAddress;
+	if(Data.ArgCount < 2)
+	{
+		puts(" Address Missing");
+		return;
+	}
+
+	if(!ParseAddress(Data.ArgData[1], Start, Data.LastAddress))
+	{
+		printf(" Invalid Address [%s]\n", Data.ArgData[1]);
+		return;
+	}
+
+	Data.LastAddress = Start;
+
+	MMUManager->PrintAddressInformation(Start);
+}
+
+void RegisterCommand(CommandSet & Data)
+{
+	if(Data.ArgCount < 2)
+	{
+		puts("Register Missing");
+		puts(" Valid: MSR, CR0, CR2, CR3, CR4");
+		return;
+	}
+
+	if(_stricmp("MSR", Data.ArgData[1]) == 0)
+	{
+		if(Data.ArgCount < 3)
+		{
+			puts("MSR Register Missing");
+			return;
+		}
+
+		uint32_t Register = 0;
+		if(!ParseHex(Data.ArgData[2], Register))
+		{
+			printf(" Invalid MSR Register [%s]\n", Data.ArgData[2]);
+			return;
+		}
+
+		if(Data.ArgCount == 3)
+		{
+			uint64_t Value = ReadMSR(Register);
+			printf(" %016llX\n", Value);
+			return;
+		}
+
+		uint64_t Value = 0;
+		if(!ParseHex(Data.ArgData[3], Value))
+		{
+			printf(" Invalid Value [%s]\n", Data.ArgData[3]);
+			return;
+		}
+
+		WriteMSR(Register, Value);						
+	}
+	else if(_strnicmp("FPU", Data.ArgData[1], 3) == 0)
+	{
+		uint16_t Value = 0;					
+		__asm FSTCW [Value];
+		printf(" Control: %04X", Value);
+		__asm FSTSW [Value];
+		printf(" Status: %04X", Value);
+						
+		printf("\n");
+	}
+	else if(_strnicmp("SSE", Data.ArgData[1], 3) == 0)
+	{
+		if((ReadCR4() & CPUFlags::OSFXSR) != CPUFlags::OSFXSR)
+		{
+			printf(" SSE not avaliable\n");
+			return;
+		}
+
+		uint32_t Value = 0;					
+		__asm STMXCSR [Value];
+		printf(" MXCSR: %08X\n", Value);
+	}
+	else if(_strnicmp("AVX", Data.ArgData[1], 3) == 0)
+	{
+		if((ReadCR4() & CPUFlags::OSXSAVEEnabled) != CPUFlags::OSXSAVEEnabled || 
+			(ReadXCR0() & 0x06) != 0x06)
+		{
+			printf(" AVX not avaliable\n");
+			return;
+		}
+		uint32_t Value = 0;					
+		__asm VSTMXCSR [Value];
+		printf(" MXCSR: %08X\n", Value);
+	}
+	else if(_strnicmp("XCR0", Data.ArgData[1], 4) == 0)
+	{
+		if((ReadCR4() & CPUFlags::OSXSAVEEnabled) != CPUFlags::OSXSAVEEnabled)
+		{
+			printf(" XCR0 not avaliable\n");
+			return;
+		}
+						
+		uint64_t Value;					
+		bool Set = false;
+
+		if(Data.ArgCount == 3)
+		{
+			if(!ParseHex(Data.ArgData[2], Value))
+			{
+				printf(" Invalid Value [%s]\n", Data.ArgData[2]);
+				return;
+			}
+			Set = true;
+		}
+
+		if(Set)
+		{
+			WriteXCR0(Value);
+		}
+		else
+		{
+			Value = ReadXCR0();
+			printf(" %016llX\n", Value);
+		}		
+	}
+	else if(_strnicmp("CR", Data.ArgData[1], 2) == 0)
+	{
+		uint32_t Register = 0;
+		switch(Data.ArgData[1][2])
+		{
+			case '0':
+				Register = 0;
+				break;
+
+			case '2':
+				Register = 2;
+				break;
+
+			case '3':
+				Register = 3;
+				break;
+
+			case '4':
+				Register = 4;
+				break;
+							
+			default:
+				printf(" Invalid Control Register [%s]\n", Data.ArgData[1]);
+				return;
+		}
+
+						
+		uint32_t Value;					
+		bool Set = false;
+
+		if(Data.ArgCount == 3)
+		{
+			if(!ParseHex(Data.ArgData[2], Value))
+			{
+				printf(" Invalid Value [%s]\n", Data.ArgData[2]);
+				return;
+			}
+			Set = true;
+		}
+						
+		switch(Register)
+		{
+			case 0:
+				if(Set)
+				{
+					WriteCR0(Value);
+				}
+				else
+				{
+					Value = ReadCR0();
+					printf(" %08X\n", Value);
+				}
+				break;
+
+			case 2:
+				if(Set)
+				{
+					WriteCR2(Value);
+				}
+				else
+				{
+					Value = ReadCR2();
+					printf(" %08X\n", Value);
+				}
+				break;
+
+			case 3:
+				if(Set)
+				{
+					WriteCR3(Value);
+				}
+				else
+				{
+					Value = ReadCR3();
+					printf(" %08X\n", Value);
+				}
+				break;
+
+			case 4:
+				if(Set)
+				{
+					WriteCR4(Value);
+				}
+				else
+				{
+					Value = ReadCR4();
+					printf(" %08X\n", Value);
+				}
+				break;
+		}
+	}
+	else
+	{
+		printf("Invalid arguments [%s]\n", Data.ArgData[1]);
+	}
+}
+
+void InfoCommand(CommandSet & Data)
+{
+	if(Data.ArgCount < 2)
+	{
+		puts("Information Type Missing");
+		puts(" Valid Types");
+		puts("  ACPI:   ACPI tables and information");
+		puts("  APIC:   Advanced Interrupt Controler Information");
+		puts("  BIOS:   Bios information");
+		puts("  CMOS:   Contents of the CMOS");
+		puts("  CPUID:  CPUID information");
+		puts("  HW:     Hardware Tree");
+		puts("  IOAPIC: I/O APIC Information");
+		puts("  MB:     Multiboot Data");
+		puts("  MEM:    Memory Map");
+		puts("  MP:     Multiprocessor Table");
+		puts("  PIC:    Interrupt Controler Information");
+		puts("  PIR:    PCI Interrupt Routing Table");
+		puts("  TI:     Thread Information");
+		puts("  USB:    USB1-OHCI information");
+
+		return;
+	}
+					
+	if(_stricmp("APIC", Data.ArgData[1]) == 0)
+	{
+		m_InterruptControler.DumpAPIC();
+	}
+	else if(_stricmp("PIC", Data.ArgData[1]) == 0)
+	{
+		m_InterruptControler.DumpPIC();
+	}
+	else if(_stricmp("IDT", Data.ArgData[1]) == 0)
+	{
+		CoreComplexObj::GetComplex()->IDTTable.Dump();
+	}
+	else if(_stricmp("GDT", Data.ArgData[1]) == 0)
+	{
+		CoreComplexObj::GetComplex()->GDTTable.Dump();
+	}
+	else if(_stricmp("MEM", Data.ArgData[1]) == 0)
+	{
+		CoreComplexObj::GetComplex()->PageMap.Dump();
+	}
+	else if(_stricmp("IOAPIC", Data.ArgData[1]) == 0)
+	{
+		m_InterruptControler.DumpIOAPIC();						
+	}
+	else if(_stricmp("TI", Data.ArgData[1]) == 0)
+	{
+		ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(ReadFS(8));
+						
+		if(CurrentThread == nullptr)
+			return;
+
+		ASM_CLI;					
+		extern ThreadInformation *ThreadListHead;
+
+		printf("Thread Information\n");
+		printf(" Current Thread: %08X\n", CurrentThread->ThreadID);
+
+		CurrentThread = ThreadListHead;
+		while(CurrentThread != nullptr)
+		{
+			printf(" Thread ID %08X, Ticks %16llX\n", CurrentThread->ThreadID, CurrentThread->TickCount);
+
+			CurrentThread = CurrentThread->Next;
+		}
+
+
+		ASM_STI;
+
+	}
+	else if(_stricmp("ACPI", Data.ArgData[1]) == 0)
+	{
+		if(Data.ArgCount == 2)		
+			ACPI::Dump(nullptr);
+		else
+			ACPI::Dump(Data.ArgData[2]);
+
+	}
+	else if(_stricmp("USB", Data.ArgData[1]) == 0)
+	{
+		if(USBManager == nullptr)
+			printf(" No USB1-OHCI Device\n");
+		else
+			USBManager->Dump();
+	}
+	else if(_stricmp("HW", Data.ArgData[1]) == 0)
+	{
+		CoreComplexObj::GetComplex()->HardwareComplex.Dump();
+	}
+	else if(_stricmp("MB", Data.ArgData[1]) == 0)
+	{
+		CoreComplexObj::GetComplex()->MultiBoot.Dump();
+	}
+	else if(_stricmp("MP", Data.ArgData[1]) == 0)
+	{
+		MPConfig MPData;
+		MPData.Initilize();
+	}
+	else if(_stricmp("PIR", Data.ArgData[1]) == 0)
+	{
+		uint32_t TableAddress = SearchBIOS("$PIR", 4, 0x10);
+		if(TableAddress == UINT32_MAX)
+		{
+			printf(" No $PIR table\n");
+		}
+		else
+		{
+			printf(" %08X: PCI Interrupt Routing Table\n", TableAddress);
+			PIRTable * Table = reinterpret_cast<PIRTable *>(TableAddress);
+			size_t Count = (Table->Size - 32) / 16;
+			printf("  IRQ Rounter: %02X:%02X:%02X, Vender:Dev %04X:%04X\n", Table->RounterBus, Table->RounterDevFunction >> 3, Table->RounterDevFunction & 0x07, Table->RounterVenderID, Table->RounterDeviceID);
+							
+			printf("  PCI Only IRQs: ");
+			for(int x = 0; x < 16; x++)
+			{
+				if(Table->PCIExcuslveIRQ & 0x1 << x)
+				{
+					printf("%02X ", x);
+				}
+			}
+
+			printf("\n");
+							
+			for(size_t x = 0; x < Count; x++)
+			{
+				printf("   DEV %02X:%02X", Table->Entries[x].Bus, Table->Entries[x].Device >> 3);
+				for(int y = 0; y < 4; y++)
+				{
+					if(Table->Entries[x].INT[y].LinkValue == 0)
+						break;
+
+					printf(", INT%c: %02X", 'A' + y, Table->Entries[x].INT[y].LinkValue);
+				}
+
+				printf("\n");
+			}
+
+			/*
+ 			for(size_t x = 0; x < Count; x++)
+			{
+				for(int y = 0; y < 4; y++)
+				{
+					if(Table->Entries[x].INT[y].LinkValue == 0)
+						break;
+
+					printf("   DEV %02X:%02X", Table->Entries[x].Bus, Table->Entries[x].Device >> 3);
+	
+					printf(", INT%c: %02X IRQS: ", 'A' + y, Table->Entries[x].INT[y].LinkValue);
+
+					for(int z = 0; z < 16; z++)
+					{
+						if(Table->Entries[x].INT[y].IRQBitmap & 0x1 << z)
+						{
+							printf("%02X ", z);
+						}
+					}
+
+					printf("\n");
+				}
+			}
+			*/
+		}
+	}
+	else if(_stricmp("BIOS", Data.ArgData[1]) == 0)
+	{
+		printf(" Legacy BIOS Vectors\n");
+		printf("  %08X: BIOS Data Area\n", 0x400); 
+		printf("  %08X: Extended BIOS Data Area\n", (*reinterpret_cast<uint16_t *>(0x40E)) << 4); 
+						
+		{
+			uint32_t *IVT = reinterpret_cast<uint32_t *>(0);
+			printf("  %08X: Video Parameter Table\n", FPTR_TO_32(IVT[0x1D])); 
+			printf("  %08X: Video Graphics Character Table\n", FPTR_TO_32(IVT[0x1F]));
+			printf("  %08X: EGA Video Graphics Character Table\n", FPTR_TO_32(IVT[0x43]));
+			printf("  %08X: Diskette Parameter Table\n", FPTR_TO_32(IVT[0x1E]));
+			printf("  %08X: Fixed Disk Parameter Table 1\n", FPTR_TO_32(IVT[0x41]));
+			printf("  %08X: Fixed Disk Parameter Table 2\n", FPTR_TO_32(IVT[0x46]));
+		}
+
+		printf("\n");
+
+		printf(" Legacy BIOS ROMs\n");
+		uint32_t TableAddress;
+		for(TableAddress = 0xc0000; TableAddress < 0x100000; TableAddress += 0x800)
+		{
+			if(*reinterpret_cast<uint16_t *>(TableAddress) == 0xAA55)
+			{
+				printf("   %08X\n", TableAddress);
+				uint16_t *Data = reinterpret_cast<uint16_t *>(TableAddress);
+				char * ExpansionAddress = reinterpret_cast<char *>(TableAddress);
+				if(Data[12] != 0000)
+				{
+					ExpansionAddress += Data[12];
+
+					// This should point to the PCIR data
+					if(strncmp(ExpansionAddress, "PCIR", 4) == 0)
+						printf("    PCIR: %08X\n", ExpansionAddress);
+				}
+								
+				ExpansionAddress = reinterpret_cast<char *>(TableAddress);
+
+				if(Data[13] != 0000)
+				{
+					// Expansion header, should be $PnP, but video can point to the $VBT data
+					ExpansionAddress += Data[13];
+					if(strncmp(ExpansionAddress, "$PnP", 4) == 0)
+						printf("    $PnP: %08X\n", ExpansionAddress);
+					else if(strncmp(ExpansionAddress, "$VBT", 4) == 0)
+						printf("    $VBT: %08X\n", ExpansionAddress);
+				}
+
+				uint32_t PMID = SeachMemory(TableAddress, (Data[1] & 0xFF) * 512, "PMID", 4);
+				if(PMID != UINT32_MAX)
+				{
+					printf("    PMID: %08X\n", PMID);
+				}
+			}
+		}
+
+		printf("\n");
+
+		printf(" BIOS Tables\n");
+
+		// Start with the well know tables
+		TableAddress = 0xF0000;
+		while((TableAddress = SeachMemory(TableAddress, 0x10000, "$PnP", 4, 0x10)) != UINT32_MAX)
+		{
+			if(*reinterpret_cast<uint8_t *>(TableAddress + 4) == 0x10)
+				printf("   %08X: \"$PnP\" - PnP BIOS Table\n", TableAddress);
+
+			TableAddress += 4;
+		};
+						
+		TableAddress = SearchBIOS("$PMM", 4, 0x10);
+		if(TableAddress != UINT32_MAX)
+			printf("   %08X: \"$PMM\" - POST Memory Manager\n", TableAddress);
+
+		TableAddress = SearchBIOS("$PIR", 4, 0x10);
+		if(TableAddress != UINT32_MAX)
+			printf("   %08X: \"$PIR\" - PCI Interrupt Routing Table\n", TableAddress);
+
+		TableAddress = SearchBIOS("IFE$", 4, 0x10);
+		if(TableAddress != UINT32_MAX)
+			printf("   %08X: \"IFE$\" - EFI Compatablity Table\n", TableAddress);
+
+		TableAddress = SearchBIOS("_MP_", 4, 0x10);
+		if(TableAddress != UINT32_MAX)
+			printf("   %08X: \"_MP_\" - MultiProcessor Table Pointer\n", TableAddress);
+
+		TableAddress = SearchBIOS("_32_", 4, 0x10);
+		if(TableAddress != UINT32_MAX)
+			printf("   %08X: \"_32_\" - 32-Bit BIOS Entry Point\n", TableAddress);
+
+		TableAddress = SearchBIOS("_SM_", 4, 0x10);
+		if(TableAddress != UINT32_MAX)
+		{
+			printf("   %08X: \"_SM_\" - SMBios Table Pointer\n", TableAddress);
+		}
+		else
+		{
+			TableAddress = SearchBIOS("_DMI_", 5, 0x10);
+			if(TableAddress != UINT32_MAX)
+				printf("   %08X: \"_DMI_\" - DMI Table Pointer\n", TableAddress);
+		}
+
+		TableAddress = SearchBIOS("RSD PTR ", 8, 0x10);
+		if(TableAddress != UINT32_MAX)
+			printf("   %08X: \"RDS PTR \" - ACPI Root Pointer\n", TableAddress);
+
+
+		/*
+		uint32_t LastAddress = 0xC0000;
+						
+		while((LastAddress = SeachMemory(LastAddress, 0x40000, "$", 1, 0x01)) != UINT32_MAX)
+		{
+			if(LastAddress >= 0x100000)
+				break;
+
+			if((LastAddress & 0xF) == 0)
+			{
+				char *Data = reinterpret_cast<char *>(LastAddress);
+
+				if(isalnum(Data[1]) && isalnum(Data[2]) && isalnum(Data[3]))
+				{							
+					printf("  %08X: %4.4s\n", LastAddress, LastAddress);
+				}
+			}
+			else if((LastAddress & 0xF) == 3)
+			{
+				char *Data = reinterpret_cast<char *>(LastAddress-3);
+
+				if(isalnum(Data[0]) && isalnum(Data[1]) && isalnum(Data[2]))
+				{							
+					printf("  %08X: %4.4s\n", LastAddress-4, LastAddress-4);
+				}
+							
+			}
+
+			LastAddress +=1;
+		};
+		*/
+
+
+	}
+	else if(_stricmp("CMOS", Data.ArgData[1]) == 0)
+	{
+		char Buffer[17];
+		Buffer[16] = 0;
+		int Pos = 0;
+		for(int x = 0; x < 0x80; x++, Pos++)
+		{
+			if(x % 0x10 == 0)
+			{
+				if(x != 0)
+				{			
+					printf("   %s\n", Buffer);
+				}
+
+				printf("      %02X:", x);
+				Pos = 0;
+			}
+
+			if(x % 0x10 != 0 && x % 0x08 == 0)
+				printf("-");
+			else
+				printf(" ");
+
+			OutPortb(0x70, x);
+			InPortb(0);
+			InPortb(0);
+			InPortb(0);
+			InPortb(0);
+			uint8_t Val = InPortb(0x71);
+
+			printf("%02X", Val);
+
+			if(Val < ' ' || Val > 127)
+				Buffer[Pos] = '.';
+			else
+				Buffer[Pos] = Val;
+		}
+						
+		printf("   %s\n", Buffer);
+	}
+	else if(_stricmp("CPUID", Data.ArgData[1]) == 0)
+	{
+		Registers Res;
+		if(Data.ArgCount == 2)
+		{
+			ReadCPUID(0, 0, &Res);
+			uint32_t LeafCount = Res.EAX;
+			uint32_t ExtendedLeafCount = 0;
+			bool Extended = false;
+			////////123456789012345678901234
+			printf(" Signature:             %4.4s%4.4s%4.4s\n", &Res.EBX, &Res.EDX, &Res.ECX);
+							
+			Res.EAX = 0;
+			ReadCPUID(0x80000000, 0, &Res);
+			Extended = Res.EAX != 0;
+			ExtendedLeafCount = Res.EAX;
+
+			if(Extended)							
+			{
+				ReadCPUID(0x80000002, 0, &Res);
+				////////123456789012345678901234
+				printf(" Brand:                 %4.4s%4.4s%4.4s%4.4s", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
+				ReadCPUID(0x80000003, 0, &Res);
+				printf("%4.4s%4.4s%4.4s%4.4s", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
+				ReadCPUID(0x80000004, 0, &Res);
+				printf("%4.4s%4.4s%4.4s%4.4s\n", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
+			}
+
+			////////123456789012345678901234
+			printf(" Leaf Count:            %X\n", LeafCount);
+			printf(" Extended Leaf Count:   %X\n", ExtendedLeafCount);
+
+			uint32_t Features[5];
+			Features[0] = Features[1] = Features[2] = Features[3] = Features[4] = 0;
+
+			ReadCPUID(1, 0, &Res);
+			uint8_t Model = (Res.EAX & 0xF0) >> 4;
+			uint8_t FamilyID = (Res.EAX & 0xF00) >> 8;
+
+			if(FamilyID == 0x06 || FamilyID == 0x0F)
+			{
+				Model += (Res.EAX & 0xF0000) >> 12;
+			}
+
+			if(FamilyID == 0x0F)
+			{
+				FamilyID += (Res.EAX & 0xFF00000) >> 20;
+			}
+
+			////////123456789012345678901234
+			printf(" CPU Type %X, Family %X, Model %X, Stepping %X\n", (Res.EAX & 0xF000) >> 12, FamilyID, Model, Res.EAX & 0x0F);
+			printf(" Brand Index:           %02X\n", Res.EBX & 0xFF);
+			printf(" CLFLUSH Size:          %02X\n", (Res.EBX & 0x0000FF00) >> 8);
+			printf(" Max ID:                %02X\n", (Res.EBX & 0x00FF0000) >> 16);
+			printf(" Local APIC ID:         %02X\n", (Res.EBX & 0xFF000000) >> 24);
+			printf(" Features 1 (EDX):      %08X\n", Res.EDX);
+			printf(" Features 2 (ECX):      %08X\n", Res.ECX);
+
+			Features[0] = Res.EDX;
+			Features[1] = Res.ECX;
+
+			if(LeafCount >= 0x07)
+			{								
+				ReadCPUID(0x07, 0, &Res);
+				////////123456789012345678901234
+				printf(" Structured Features:   %08X\n", Res.EBX);
+				Features[2] = Res.EBX;
+
+			}
+							
+			if(LeafCount >= 0x0D)
+			{								
+				ReadCPUID(0x0D, 0, &Res);
+				////////123456789012345678901234
+				printf(" XCR0 Valid Bits:       %08X:%08X\n", Res.EDX, Res.EAX);
+				printf(" XSAVE/XRSTOR size:     %08X\n", Res.EBX);
+				printf(" XSAVE/XRSTOR Max:      %08X\n", Res.ECX);
+				ReadCPUID(0x0D, 1, &Res);
+				////////123456789012345678901234
+				printf(" XSAVE Flags (EAX):     %08X\n", Res.EAX);
+				printf(" XSAVE XSS size:        %08X\n", Res.EBX);
+				printf(" Valid IA32_XSS Bits:   %08X:%08X\n", Res.EDX, Res.ECX);
+			}
+
+
+			if(Extended)							
+			{
+				ReadCPUID(0x80000001, 0, &Res);
+				////////123456789012345678901234
+				printf(" ExFeatures 1 (EDX):    %08X\n", Res.EDX);
+				printf(" ExFeatures 2 (ECX):    %08X\n", Res.ECX);
+
+				Features[3] = Res.EDX;
+				Features[4] = Res.ECX;
+
+				if(ExtendedLeafCount >= 0x80000008)
+				{
+					ReadCPUID(0x80000008, 0, &Res);
+					////////123456789012345678901234
+					printf(" Physical Address:      %u\n", Res.EAX & 0xFF);
+					printf(" Linear Address:        %u\n", (Res.EAX & 0xFF00) >> 8);
+				}
+			}
+							
+			uint32_t Mask = 0;
+			for(int x = 0; x < 32 * 5; x++)
+			{
+				if(Mask == 0)
+					Mask = 0x00000001;
+
+				if(Features[x / 32] & Mask)
+					printf("  %s\n", CPUIDFlags[x]);
+
+				Mask = Mask << 1;
+			}
+							
+		}
+		else
+		{
+			uint32_t ParamID = 0;
+			ParseHex(Data.ArgData[2], ParamID);							
+
+			uint32_t ParamID2 = 0;
+			if(Data.ArgCount >= 4)
+			{
+				ParseHex(Data.ArgData[3], ParamID2);
+			}
+							
+			ReadCPUID(ParamID, ParamID2, &Res);
+			printf(" EAX: %08X, EBX: %08X, ECX: %08X, EDX: %08X\n", Res.EAX, Res.EBX, Res.ECX, Res.EDX);
+		}
+	}
+	else
+	{
+		printf("Invalid arguments [%s]\n", Data.ArgData[1]);
+	}
+}
+	
+void ObjectCommand(CommandSet & Data)
+{
+	CoreComplexObj::GetComplex()->ObjectComplex.DisplayObjects(Data.ArgCount - 1, &Data.ArgData[1]);
+}
+
+void DisassembleCommand(CommandSet & Data)
+{
+	int DataSize = 32;
+	uint32_t Length = 0x20;
+	uint32_t Address = Data.CurrentAddress;
+
+	if(Data.ArgData[0][1] == 0)
+	{
+		DataSize = 32;
+	}
+	else if(strcmp(&Data.ArgData[0][1], "16") == 0)
+	{
+		DataSize = 16;
+	}
+	else if(strcmp(&Data.ArgData[0][1], "32") == 0)
+	{
+		DataSize = 32;
+	}
+	else if(strcmp(&Data.ArgData[0][1], "64") == 0)
+	{
+		DataSize = 64;
+	}
+	else
+	{
+		printf(" Unknown Option [%s]\n", &Data.ArgData[0][1]);
+		return;
+	}
+					
+	if(Data.ArgCount >= 2)
+	{
+		if(!ParseAddress(Data.ArgData[1], Address, Data.LastAddress))
+		{
+			printf(" Invalid Address [%s]\n", Data.ArgData[1]);
+			return;
+		}
+	}
+
+	if(Data.ArgCount >= 3)
+	{
+		if(!ParseHex(Data.ArgData[2], Length))
+		{
+			printf(" Invalid Length [%s]\n", Data.ArgData[2]);
+			return;
+		}
+	}
+
+	Data.LastAddress = Address;
+	Disassembler Dis;
+	Data.CurrentAddress = Address + Dis.Disassamble(reinterpret_cast<intptr_t *>(Address), Length, DataSize, DataSize);
+}
 
 void main(int argc, char *argv[])
 {
 	char InputBuffer[0x100];
-	bool Done = false;
 
-	MPConfig MPData;
-	
-	uint32_t DumpAddress = 0x100000;
+	CommandSet CommandData;
+	CommandData.ArgCount = 0;
+	CommandData.CurrentAddress = 0x100000;
+	CommandData.LastAddress = 0x100000;
 
-	do
+	while(true)
 	{
-		printf("\00307%08X> ", DumpAddress);
+		printf("\00307%08X> ", CommandData.CurrentAddress);
 		gets_s(InputBuffer, 0x100);
 
-
 		char * Input = TrimString(InputBuffer);		
-		//char * CmdArgv[33];
-		//int CmdArgc = _ConvertCommandLineToArgcArgv(Input, CmdArgv, 32);
+		CommandData.ArgCount = _ConvertCommandLineToArgcArgv(Input, CommandData.ArgData, 31, true);
 
-		char *CurrentData = NextToken(Input);
-		
-		switch(toupper(CurrentData[0]))
+		if(CommandData.ArgCount == 0 || CommandData.ArgData[0][0] == 0)
+			continue;
+
+		//for(int x = 0; x < CommandData.ArgCount; x++)
+		//{
+		//	printf(" %02u: %s\n", x, CommandData.ArgData[x]);
+		//}
+
+		if(CommandData.ArgData[0][0] == '?')
 		{
-			case 'D':
+			puts("BootDebug Command List");
+			for(CommandEntry * Entry = Commands; Entry->Command != 0; Entry++)
+				printf(" %s\n", Entry->Help);
+
+			puts("");
+			puts(" Size = B|W|D|Q: Byte, Word, DWord or QWord");
+
+		}
+		else
+		{
+			bool Matched = false;
+			for(CommandEntry * Entry = Commands; Entry->Command != 0; Entry++)
+			{
+				if(toupper(	CommandData.ArgData[0][0] ) == Entry->Command)
 				{
-					//DumpCommand(CmdArgc, CmdArgv);
-					//continue;
-
-					int DumpSize = 1;
-					uint32_t Length = 0x80;
-					uint32_t Address = DumpAddress;
-
-					switch(toupper(CurrentData[1]))
-					{
-						case 0:
-						case 'B':
-							DumpSize = 1;
-							break;
-						
-						case 'W':
-							DumpSize = 2;
-							break;
-
-						case 'D':
-							DumpSize = 4;
-							break;
-
-						case 'Q':
-							DumpSize = 8;
-							break;
-
-						case 'S':
-							DumpSize = 0;
-							Length = 128;
-							break;
-
-						default:
-							printf(" Unknown Option [%c]\n", CurrentData[1]);
-							continue;
-
-					}
-
-					CurrentData = NextToken(Input);
-					if(CurrentData != nullptr)
-					{
-						if(!ParseAddress(CurrentData, Address))
-						{
-							printf(" Invalid Address [%s]\n", CurrentData);
-							continue;
-						}
-					}
-
-					CurrentData = NextToken(Input);
-
-					if(CurrentData != nullptr)
-					{
-						if(!ParseHex(CurrentData, Length))
-						{
-							printf(" Invalid Length [%s]\n", CurrentData);
-							continue;
-						}
-					}
-
-					if(DumpSize == 0)
-					{
-						printf("\00307%0.8X:", Address);
-
-						for(uint32_t x = 0; x < Length; x++)
-						{
-							uint8_t Char = *reinterpret_cast<uint8_t *>(Address);
-							Address++;
-
-							if( Char == 0)
-								break;
-
-							printf("%c", Char);
-
-						}
-						printf("\00307\n");
-					}
-					else 
-					{
-						LastAddress = Address;
-
-						PrintMemoryBlock((void *)Address, Length, DumpSize);
-						Address += Length;
-					}
-					
-
-					DumpAddress = Address;
-
-					
-				}
-				break;
-
-			case 'S':
-				{					
-					int DataSize = 1;
-					
-					switch(toupper(CurrentData[1]))
-					{
-						case 0:
-						case 'B':
-							DataSize = 1;
-							break;
-						
-						case 'W':
-							DataSize = 2;
-							break;
-
-						case 'D':
-							DataSize = 4;
-							break;
-
-						case 'Q':
-							DataSize = 8;
-							break;
-						
-						default:
-							printf(" Unknown Option [%c]\n", CurrentData[1]);
-							continue;
-
-					}					
-					
-					uint32_t Start = DumpAddress;
-					uint32_t Count = 0;
-					uint32_t DataLength = 0;
-
-					CurrentData = NextToken(Input);
-					if(CurrentData == nullptr)
-					{
-						puts(" Address Missing");
-						continue;
-					}
-					
-					if(!ParseAddress(CurrentData, Start))
-					{
-						printf(" Invalid Address [%s]\n", CurrentData);
-						continue;
-					}
-
-					CurrentData = NextToken(Input);
-					if(CurrentData == nullptr)
-					{
-						puts(" Length Missing");
-						continue;
-					}
-
-					if(!ParseHex(CurrentData, Count))
-					{
-						printf(" Invalid Length [%s]\n", CurrentData);
-						break;
-					}
-					
-					Input = TrimString(Input);
-
-					if(Input == nullptr || Input[0] == 0)
-					{
-						puts(" Search Data Missing");
-						break;
-
-					}
-					
-					void * Data = new uint8_t[32 * DataSize];
-
-					// We have a search string
-					if(Input[0] == '"')
-					{
-						if(DataSize != 1)
-						{
-							printf(" String Data is only valid on Byte searches.\n", Input);
-							delete Data;
-							break;
-						}						
-						else if(Input[strlen(Input) - 1] != '"')
-						{
-							printf(" Invalid String Data [%s]\n", Input);
-							delete Data;
-							break;
-						}
-
-						char * InputData = TrimChar(Input, Input[0]);
-						DataLength = strlen(InputData);
-						
-						if(DataLength > 32)
-							DataLength = 32;
-
-						memcpy(Data, InputData, DataLength);
-					}
-					else
-					{
-						if(!ParseData(Input, Data, DataLength, DataSize))
-						{
-							delete Data;
-							break;
-						}
-					}
-
-					uint32_t Pos = Start;
-
-					while(true)
-					{
-						uint32_t Loc = SeachMemory(Pos, Count, Data, DataLength * DataSize, DataSize);
-
-						if(Loc == UINT32_MAX)
-							break;
-
-						PrintMemoryBlock((void *)Loc, DataLength * DataSize, DataSize);
-						
-						Loc += DataLength * DataSize;
-						
-						Count = Count - (Loc - Pos);
-						Pos = Loc;
-					}					
-
-					LastAddress = Start;
-
-					delete Data;
-				}
-				break;
-
-			case 'B':
-				CurrentData = NextToken(Input);
-				CoreComplexObj::GetComplex()->ObjectComplex.DisplayObjects(CurrentData, Input);
-				break;
-
-			case 'N':
-				{
-					CurrentData = NextToken(Input);
-					if(CurrentData == nullptr)
-					{
-						puts("Information Type Missing");
-						puts(" Valid Types");
-						puts("  ACPI:   ACPI tables and information");
-						puts("  APIC:   Advanced Interrupt Controler Information");
-						puts("  BIOS:   Bios information");
-						puts("  CMOS:   Contents of the CMOS");
-						puts("  CPUID:  CPUID information");
-						puts("  HW:     Hardware Tree");
-						puts("  IOAPIC: I/O APIC Information");
-						puts("  MB:     Multiboot Data");
-						puts("  MEM:    Memory Map");
-						puts("  MP:     Multiprocessor Table");
-						puts("  PIC:    Interrupt Controler Information");
-						puts("  PIR:    PCI Interrupt Routing Table");
-						puts("  TI:     Thread Information");
-						puts("  USB:    USB1-OHCI information");
-
-						continue;
-
-					}
-					
-					if(_stricmp("APIC", CurrentData) == 0)
-					{
-						m_InterruptControler.DumpAPIC();
-					}
-					else if(_stricmp("PIC", CurrentData) == 0)
-					{
-						m_InterruptControler.DumpPIC();
-					}
-					else if(_stricmp("IDT", CurrentData) == 0)
-					{
-						CoreComplexObj::GetComplex()->IDTTable.Dump();
-					}
-					else if(_stricmp("GDT", CurrentData) == 0)
-					{
-						CoreComplexObj::GetComplex()->GDTTable.Dump();
-					}
-					else if(_stricmp("MEM", CurrentData) == 0)
-					{
-						CoreComplexObj::GetComplex()->PageMap.Dump();
-					}
-					else if(_stricmp("IOAPIC", CurrentData) == 0)
-					{
-						m_InterruptControler.DumpIOAPIC();						
-					}
-					else if(_stricmp("TI", CurrentData) == 0)
-					{
-						ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(ReadFS(8));
-						
-						if(CurrentThread == nullptr)
-							break;
-
-						ASM_CLI;					
-						extern ThreadInformation *ThreadListHead;
-
-						printf("Thread Information\n");
-						printf(" Current Thread: %08X\n", CurrentThread->ThreadID);
-
-						CurrentThread = ThreadListHead;
-						while(CurrentThread != nullptr)
-						{
-							printf(" Thread ID %08X, Ticks %16llX\n", CurrentThread->ThreadID, CurrentThread->TickCount);
-
-							CurrentThread = CurrentThread->Next;
-						}
-
-
-						ASM_STI;
-
-					}
-					else if(_stricmp("ACPI", CurrentData) == 0)
-					{
-						CurrentData = NextToken(Input);
-						
-						ACPI::Dump(CurrentData);
-					}
-					else if(_stricmp("USB", CurrentData) == 0)
-					{
-						if(USBManager == nullptr)
-							printf(" No USB1-OHCI Device\n");
-						else
-							USBManager->Dump();
-					}
-					else if(_stricmp("HW", CurrentData) == 0)
-					{
-						CoreComplexObj::GetComplex()->HardwareComplex.Dump();
-					}
-					else if(_stricmp("MB", CurrentData) == 0)
-					{
-						CoreComplexObj::GetComplex()->MultiBoot.Dump();
-					}
-					else if(_stricmp("MP", CurrentData) == 0)
-					{
-						MPData.Initilize();
-					}
-					else if(_stricmp("PIR", CurrentData) == 0)
-					{
-						uint32_t TableAddress = SearchBIOS("$PIR", 4, 0x10);
-						if(TableAddress == UINT32_MAX)
-						{
-							printf(" No $PIR table\n");
-						}
-						else
-						{
-							printf(" %08X: PCI Interrupt Routing Table\n", TableAddress);
-							PIRTable * Table = reinterpret_cast<PIRTable *>(TableAddress);
-							size_t Count = (Table->Size - 32) / 16;
-							printf("  IRQ Rounter: %02X:%02X:%02X, Vender:Dev %04X:%04X\n", Table->RounterBus, Table->RounterDevFunction >> 3, Table->RounterDevFunction & 0x07, Table->RounterVenderID, Table->RounterDeviceID);
-							
-							printf("  PCI Only IRQs: ");
-							for(int x = 0; x < 16; x++)
-							{
-								if(Table->PCIExcuslveIRQ & 0x1 << x)
-								{
-									printf("%02X ", x);
-								}
-							}
-
-							printf("\n");
-							
-							for(size_t x = 0; x < Count; x++)
-							{
-								printf("   DEV %02X:%02X", Table->Entries[x].Bus, Table->Entries[x].Device >> 3);
-								for(int y = 0; y < 4; y++)
-								{
-									if(Table->Entries[x].INT[y].LinkValue == 0)
-										break;
-
-									printf(", INT%c: %02X", 'A' + y, Table->Entries[x].INT[y].LinkValue);
-								}
-
-								printf("\n");
-							}
-
-							/*
- 							for(size_t x = 0; x < Count; x++)
-							{
-								for(int y = 0; y < 4; y++)
-								{
-									if(Table->Entries[x].INT[y].LinkValue == 0)
-										break;
-
-									printf("   DEV %02X:%02X", Table->Entries[x].Bus, Table->Entries[x].Device >> 3);
-	
-									printf(", INT%c: %02X IRQS: ", 'A' + y, Table->Entries[x].INT[y].LinkValue);
-
-									for(int z = 0; z < 16; z++)
-									{
-										if(Table->Entries[x].INT[y].IRQBitmap & 0x1 << z)
-										{
-											printf("%02X ", z);
-										}
-									}
-
-									printf("\n");
-								}
-							}
-							*/
-						}
-					}
-					else if(_stricmp("BIOS", CurrentData) == 0)
-					{
-						printf(" Legacy BIOS Vectors\n");
-						printf("  %08X: BIOS Data Area\n", 0x400); 
-						printf("  %08X: Extended BIOS Data Area\n", (*reinterpret_cast<uint16_t *>(0x40E)) << 4); 
-						
-						{
-							uint32_t *IVT = reinterpret_cast<uint32_t *>(0);
-							printf("  %08X: Video Parameter Table\n", FPTR_TO_32(IVT[0x1D])); 
-							printf("  %08X: Video Graphics Character Table\n", FPTR_TO_32(IVT[0x1F]));
-							printf("  %08X: EGA Video Graphics Character Table\n", FPTR_TO_32(IVT[0x43]));
-							printf("  %08X: Diskette Parameter Table\n", FPTR_TO_32(IVT[0x1E]));
-							printf("  %08X: Fixed Disk Parameter Table 1\n", FPTR_TO_32(IVT[0x41]));
-							printf("  %08X: Fixed Disk Parameter Table 2\n", FPTR_TO_32(IVT[0x46]));
-						}
-
-						printf("\n");
-
-						printf(" Legacy BIOS ROMs\n");
-						uint32_t TableAddress;
-						for(TableAddress = 0xc0000; TableAddress < 0x100000; TableAddress += 0x800)
-						{
-							if(*reinterpret_cast<uint16_t *>(TableAddress) == 0xAA55)
-							{
-								printf("   %08X\n", TableAddress);
-								uint16_t *Data = reinterpret_cast<uint16_t *>(TableAddress);
-								char * ExpansionAddress = reinterpret_cast<char *>(TableAddress);
-								if(Data[12] != 0000)
-								{
-									ExpansionAddress += Data[12];
-
-									// This should point to the PCIR data
-									if(strncmp(ExpansionAddress, "PCIR", 4) == 0)
-										printf("    PCIR: %08X\n", ExpansionAddress);
-								}
-								
-								ExpansionAddress = reinterpret_cast<char *>(TableAddress);
-
-								if(Data[13] != 0000)
-								{
-									// Expansion header, should be $PnP, but video can point to the $VBT data
-									ExpansionAddress += Data[13];
-									if(strncmp(ExpansionAddress, "$PnP", 4) == 0)
-										printf("    $PnP: %08X\n", ExpansionAddress);
-									else if(strncmp(ExpansionAddress, "$VBT", 4) == 0)
-										printf("    $VBT: %08X\n", ExpansionAddress);
-								}
-
-								uint32_t PMID = SeachMemory(TableAddress, (Data[1] & 0xFF) * 512, "PMID", 4);
-								if(PMID != UINT32_MAX)
-								{
-									printf("    PMID: %08X\n", PMID);
-								}
-							}
-						}
-
-						printf("\n");
-
-						printf(" BIOS Tables\n");
-
-						// Start with the well know tables
-						TableAddress = 0xF0000;
-						while((TableAddress = SeachMemory(TableAddress, 0x10000, "$PnP", 4, 0x10)) != UINT32_MAX)
-						{
-							if(*reinterpret_cast<uint8_t *>(TableAddress + 4) == 0x10)
-								printf("   %08X: \"$PnP\" - PnP BIOS Table\n", TableAddress);
-
-							TableAddress += 4;
-						};
-						
-						TableAddress = SearchBIOS("$PMM", 4, 0x10);
-						if(TableAddress != UINT32_MAX)
-							printf("   %08X: \"$PMM\" - POST Memory Manager\n", TableAddress);
-
-						TableAddress = SearchBIOS("$PIR", 4, 0x10);
-						if(TableAddress != UINT32_MAX)
-							printf("   %08X: \"$PIR\" - PCI Interrupt Routing Table\n", TableAddress);
-
-						TableAddress = SearchBIOS("IFE$", 4, 0x10);
-						if(TableAddress != UINT32_MAX)
-							printf("   %08X: \"IFE$\" - EFI Compatablity Table\n", TableAddress);
-
-						TableAddress = SearchBIOS("_MP_", 4, 0x10);
-						if(TableAddress != UINT32_MAX)
-							printf("   %08X: \"_MP_\" - MultiProcessor Table Pointer\n", TableAddress);
-
-						TableAddress = SearchBIOS("_32_", 4, 0x10);
-						if(TableAddress != UINT32_MAX)
-							printf("   %08X: \"_32_\" - 32-Bit BIOS Entry Point\n", TableAddress);
-
-						TableAddress = SearchBIOS("_SM_", 4, 0x10);
-						if(TableAddress != UINT32_MAX)
-						{
-							printf("   %08X: \"_SM_\" - SMBios Table Pointer\n", TableAddress);
-						}
-						else
-						{
-							TableAddress = SearchBIOS("_DMI_", 5, 0x10);
-							if(TableAddress != UINT32_MAX)
-								printf("   %08X: \"_DMI_\" - DMI Table Pointer\n", TableAddress);
-						}
-
-						TableAddress = SearchBIOS("RSD PTR ", 8, 0x10);
-						if(TableAddress != UINT32_MAX)
-							printf("   %08X: \"RDS PTR \" - ACPI Root Pointer\n", TableAddress);
-
-
-						/*
-						uint32_t LastAddress = 0xC0000;
-						
-						while((LastAddress = SeachMemory(LastAddress, 0x40000, "$", 1, 0x01)) != UINT32_MAX)
-						{
-							if(LastAddress >= 0x100000)
-								break;
-
-							if((LastAddress & 0xF) == 0)
-							{
-								char *Data = reinterpret_cast<char *>(LastAddress);
-
-								if(isalnum(Data[1]) && isalnum(Data[2]) && isalnum(Data[3]))
-								{							
-									printf("  %08X: %4.4s\n", LastAddress, LastAddress);
-								}
-							}
-							else if((LastAddress & 0xF) == 3)
-							{
-								char *Data = reinterpret_cast<char *>(LastAddress-3);
-
-								if(isalnum(Data[0]) && isalnum(Data[1]) && isalnum(Data[2]))
-								{							
-									printf("  %08X: %4.4s\n", LastAddress-4, LastAddress-4);
-								}
-							
-							}
-
-							LastAddress +=1;
-						};
-						*/
-
-
-					}
-					else if(_stricmp("CMOS", CurrentData) == 0)
-					{
-						char Buffer[17];
-						Buffer[16] = 0;
-						int Pos = 0;
-						for(int x = 0; x < 0x80; x++, Pos++)
-						{
-							if(x % 0x10 == 0)
-							{
-								if(x != 0)
-								{			
-									printf("   %s\n", Buffer);
-								}
-
-								printf("      %02X:", x);
-								Pos = 0;
-							}
-
-							if(x % 0x10 != 0 && x % 0x08 == 0)
-								printf("-");
-							else
-								printf(" ");
-
-							OutPortb(0x70, x);
-							InPortb(0);
-							InPortb(0);
-							InPortb(0);
-							InPortb(0);
-							uint8_t Val = InPortb(0x71);
-
-							printf("%02X", Val);
-
-							if(Val < ' ' || Val > 127)
-								Buffer[Pos] = '.';
-							else
-								Buffer[Pos] = Val;
-						}
-						
-						printf("   %s\n", Buffer);
-					}
-					else if(_stricmp("CPUID", CurrentData) == 0)
-					{
-						Registers Res;
-						CurrentData = NextToken(Input);
-						if(CurrentData == nullptr)
-						{
-							ReadCPUID(0, 0, &Res);
-							uint32_t LeafCount = Res.EAX;
-							uint32_t ExtendedLeafCount = 0;
-							bool Extended = false;
-							////////123456789012345678901234
-							printf(" Signature:             %4.4s%4.4s%4.4s\n", &Res.EBX, &Res.EDX, &Res.ECX);
-							
-							Res.EAX = 0;
-							ReadCPUID(0x80000000, 0, &Res);
-							Extended = Res.EAX != 0;
-							ExtendedLeafCount = Res.EAX;
-
-							if(Extended)							
-							{
-								ReadCPUID(0x80000002, 0, &Res);
-								////////123456789012345678901234
-								printf(" Brand:                 %4.4s%4.4s%4.4s%4.4s", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
-								ReadCPUID(0x80000003, 0, &Res);
-								printf("%4.4s%4.4s%4.4s%4.4s", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
-								ReadCPUID(0x80000004, 0, &Res);
-								printf("%4.4s%4.4s%4.4s%4.4s\n", &Res.EAX, &Res.EBX, &Res.ECX, &Res.EDX);
-							}
-
-							////////123456789012345678901234
-							printf(" Leaf Count:            %X\n", LeafCount);
-							printf(" Extended Leaf Count:   %X\n", ExtendedLeafCount);
-
-							uint32_t Features[5];
-							Features[0] = Features[1] = Features[2] = Features[3] = Features[4] = 0;
-
-							ReadCPUID(1, 0, &Res);
-							uint8_t Model = (Res.EAX & 0xF0) >> 4;
-							uint8_t FamilyID = (Res.EAX & 0xF00) >> 8;
-
-							if(FamilyID == 0x06 || FamilyID == 0x0F)
-							{
-								Model += (Res.EAX & 0xF0000) >> 12;
-							}
-
-							if(FamilyID == 0x0F)
-							{
-								FamilyID += (Res.EAX & 0xFF00000) >> 20;
-							}
-
-							////////123456789012345678901234
-							printf(" CPU Type %X, Family %X, Model %X, Stepping %X\n", (Res.EAX & 0xF000) >> 12, FamilyID, Model, Res.EAX & 0x0F);
-							printf(" Brand Index:           %02X\n", Res.EBX & 0xFF);
-							printf(" CLFLUSH Size:          %02X\n", (Res.EBX & 0x0000FF00) >> 8);
-							printf(" Max ID:                %02X\n", (Res.EBX & 0x00FF0000) >> 16);
-							printf(" Local APIC ID:         %02X\n", (Res.EBX & 0xFF000000) >> 24);
-							printf(" Features 1 (EDX):      %08X\n", Res.EDX);
-							printf(" Features 2 (ECX):      %08X\n", Res.ECX);
-
-							Features[0] = Res.EDX;
-							Features[1] = Res.ECX;
-
-							if(LeafCount >= 0x07)
-							{								
-								ReadCPUID(0x07, 0, &Res);
-								////////123456789012345678901234
-								printf(" Structured Features:   %08X\n", Res.EBX);
-								Features[2] = Res.EBX;
-
-							}
-							
-							if(LeafCount >= 0x0D)
-							{								
-								ReadCPUID(0x0D, 0, &Res);
-								////////123456789012345678901234
-								printf(" XCR0 Valid Bits:       %08X:%08X\n", Res.EDX, Res.EAX);
-								printf(" XSAVE/XRSTOR size:     %08X\n", Res.EBX);
-								printf(" XSAVE/XRSTOR Max:      %08X\n", Res.ECX);
-								ReadCPUID(0x0D, 1, &Res);
-								////////123456789012345678901234
-								printf(" XSAVE Flags (EAX):     %08X\n", Res.EAX);
-								printf(" XSAVE XSS size:        %08X\n", Res.EBX);
-								printf(" Valid IA32_XSS Bits:   %08X:%08X\n", Res.EDX, Res.ECX);
-							}
-
-
-							if(Extended)							
-							{
-								ReadCPUID(0x80000001, 0, &Res);
-								////////123456789012345678901234
-								printf(" ExFeatures 1 (EDX):    %08X\n", Res.EDX);
-								printf(" ExFeatures 2 (ECX):    %08X\n", Res.ECX);
-
-								Features[3] = Res.EDX;
-								Features[4] = Res.ECX;
-
-								if(ExtendedLeafCount >= 0x80000008)
-								{
-									ReadCPUID(0x80000008, 0, &Res);
-									////////123456789012345678901234
-									printf(" Physical Address:      %u\n", Res.EAX & 0xFF);
-									printf(" Linear Address:        %u\n", (Res.EAX & 0xFF00) >> 8);
-								}
-							}
-							
-							uint32_t Mask = 0;
-							for(int x = 0; x < 32 * 5; x++)
-							{
-								if(Mask == 0)
-									Mask = 0x00000001;
-
-								if(Features[x / 32] & Mask)
-									printf("  %s\n", CPUIDFlags[x]);
-
-								Mask = Mask << 1;
-							}
-							
-						}
-						else
-						{
-							uint32_t ParamID = 0;
-							ParseHex(CurrentData, ParamID);							
-
-							uint32_t ParamID2 = 0;
-							CurrentData = NextToken(Input);
-							if(CurrentData != nullptr)
-							{
-								ParseHex(CurrentData, ParamID2);
-							}
-							
-							ReadCPUID(ParamID, ParamID2, &Res);
-							printf(" EAX: %08X, EBX: %08X, ECX: %08X, EDX: %08X\n", Res.EAX, Res.EBX, Res.ECX, Res.EDX);
-						}
-					}
-					else
-					{
-						printf("Invalid arguments [%s]\n", CurrentData);
-					}
-				}
+					if(Entry->Function != nullptr)
+						Entry->Function(CommandData);
 				
-				break;
+					Matched = true;
 
-			case 'R':
-				{
-					CurrentData = NextToken(Input);
-					if(CurrentData == nullptr)
-					{
-						puts("Register Missing");
-						puts(" Valid: MSR, CR0, CR2, CR3, CR4");
-						continue;
-					}
-
-					if(_stricmp("MSR", CurrentData) == 0)
-					{
-						CurrentData = NextToken(Input);
-						if(CurrentData == nullptr)
-						{
-							puts("MSR Register Missing");
-							break;
-						}
-
-						uint32_t Register = 0;
-						if(!ParseHex(CurrentData, Register))
-						{
-							printf(" Invalid MSR Register [%s]\n", CurrentData);
-							continue;
-						}
-
-						CurrentData = NextToken(Input);
-						if(CurrentData == nullptr)
-						{
-							uint64_t Value = ReadMSR(Register);
-							printf(" %016llX\n", Value);
-							break;
-						}
-
-						uint64_t Value = 0;
-						if(!ParseHex(CurrentData, Value))
-						{
-							printf(" Invalid Value [%s]\n", CurrentData);
-							continue;
-						}
-
-						WriteMSR(Register, Value);						
-					}
-					else if(_strnicmp("FPU", CurrentData, 3) == 0)
-					{
-						uint16_t Value = 0;					
-						__asm FSTCW [Value];
-						printf(" Control: %04X", Value);
-						__asm FSTSW [Value];
-						printf(" Status: %04X", Value);
-						
-						printf("\n");
-					}
-					else if(_strnicmp("SSE", CurrentData, 3) == 0)
-					{
-						if((ReadCR4() & CPUFlags::OSFXSR) != CPUFlags::OSFXSR)
-						{
-							printf(" SSE not avaliable\n");
-							continue;						
-						}
-
-						uint32_t Value = 0;					
-						__asm STMXCSR [Value];
-						printf(" MXCSR: %08X\n", Value);
-					}
-					else if(_strnicmp("AVX", CurrentData, 3) == 0)
-					{
-						if((ReadCR4() & CPUFlags::OSXSAVEEnabled) != CPUFlags::OSXSAVEEnabled || 
-							(ReadXCR0() & 0x06) != 0x06)
-						{
-							printf(" AVX not avaliable\n");
-							continue;
-						}
-						uint32_t Value = 0;					
-						__asm VSTMXCSR [Value];
-						printf(" MXCSR: %08X\n", Value);
-
-					}
-					else if(_strnicmp("XCR0", CurrentData, 4) == 0)
-					{
-						if((ReadCR4() & CPUFlags::OSXSAVEEnabled) != CPUFlags::OSXSAVEEnabled)
-						{
-							printf(" XCR0 not avaliable\n");
-							continue;
-						}
-						
-						uint64_t Value;					
-						bool Set = false;
-
-						CurrentData = NextToken(Input);
-						if(CurrentData != nullptr)
-						{
-							if(!ParseHex(CurrentData, Value))
-							{
-								printf(" Invalid Value [%s]\n", CurrentData);
-								continue;
-							}
-							Set = true;
-						}
-
-						if(Set)
-						{
-							WriteXCR0(Value);
-						}
-						else
-						{
-							Value = ReadXCR0();
-							printf(" %016llX\n", Value);
-						}
-						break;
-					}
-					else if(_strnicmp("CR", CurrentData, 2) == 0)
-					{
-						uint32_t Register = 0;
-						switch(CurrentData[2])
-						{
-							case '0':
-								Register = 0;
-								break;
-
-							case '2':
-								Register = 2;
-								break;
-
-							case '3':
-								Register = 3;
-								break;
-
-							case '4':
-								Register = 4;
-								break;
-							
-							default:
-								printf(" Invalid Control Register [%s]\n", CurrentData);
-								continue;
-						}
-
-						
-						uint32_t Value;					
-						bool Set = false;
-
-						CurrentData = NextToken(Input);
-						if(CurrentData != nullptr)
-						{
-							if(!ParseHex(CurrentData, Value))
-							{
-								printf(" Invalid Value [%s]\n", CurrentData);
-								continue;
-							}
-							Set = true;
-						}
-						
-						switch(Register)
-						{
-							case 0:
-								if(Set)
-								{
-									WriteCR0(Value);
-								}
-								else
-								{
-									Value = ReadCR0();
-									printf(" %08X\n", Value);
-								}
-								break;
-
-							case 2:
-								if(Set)
-								{
-									WriteCR2(Value);
-								}
-								else
-								{
-									Value = ReadCR2();
-									printf(" %08X\n", Value);
-								}
-								break;
-
-							case 3:
-								if(Set)
-								{
-									WriteCR3(Value);
-								}
-								else
-								{
-									Value = ReadCR3();
-									printf(" %08X\n", Value);
-								}
-								break;
-
-							case 4:
-								if(Set)
-								{
-									WriteCR4(Value);
-								}
-								else
-								{
-									Value = ReadCR4();
-									printf(" %08X\n", Value);
-								}
-								break;
-						}
-					}
-					else
-					{
-						printf("Invalid arguments [%s]\n", CurrentData);
-					}
+					break;
 				}
-				
-				break;
+			}
 
-			case 'E':
-				{					
-					int DataSize = 1;
-					
-					switch(toupper(CurrentData[1]))
-					{
-						case 0:
-						case 'B':
-							DataSize = 1;
-							break;
-						
-						case 'W':
-							DataSize = 2;
-							break;
-
-						case 'D':
-							DataSize = 4;
-							break;
-
-						case 'Q':
-							DataSize = 8;
-							break;
-						
-						default:
-							printf(" Unknown Option [%c]\n", CurrentData[1]);
-							continue;
-
-					}					
-					
-					uint32_t Start = DumpAddress;
-					uint32_t DataLength = 0;
-
-					CurrentData = NextToken(Input);
-					if(CurrentData == nullptr)
-					{
-						puts(" Address Missing");
-						continue;
-					}
-					
-					if(!ParseAddress(CurrentData, Start))
-					{
-						printf(" Invalid Address [%s]\n", CurrentData);
-						continue;
-					}
-
-					Input = TrimString(Input);
-
-					if(Input == nullptr || Input[0] == 0)
-					{
-						puts(" Input Data Missing");
-						break;
-
-					}					
-					void * Data = new uint8_t[32 * DataSize];
-
-					// We have an Input string
-					if(Input[0] == '"')
-					{
-						if(DataSize != 1)
-						{
-							printf(" String Data is only valid on Byte Input.\n", Input);
-							delete Data;
-							break;
-						}						
-						else if(Input[strlen(Input) - 1] != '"')
-						{
-							printf(" Invalid String Data [%s]\n", Input);
-							delete Data;
-							break;
-						}
-
-						char * InputData = TrimChar(Input, Input[0]);
-						DataLength = strlen(InputData);
-						
-						if(DataLength > 32)
-							DataLength = 32;
-
-						memcpy(Data, InputData, DataLength);
-					}
-					else
-					{
-						if(!ParseData(Input, Data, DataLength, DataSize))
-						{
-							delete Data;
-							break;
-						}
-					}
-					
-					for(uint32_t x = 0; x < DataLength; x++)
-					{
-						void *Loc = (void *)Start;
-						switch (DataSize)
-						{
-							case 1:
-								reinterpret_cast<uint8_t *>(Loc)[x] = reinterpret_cast<uint8_t *>(Data)[x];
-								break;
-
-							case 2:
-								reinterpret_cast<uint16_t *>(Loc)[x] = reinterpret_cast<uint16_t *>(Data)[x];
-								break;
-
-							case 4:
-								reinterpret_cast<uint32_t *>(Loc)[x] = reinterpret_cast<uint32_t *>(Data)[x];
-								break;
-
-							case 8:
-								reinterpret_cast<uint64_t *>(Loc)[x] = reinterpret_cast<uint64_t *>(Data)[x];
-								break;
-						}
-					}				
-
-					LastAddress = Start;
-
-					delete Data;
-				}
-				
-				break;
-
-			case 'I':
-				{
-					int DataSize = 1;
-					
-					switch(toupper(CurrentData[1]))
-					{
-						case 'B':
-							DataSize = 1;
-							break;
-						
-						case 'W':
-							DataSize = 2;
-							break;
-
-						case 0:
-						case 'D':
-							DataSize = 4;
-							break;
-
-						default:
-							printf(" Unknown Option [%c]\n", CurrentData[1]);
-							continue;
-
-					}					
-
-					CurrentData = NextToken(Input);
-					if(CurrentData == nullptr)
-					{
-						puts(" Port Missing");
-						continue;
-					}
-
-					uint32_t Port, Res;
-					if(!ParseHex(CurrentData, Port))
-					{
-						printf(" Invalid Port [%s]\n", CurrentData);
-						continue;
-					}
-
-					switch(DataSize)
-					{
-						case 1:
-							Res = InPortb(Port);
-							printf("%02X\n", Res);
-							break;
-
-						case 2:
-							Res = InPortw(Port);
-							printf("%04X\n", Res);
-							break;
-
-						case 4:
-							Res = InPortd(Port);
-							printf("%08X\n", Res);
-							break;
-					}
-				}
-				break;
-
-			case 'O':
-				{
-					int DataSize = 1;
-					
-					switch(toupper(CurrentData[1]))
-					{
-						case 'B':
-							DataSize = 1;
-							break;
-						
-						case 'W':
-							DataSize = 2;
-							break;
-
-						case 0:
-						case 'D':
-							DataSize = 4;
-							break;
-
-						default:
-							printf(" Unknown Option [%c]\n", CurrentData[1]);
-							continue;
-
-					}					
-
-					CurrentData = NextToken(Input);
-					if(CurrentData == nullptr)
-					{
-						puts(" Port Missing");
-						continue;
-					}
-
-					uint32_t Port;
-					if(!ParseHex(CurrentData, Port))
-					{
-						printf(" Invalid Port [%s]\n", CurrentData);
-						continue;
-					}
-
-					CurrentData = NextToken(Input);
-					if(CurrentData == nullptr)
-					{
-						puts(" Value Missing");
-						continue;
-					}
-
-					uint32_t Val;
-					if(!ParseHex(CurrentData, Val))
-					{
-						printf(" Invalid Value [%s]\n", CurrentData);
-						continue;
-					}
-
-					switch(DataSize)
-					{
-						case 1:
-							OutPortb(Port, Val);
-							break;
-
-						case 2:
-							OutPortw(Port, Val);
-							break;
-
-						case 4:
-							OutPortd(Port, Val);
-							break;
-					}
-				}
-				break;
-
-
-			case 'W':
-				{
-					uint32_t Start, Length;
-					CurrentData = NextToken(Input);
-					if(CurrentData == nullptr)
-					{
-						puts(" Start Address Missing");
-						continue;
-					}
-
-					if(!ParseAddress(CurrentData, Start))
-					{
-						printf(" Invalid Start Address [%s]\n", CurrentData);
-						continue;
-					}
-
-					CurrentData = NextToken(Input);
-					if(CurrentData == nullptr)
-					{
-						puts(" Length Missing");
-						continue;
-					}
-
-					if(!ParseHex(CurrentData, Length))
-					{
-						printf(" Invalid Length [%s]\n", CurrentData);
-						continue;
-					}
-
-					uint8_t * Data = (uint8_t *)Start;
-					for(uint32_t x = 0; x < Length; x++)
-					{
-						// Spin until the ports ready
-						while ((InPortb(0x03F8 + 5) & 0x20) != 0x20);
-						OutPortb(0x03F8, Data[x]);
-					}
-					
-					LastAddress = Start;
-				}
-				break;
-
-			case 'X':
-				{
-					uint32_t Start = DumpAddress;
-					CurrentData = NextToken(Input);
-					if(CurrentData == nullptr)
-					{
-						puts(" Address Missing");
-						continue;
-					}
-
-					if(!ParseAddress(CurrentData, Start))
-					{
-						printf(" Invalid Address [%s]\n", CurrentData);
-						continue;
-					}
-
-					LastAddress = Start;
-
-					MMUManager->PrintAddressInformation(Start);
-				}
-
-				break;
-
-			case 'U':
-				{
-					int DataSize = 32;
-					uint32_t Length = 0x20;
-					uint32_t Address = DumpAddress;
-					
-					switch(CurrentData[1])
-					{
-						case '1':
-							DataSize = 16;
-							break;
-						
-						case 0:
-						case '3':
-							DataSize = 32;
-							break;
-
-						case '6':
-							DataSize = 64;
-							break;
-					}					
-
-					CurrentData = NextToken(Input);
-					if(CurrentData != nullptr)
-					{
-						if(!ParseAddress(CurrentData, Address))
-						{
-							printf(" Invalid Address [%s]\n", CurrentData);
-							continue;
-						}
-					}
-
-					CurrentData = NextToken(Input);
-
-					if(CurrentData != nullptr)
-					{
-						if(!ParseHex(CurrentData, Length))
-						{
-							printf(" Invalid Length [%s]\n", CurrentData);
-							continue;
-						}
-					}
-
-					LastAddress = Address;
-					Disassembler Dis;
-					DumpAddress = Address + Dis.Disassamble(reinterpret_cast<intptr_t *>(Address), Length, DataSize, DataSize);
-				}
-				break;
-
-			case '?':
-				puts("BootDebug Command List");
-				puts(" Dump Memory           D[Size] [Address] [Length]");
-				puts(" Enter Data            E[Size] Address Data");
-				puts(" Search Memory         S[Size] Address Length Data");
-				puts(" Read from a Port      I[Size] Port");
-				puts(" Write to a Port       O[Size] Port Value");
-				puts(" Memory Information    X Address");
-				puts(" Register Information  R Register [Value]");
-				puts(" General Information   N [Type]");
-				puts(" Object Information    B [Name]");
-				puts("");
-				puts(" Size = B|W|D|Q: Byte, Word, DWord or QWord");
-				break;
-
-			default:
-				if(CurrentData[0] != 0)
-					printf("Unknown Command [%s]\n", CurrentData);
-				break;
-		};
-	} while (!Done);
-
-	return;
+			if(!Matched)
+				printf("Unknown Command [%s]\n", CommandData.ArgData[0]);
+		}
+	};
 }
-

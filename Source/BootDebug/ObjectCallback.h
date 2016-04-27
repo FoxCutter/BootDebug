@@ -3,6 +3,6 @@
 class ObjectCallback
 {
 public:
-	virtual void DisplayObject(char * Command, char *Param) = 0;
+	virtual void DisplayObject(uint32_t ArgCount, char *ArgData[]) = 0;
 };
 

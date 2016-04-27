@@ -30,9 +30,9 @@ IDE::~IDE(void)
 {
 }
 
-void IDE::DisplayObject(char * Command, char *Param)
+void IDE::DisplayObject(uint32_t ArgCount, char *ArgData[])
 {
-	if(_strnicmp("IDE", Command, 3) == 0)
+	if(_strnicmp("IDE", ArgData[0], 3) == 0)
 	{
 		KernalPrintf(" PCI Device ID %08X\n", m_DeviceID);
 
@@ -50,13 +50,13 @@ void IDE::DisplayObject(char * Command, char *Param)
 		else
 			KernalPrintf(" No Bus Master Present\n");
 	}
-	else if(_strnicmp("HD", Command, 2) == 0 || _strnicmp("CD", Command, 2) == 0)
+	else if(_strnicmp("HD", ArgData[0], 2) == 0 || _strnicmp("CD", ArgData[0], 2) == 0)
 	{
-		int DriveNum = Command[2] - '0'; 
+		int DriveNum = ArgData[0][2] - '0'; 
 
 		if(DriveNum < 0 || DriveNum > 4)
 		{
-			KernalPrintf(" Unknown Hard disk %s\n", Command);
+			KernalPrintf(" Unknown Hard disk %s\n", ArgData[0]);
 			return;
 		}
 		

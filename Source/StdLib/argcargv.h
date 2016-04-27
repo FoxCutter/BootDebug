@@ -1,1 +1,1 @@
-int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine, char * _ppszArgv[], int CmdLineMax );
+int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine, char * _ppszArgv[], int CmdLineMax, bool KeepQuotes = false );

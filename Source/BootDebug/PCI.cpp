@@ -10,6 +10,18 @@
 
 #include <algorithm>
 
+#pragma data_seg(".DRIVER$A")
+void * __dl_a = nullptr;
+
+
+#pragma data_seg(".DRIVER$Z")
+void * __dl_z = nullptr;
+
+#pragma data_seg()  /* reset */
+
+#pragma comment(linker, "/section:.DRIVER,RW")
+#pragma comment(linker, "/merge:.DRIVER=.data")
+
 struct PCINameEntry
 {
 	uint32_t Code;
@@ -521,29 +533,29 @@ bool PCI::DumpDevice(uint32_t DeviceID)
 		uint8_t IOBase, IOLimit;
 		
 		Val = ReadRegister(DeviceID, 0x1C);
-		IOLimit = (Val & 0x0000FF00) >> 8;
+		IOLimit = (Val & 0x0000F000) >> 12;
 		IOBase = Val & 0x000000FF;
 		
 		//KernalPrintf("  Secondary Status %04X, I/O Limit %02X, I/O Base %02X\n", (Val & 0xFFFF0000) >> 16, (Val & 0x0000FF00) >> 8, Val & 0x000000FF);
 		KernalPrintf("  Secondary Status %04X\n", (Val & 0xFFFF0000) >> 16);
 
 		Val = ReadRegister(DeviceID, 0x20);
-		KernalPrintf("  Memory Limit %04X, Memory Base %04X\n", (Val & 0xFFFF0000) >> 16, Val & 0xFFFF);
+		KernalPrintf("  Memory Base %04X0000, Memory Limit %03XFFFFF\n", Val & 0xFFFF, (Val & 0xFFF00000) >> 20);
 
 		uint16_t Base, Limit;
 		
 		Val = ReadRegister(DeviceID, 0x24);
-		Limit = (Val & 0xFFFF0000) >> 16;
+		Limit = (Val & 0xFFF00000) >> 20;
 		Base = Val & 0xFFFF;
 
 		Val = ReadRegister(DeviceID, 0x28);
-		KernalPrintf("  Prefetchable Memory Base %08X:%04X, ", Val, Base);
+		KernalPrintf("  Prefetchable Memory Base %08X:%04X0000, ", Val, Base);
 
 		Val = ReadRegister(DeviceID, 0x2C);
-		KernalPrintf("Limit %08X:%04X\n", Val, Limit);
+		KernalPrintf("Limit %08X:%03XFFFFF\n", Val, Limit);
 
 		Val = ReadRegister(DeviceID, 0x30);
-		KernalPrintf("  I/O Base %04X:%02X, I/O Limit %04X:%02X\n", Val & 0xFFFF, IOBase, (Val & 0xFFFF0000) >> 16, IOLimit);
+		KernalPrintf("  I/O Base %04X:%02X00, I/O Limit %04X:%01XFFFF\n", Val & 0xFFFF, IOBase, (Val & 0xFFFF0000) >> 16, IOLimit);
 
 		if(CapabilitiesList)
 		{
@@ -834,12 +846,9 @@ uint32_t PCI::BuildRegisterID(uint8_t Bus, uint8_t Device, uint8_t Function, uin
 	return BuildRegisterID(BuildDeviceID(Bus, Device, Function), Register);
 }
 
-void PCI::DisplayObject(char * Command, char *Param)
+void PCI::DisplayObject(uint32_t ArgCount, char *ArgData[])
 {
-	char *Input = Param;
-	char *CurrentData = NextToken(Input);
-
-	if(CurrentData == nullptr)
+	if(ArgCount == 1)
 	{
 		for(int x = 0; x < 256; x++)
 			DumpBus(x);
@@ -848,36 +857,32 @@ void PCI::DisplayObject(char * Command, char *Param)
 	}
 
 	uint32_t DeviceID = 0;
-	if(!ParseHex(CurrentData, DeviceID))
+	if(!ParseHex(ArgData[1], DeviceID))
 	{
-		KernalPrintf(" Invalid Device [%s]\n", CurrentData);
+		KernalPrintf(" Invalid Device [%s]\n", ArgData[1]);
 		return;
 	}
 
-	CurrentData = NextToken(Input);
-
-	if(CurrentData == nullptr)
+	if(ArgCount == 2)
 	{
 		DumpDevice(DeviceID);
 		return;
 	}
 						
-	if(CurrentData[0] == '!')
+	if(ArgData[2][0] == '!')
 	{
 		DumpDeviceMemory(DeviceID);
 		return;
 	}
 	
 	uint32_t Register = 0;
-	if(!ParseHex(CurrentData, Register))
+	if(!ParseHex(ArgData[2], Register))
 	{
-		KernalPrintf(" Invalid Register [%s]\n", CurrentData);
+		KernalPrintf(" Invalid Register [%s]\n", ArgData[2]);
 		return;
 	}
 
-	CurrentData = NextToken(Input);
-
-	if(CurrentData == nullptr)
+	if(ArgCount == 3)
 	{
 		uint32_t Value = ReadRegister(DeviceID, Register);
 		KernalPrintf("%02X: %08X\n", Register & 0xFC, Value);
@@ -885,9 +890,9 @@ void PCI::DisplayObject(char * Command, char *Param)
 	}
 
 	uint32_t Value = 0;
-	if(!ParseHex(CurrentData, Value))
+	if(!ParseHex(ArgData[3], Value))
 	{
-		KernalPrintf(" Invalid Value [%s]\n", CurrentData);
+		KernalPrintf(" Invalid Value [%s]\n", ArgData[3]);
 		return;
 	}
 

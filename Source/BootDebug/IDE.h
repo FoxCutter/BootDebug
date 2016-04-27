@@ -45,7 +45,7 @@ public:
 	
 	void IDE::Setup(PCI &Bus);
 
-	void DisplayObject(char * Command, char *Param);
+	void DisplayObject(uint32_t ArgCount, char *ArgData[]);
 
 private:
 	bool SendCommand(DeviceInfo &Device, bool Slave, uint32_t SectorNumber, uint8_t SectorCount, uint8_t Command);

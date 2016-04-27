@@ -15,7 +15,7 @@ class AHCI : public ObjectCallback
 	AHCIData::GenericHostControl * m_HostControl;
 	AHCIData::PortRegister * m_Ports;
 
-	void DisplayObject(char * Command, char *Param);
+	void DisplayObject(uint32_t ArgCount, char *ArgData[]);
 
 public:
 	AHCI(void);

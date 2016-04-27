@@ -47,9 +47,9 @@ ObjectManager::ObjectEntry * ObjectManager::NewNode(char *Name, char cbLength, O
 	return Entry;
 }
 
-void ObjectManager::DisplayObjects(char * Command, char *Param)
+void ObjectManager::DisplayObjects(uint32_t ArgCount, char *ArgData[])
 {	
-	if(Command == nullptr)
+	if(ArgCount == 0)
 	{
 		KernalPrintf( "Object Lst: \n");
 	}
@@ -57,15 +57,15 @@ void ObjectManager::DisplayObjects(char * Command, char *Param)
 	ObjectEntry *Current = m_ObjectRoot->First();
 	while(Current != nullptr)
 	{
-		if(Command == nullptr)
+		if(ArgCount == 0)
 		{
 			KernalPrintf("  %s\n", Current->Name);
 		}
 		else
 		{
-			if(_stricmp(Current->Name, Command) == 0)
+			if(_stricmp(Current->Name, ArgData[0]) == 0)
 			{
-				Current->CallBack->DisplayObject(Command, Param);
+				Current->CallBack->DisplayObject(ArgCount, ArgData);
 				break;
 			}
 
@@ -73,13 +73,13 @@ void ObjectManager::DisplayObjects(char * Command, char *Param)
 		Current = Current->Next;
 	};
 
-	if(Command != nullptr && Current == nullptr)
+	if(ArgCount != 0 && Current == nullptr)
 	{
 		KernalPrintf(" Object Name Missing\n");	
 	}
 }
 
-void ObjectManager::DisplayObject(char * Command, char *Param)
+void ObjectManager::DisplayObject(uint32_t ArgCount, char *ArgData[])
 {
 	KernalPrintf("  Object Root: %08X\n", m_ObjectRoot); 
 }

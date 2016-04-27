@@ -337,7 +337,7 @@ void AHCI::Setup(PCI &Bus)
 
 }
 
-void AHCI::DisplayObject(char * Command, char *Param)
+void AHCI::DisplayObject(uint32_t ArgCount, char *ArgData[])
 {
 	KernalPrintf(" SATA Device ID %08X\n", m_DeviceID);
 	KernalPrintf(" Register Base %08X, Port Control: %08X\n", m_HostControl, m_Ports);

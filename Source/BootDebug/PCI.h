@@ -28,7 +28,7 @@ public:
 	static uint32_t BuildRegisterID(uint8_t Bus, uint8_t Device, uint8_t Function, uint8_t Register);
 
 private:
-	virtual void DisplayObject(char * Command, char *Param);
+	virtual void DisplayObject(uint32_t ArgCount, char *ArgData[]);
 
 	bool EnumerateBus(uint8_t Bus, HardwareTree * Root);
 	bool DumpDeviceMemory(uint32_t DeviceID);

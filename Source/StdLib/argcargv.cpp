@@ -10,7 +10,7 @@
 
 //char * _ppszArgv[_MAX_CMD_LINE_ARGS + 1];
 
-int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine, char * _ppszArgv[], int CmdLineMax )
+int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine, char * _ppszArgv[], int CmdLineMax, bool KeepQuotes )
 {
     int cbCmdLine = 0;
     int argc;
@@ -38,15 +38,24 @@ int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine, char * _ppszArg
 
     if ( '"' == *pszCmdLine )   // If command line starts with a quote ("),
     {                           // it's a quoted filename.  Skip to next quote.
-        pszCmdLine++;
-    
+		if(!KeepQuotes)
+			pszCmdLine++;
+
         _ppszArgv[0] = pszCmdLine;  // argv[0] == executable name
+        
+		if(KeepQuotes)
+			pszCmdLine++;
     
         while ( *pszCmdLine && (*pszCmdLine != '"') )
             pszCmdLine++;
 
         if ( *pszCmdLine )      // Did we see a non-NULL ending?
-            *pszCmdLine++ = 0;  // Null terminate and advance to next char
+		{
+            if(KeepQuotes)
+				*++pszCmdLine = 0;  // Null terminate and advance to next char
+			else
+				*pszCmdLine++ = 0;  // Null terminate and advance to next char
+		}
         else
             return 0;           // Oops!  We didn't see the end quote
     }
@@ -77,12 +86,16 @@ int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine, char * _ppszArg
 
         if ( '"' == *pszCmdLine )   // Argument starting with a quote???
         {
-            pszCmdLine++;   // Advance past quote character
+			if(!KeepQuotes)
+				pszCmdLine++;   // Advance past quote character
 
             _ppszArgv[ argc++ ] = pszCmdLine;
             _ppszArgv[ argc ] = 0;
 
-            // Scan to end quote, or NULL terminator
+			if(KeepQuotes)
+				pszCmdLine++;   // Advance past quote character
+
+			// Scan to end quote, or NULL terminator
             while ( *pszCmdLine && (*pszCmdLine != '"') )
                 pszCmdLine++;
                 
@@ -90,7 +103,12 @@ int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine, char * _ppszArg
                 return argc;
             
             if ( *pszCmdLine )
-                *pszCmdLine++ = 0;  // Null terminate and advance to next char
+			{
+				if(KeepQuotes)
+					*++pszCmdLine = 0;  // Null terminate and advance to next char
+				else
+					*pszCmdLine++ = 0;  // Null terminate and advance to next char
+			}
         }
         else                        // Non-quoted argument
         {
@@ -104,8 +122,7 @@ int __cdecl _ConvertCommandLineToArgcArgv( char * pszSysCmdLine, char * _ppszArg
             if ( 0 == *pszCmdLine )
                 return argc;
             
-            if ( *pszCmdLine )
-                *pszCmdLine++ = 0;  // Null terminate and advance to next char
+			*pszCmdLine++ = 0;  // Null terminate and advance to next char
         }
 
         if ( argc >= (CmdLineMax) )

@@ -3,7 +3,12 @@
 
 GDTManager::GDTManager()
 {
-	Initilize(0x10);
+}
+
+void GDTManager::Initilize(uint32_t BaseAddress)
+{
+	SetTable(reinterpret_cast<DescriptiorData::TableEntry *>(BaseAddress));
+	DescriptorTable::Initilize(0x10);
 
 	// Add the null selector
 	AddMemoryEntry(0, 0, 0, 0, 0);

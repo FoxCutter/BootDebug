@@ -787,7 +787,12 @@ CoreComplexObj *BuildCoreComplex(MemoryPageMap &MemoryMap)
 }
 
 void BuildGDT(CoreComplexObj *CoreComplex)
-{
+{	
+	uint64_t TempAddress = UINT64_MAX;
+	TempAddress = CoreComplex->PageMap.AllocateRange(0x10000, 4096);
+
+	CoreComplex->GDTTable.Initilize((uint32_t)TempAddress);
+
 	// The NULL Segment is automatically added for us
 	CoreComplex->CodeSegment0	= CoreComplex->GDTTable.AddMemoryEntry(0, 0xFFFFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::CodeExecuteRead, 0);
 	CoreComplex->DataSegment0	= CoreComplex->GDTTable.AddMemoryEntry(0, 0xFFFFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 0);

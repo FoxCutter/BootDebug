@@ -181,6 +181,7 @@ public:
 	int TableSize() const { return m_NextFreeSlot; }
 
 protected:
+	void SetTable(DescriptiorData::TableEntry *	Address) { m_Table = Address; }
 
 	DescriptiorData::TableEntry *GetEntry(uint16_t SelectorIndex);
 	void PrintSelector(DescriptiorData::TableEntry *Entry);

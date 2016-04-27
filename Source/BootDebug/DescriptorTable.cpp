@@ -17,12 +17,17 @@ DescriptorTable::~DescriptorTable(void)
 
 void DescriptorTable::Initilize(uint16_t EntryCount, bool Fill)
 {
-	uint32_t TableLength = EntryCount * sizeof(DescriptiorData::TableEntry);
-	void * Base = KernalPageAllocate(TableLength, KernalPageFlags::Fixed);
-	if(Base == nullptr)
-		KernalPanic(KernalCode::MemoryError, "Unable to allocated fixed memory for a Descriptor Table\n");
+	if(m_Table == nullptr)
+	{
+		uint32_t TableLength = EntryCount * sizeof(DescriptiorData::TableEntry);
+		void * Base = KernalPageAllocate(TableLength, KernalPageFlags::Fixed);
+	
+		if(Base == nullptr)
+			KernalPanic(KernalCode::MemoryError, "Unable to allocated fixed memory for a Descriptor Table\n");
+	
+		m_Table = reinterpret_cast<DescriptiorData::TableEntry *>(Base);
+	}
 
-	m_Table = reinterpret_cast<DescriptiorData::TableEntry *>(Base);
 	m_TableLength = EntryCount;
 	m_NextFreeSlot = 0;
 
@@ -43,7 +48,7 @@ void DescriptorTable::Initilize(uint16_t EntryCount, bool Fill)
 }
 
 void DescriptorTable::BuildMemoryEntry(DescriptiorData::TableEntry *Entry, uint32_t Base, uint32_t Limit, uint16_t Attributes, uint8_t Type, uint8_t DPL)
-{
+{	
 	Entry->NonSystem = (Attributes & DescriptiorData::NonSystemFlag) == DescriptiorData::NonSystemFlag;
 	Entry->Present = (Attributes & DescriptiorData::Present) == DescriptiorData::Present;
 	Entry->Avaliable = (Attributes & DescriptiorData::AvaliableBit) == DescriptiorData::AvaliableBit;

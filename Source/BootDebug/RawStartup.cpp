@@ -31,6 +31,7 @@
 
 #include "PEData.h"
 
+#include "..\StdLib\argcargv.h"
 #include "..\StdLib\initterm.h"
 
 extern "C"
@@ -879,8 +880,6 @@ void ClearBSS(intptr_t ImageHeader)
 	//NTHeader->FileHeader.NumberOfSections
 }
 
-ACPI_TABLE_DESC TempTables[0x20];
-
 extern "C" void MultiBootMain(void *Address, uint32_t Magic) 
 {
 	// At this point we are officially alive, but we're still a long ways away from being up and running.
@@ -979,18 +978,17 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	_initterm();
 
 	KernalPrintf(" Loading ACPI...\n");
-	ACPI_STATUS Status = AcpiInitializeTables(TempTables, 0x20, false);
+	ACPI_STATUS Status = AcpiInitializeTables(nullptr, 0x20, true);
 	ACPI_TABLE_HEADER *Blob = nullptr;
 	AcpiGetTable(ACPI_SIG_MADT, 0, &Blob);
-
+	
 	// Step 3: Remap IRQs
 	KernalPrintf(" Setting up IRQs...\n");
-	//m_InterruptControler.RemapIRQBase(0x20);
 
 	m_InterruptControler.Initialize(&CoreComplex->IDTTable, reinterpret_cast<ACPI_TABLE_MADT *>(Blob));
-	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
-
 	AcpiTerminate();
+
+	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
 
 	
 	CoreComplex->HardwareComplex.Add("KB", "PS/2 Keyboard");	
@@ -1086,18 +1084,14 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	SATADriver.Setup(PCIBus);
 
 	// Step 6: Start the full kernel
-	const char * CommandLine = CoreComplex->MultiBoot.CommandLine;
+	char * CommandLine = (char * )KernalAlloc(strlen(CoreComplex->MultiBoot.CommandLine) + 11);
+	memcpy(CommandLine, "BootDebug ", 10);
+	memcpy(&CommandLine[10], CoreComplex->MultiBoot.CommandLine, strlen(CoreComplex->MultiBoot.CommandLine) + 1);
 
 	KernalPrintf(" Command Line: %s\n", CommandLine);
 
-	//printf("%08x\n", Address);
-	
-	//_ConvertCommandLineToArgcArgv(
-	char * argv[2];
-	argv[0] = "BootDebug";
-	argv[1] = nullptr;
-	
-	//printf("Hi!");
+	char *argv[32];
+	int argc = _ConvertCommandLineToArgcArgv(CommandLine, argv, 31);
 
 	TextTerm.SetPauseFullScreen(true);
 	KernalPrintf(" Starting Monitor\n\n");
@@ -1106,7 +1100,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 		FetchKeyboardBuffer();
 
 	for(;;)
-		main(1, argv);
+		main(argc, argv);
 	
 	//printf("BYe!");
 

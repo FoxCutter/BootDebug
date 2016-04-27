@@ -74,8 +74,8 @@ int KernalPanic(KernalCode Error, const char * format, ...)
 void * KernalPageAllocate(uint32_t Size, KernalPageFlags Flags)
 {
 	CoreComplexObj * CoreComplex = CoreComplexObj::GetComplex();
-	
-	uint64_t Address = CoreComplex->PageMap.AllocateRange(0x2000000, Size);
+		
+	uint64_t Address = CoreComplex->PageMap.AllocateRange(0x10000, Size);
 
 	return reinterpret_cast<void *>(Address);
 }

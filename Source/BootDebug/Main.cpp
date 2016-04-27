@@ -1158,6 +1158,7 @@ void InfoCommand(CommandSet & Data)
 		puts("  IOAPIC: I/O APIC Information");
 		puts("  MB:     Multiboot Data");
 		puts("  MEM:    Memory Map");
+		puts("  MMU:    Memory Manager Information");
 		puts("  MP:     Multiprocessor Table");
 		puts("  PIC:    Interrupt Controler Information");
 		puts("  PIR:    PCI Interrupt Routing Table");
@@ -1166,8 +1167,11 @@ void InfoCommand(CommandSet & Data)
 
 		return;
 	}
-					
-	if(_stricmp("APIC", Data.ArgData[1]) == 0)
+	if(_stricmp("MMU", Data.ArgData[1]) == 0)
+	{
+		MMUManager->Dump();
+	}
+	else if(_stricmp("APIC", Data.ArgData[1]) == 0)
 	{
 		m_InterruptControler.DumpAPIC();
 	}

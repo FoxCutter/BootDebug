@@ -8,5 +8,6 @@ public:
 	~MMU(void);
 
 	void PrintAddressInformation(uint32_t Address);
+	void Dump();
 };
 

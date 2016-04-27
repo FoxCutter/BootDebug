@@ -175,17 +175,13 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 
 		Mapping[x].Mapping = x;
 		Mapping[x].Data = nullptr;
-		Mapping[x].InterruptCallback = nullptr;
-		Mapping[x].VectorMode = LVTPinPolarityHigh | LVTTriggerModeEdge;
+		Mapping[x].InterruptCallback = nullptr;		
+		Mapping[x].VectorMode = x < 0x10 ? (LVTPinPolarityHigh | LVTTriggerModeEdge) : (LVTPinPolarityLow | LVTTriggerModeLevel);
 	}
-
-	//Mapping[0].Mapping = 2;
-	//Mapping[2].Mapping = 0xFF;
-	//Mapping[9].VectorMode = LVTPinPolarityHigh | LVTTriggerModeLevel;
 
 	if(Mode == PICMode::IOAPIC && MADT != nullptr)
 	{
-		// Quick step over the MADT table to pull out the lowest I/O Apic chip.	
+		// process the Interreupt overrides.	
 		uint32_t Offset = sizeof(ACPI_TABLE_MADT);
 		while(Offset < MADT->Header.Length)
 		{

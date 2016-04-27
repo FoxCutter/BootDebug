@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "LowLevel.h"
 #include "Utility.h"
+#include "KernalLib.h"
+
 
 struct PageDirectoryPointerEntry
 {
@@ -65,11 +67,13 @@ struct PageTableEntry
 	uint64_t ExecuteDisable : 1;
 };
 
-#pragma section(".PDE", read, write)
+//#pragma section(".PDE", read, write)
 
-__declspec(allocate(".PDE")) LargePageDirectoryEntry PDE[2048];
-__declspec(allocate(".PDE")) PageTableEntry PTE[512];
-__declspec(allocate(".PDE")) PageDirectoryPointerEntry PDPTE[4];
+//__declspec(allocate(".PDE")) LargePageDirectoryEntry PDE[2048];
+//__declspec(allocate(".PDE")) PageTableEntry PTE[512];
+PageDirectoryPointerEntry *PDPTE;
+LargePageDirectoryEntry *PDE;
+PageTableEntry *PTE;
 
 MMU::MMU(void)
 {
@@ -80,25 +84,34 @@ MMU::MMU(void)
 	if(((Res.EDX & CPUFlags::PhysicalAddressExtensions) == 0) ||
 		((Res.EDX & CPUFlags::PageSizeExtensions) == 0) )
 	{
-		printf("Paging unavailable\n");
+		KernalPrintf("Paging unavailable\n");
 		return;
 	}
 
+
+	PDPTE = reinterpret_cast<PageDirectoryPointerEntry *>(KernalPageAllocate(sizeof(PageDirectoryPointerEntry) * 4, KernalPageFlags::Fixed));
+	//KernalPrintf("PDPTE: %08X\n", PDPTE);
+
+	PDE = reinterpret_cast<LargePageDirectoryEntry *>(KernalPageAllocate(sizeof(LargePageDirectoryEntry) * 2048, KernalPageFlags::Fixed));
+	//KernalPrintf("PDPTE: %08X\n", PDPTE);
+	//KernalPrintf("PDE: %08X\n", PDE);
+
+	PTE = reinterpret_cast<PageTableEntry *>(KernalPageAllocate(sizeof(PageTableEntry) * 512, KernalPageFlags::Fixed));
+	//KernalPrintf("PDPTE: %08X\n", PDPTE);
+	//KernalPrintf("PDE: %08X\n", PDE);
+	//KernalPrintf("PTE: %08X\n", PTE);
 	
-	//std::vector<int> MemoryMap;
-	//MemoryMap.push_back(1);
-	//MemoryMap.push_back(2);
 	//printf("%u, %u, %u, %u\n", sizeof(PageDirectoryPointerEntry), sizeof(PageDirectoryEntry), sizeof(LargePageDirectoryEntry), sizeof(PageTableEntry));
 
-	//printf("PDPTE: %08X", PDPTE);
-	//printf(" PDE0: %08X", &PDE[0]);
-	//printf(" PDE1: %08X", &PDE[0x200]);
-	//printf(" PDE2: %08X", &PDE[0x400]);
-	//printf(" PDE3: %08X\n", &PDE[0x600]);
+	//KernalPrintf("PDPTE: %08X", PDPTE);
+	//KernalPrintf(" PDE0: %08X", &PDE[0]);
+	//KernalPrintf(" PDE1: %08X", &PDE[0x200]);
+	//KernalPrintf(" PDE2: %08X", &PDE[0x400]);
+	//KernalPrintf(" PDE3: %08X\n", &PDE[0x600]);
 
-	memset(&PDPTE, 0, sizeof(PageDirectoryPointerEntry) * 4);
-	memset(&PDE, 0, sizeof(LargePageDirectoryEntry) * 2048);
-	memset(&PTE, 0, sizeof(PageTableEntry) * 512);
+	memset(PDPTE, 0, sizeof(PageDirectoryPointerEntry) * 4);
+	memset(PDE, 0, sizeof(LargePageDirectoryEntry) * 2048);
+	memset(PTE, 0, sizeof(PageTableEntry) * 512);
 
 	PDPTE[0].Present = true;
 	PDPTE[0].Directory_Address = (uint32_t)&PDE[0] >> 12;
@@ -136,7 +149,6 @@ MMU::MMU(void)
 		BaseAddress += 4096;
 	}
 
-
 	// Map the first 4 high megs into the same 2 megs at 4 gigs
 	PDE[0x400].Page_Address = (0x100000000) >> 21;
 	PDE[0x401].Page_Address = (0x100000000) >> 21;
@@ -171,11 +183,26 @@ MMU::~MMU(void)
 {
 }
 
+void MMU::Dump()
+{
+	if((ReadCR0() && CPUFlags::PagingEnabled) == 0)
+	{
+		printf(" Paging Disabled\n");
+		return;
+	}
+
+	KernalPrintf("PDPTE: %08X - %04X\n", PDPTE, sizeof(PageDirectoryPointerEntry) * 4);
+	KernalPrintf("PDE: %08X - %04X\n", PDE, sizeof(LargePageDirectoryEntry) * 2048);
+	KernalPrintf("PTE: %08X - %04X\n", PTE, sizeof(PageTableEntry) * 512);
+
+}
+
 void MMU::PrintAddressInformation(uint32_t Address)
 {
 	if((ReadCR0() && CPUFlags::PagingEnabled) == 0)
 	{
 		printf("Paging Disabled\n");
+		return;
 	}
 	
 	// Decode the address

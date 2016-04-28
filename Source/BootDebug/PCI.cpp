@@ -401,7 +401,7 @@ bool PCI::DumpBus(uint8_t Bus)
 
 void PrintPCIAddress(uint32_t Address)
 {
-	if(Address == 0)
+	if(Address == 0 || Address == 1)
 	{
 		KernalPrintf("Unused");
 	}

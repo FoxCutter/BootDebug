@@ -46,7 +46,7 @@ enum class ACPIOffsets
 };
 
 
-enum ACPILVTFlags : uint32_t
+enum ACPILVTFlags : uint64_t
 {
 	LVTVectorMask					= 0x000FF,
 	
@@ -91,7 +91,7 @@ enum ACPILVTFlags : uint32_t
 	LVTDeliveryModeLogical			= 0x00800,
 
 	// This is for the high half the 64-bit register.
-	LVTDestinationMask				= 0xFF000000,
+	LVTDestinationMask				= 0xFF00000000000000,
 	LVTDestinationShift				= 24,
 
 };
@@ -164,6 +164,34 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 		VectorCount = 0x10;		
 	}
 
+	// If you don't have CPUID there isn't much we can do anyways.
+	{
+		Registers Res;
+		ReadCPUID(1, 0, &Res);
+
+		if((Res.EDX & CPUFlags::APICOnChip))
+		{
+			uint64_t APICBase = ReadMSR(0x1B);
+
+			if(APICBase & 0x800)
+			{
+				// Grab the register
+				APICRegisterBase = APICBase & 0xFFFFF000;
+			}
+		}
+	}
+
+	// Step back what more we are in depending on what hardware we found
+	if(APICRegisterBase == 0xFFFFFFFF)
+		Mode = PICMode::Legacy;
+
+	if(Mode == PICMode::IOAPIC || Mode == PICMode::Mixed)
+	{
+		SetAPICRegister(ACPIOffsets::LVTInt0, 0xFF | LVTMasked | LVTDeliveryModeExtINT	| LVTPinPolarityHigh | LVTTriggerModeLevel);
+		SetAPICRegister(ACPIOffsets::LVTInt1, 0x00 | LVTMasked | LVTDeliveryModeNMI		| LVTPinPolarityHigh | LVTTriggerModeEdge);
+	}
+
+
 	Mapping = reinterpret_cast<MappingData *>(KernalAlloc(sizeof(MappingData) * VectorCount));
 
 	for(int x = 0; x < VectorCount; x++)
@@ -212,34 +240,16 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 		}
 	}
 
-	// If you don't have CPUID there isn't much we can do anyways.
-	{
-		Registers Res;
-		ReadCPUID(1, 0, &Res);
-
-		if((Res.EDX & CPUFlags::APICOnChip))
-		{
-			uint64_t APICBase = ReadMSR(0x1B);
-
-			if(APICBase & 0x800)
-			{
-				// Grab the register
-				APICRegisterBase = APICBase & 0xFFFFF000;
-			}
-		}
-	}
-
-	// Step back what more we are in depending on what hardware we found
-	if(APICRegisterBase == 0xFFFFFFFF)
-		Mode = PICMode::Legacy;
-
 	// Disable the old PIC chip.
-	BaseVector = 0x20;
 	OutPortb(0x21, 0xFF);
 	OutPortb(0xA1, 0xFF);
 
 	if(Mode == PICMode::IOAPIC)
 	{
+		uint64_t APCIID = GetAPICRegister(ACPIOffsets::LocalACPIID);
+		APCIID = APCIID << 32;
+		APCIID |=LVTDeliveryModePhysical;
+
 		SetIOAPICVector(0, LVTMasked | LVTDeliveryModePhysical);
 
 		// Setup the IOAPIC chip
@@ -247,7 +257,7 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 		{
 			if(Mapping[x].Mapping != 0xFF)
 			{
-				SetIOAPICVector(Mapping[x].Mapping, LVTMasked | LVTDeliveryModePhysical | Mapping[x].VectorMode | Mapping[x].Vector);
+				SetIOAPICVector(Mapping[x].Mapping, APCIID | LVTMasked | Mapping[x].VectorMode | Mapping[x].Vector);
 
 				m_IDTManager->SetInterupt(Mapping[x].Vector, IRQInterrupt, reinterpret_cast<uintptr_t *>(this));
 			}
@@ -256,12 +266,8 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 
 	if(Mode == PICMode::IOAPIC || Mode == PICMode::Mixed)
 	{
-
 		// Officially turn the APIC on and set the Spuriouse Interrupt Vector as 0x1F
 		SetAPICRegister(ACPIOffsets::SpuriousInterruptVector, GetAPICRegister(ACPIOffsets::SpuriousInterruptVector) | 0x11F);	
-
-		SetAPICRegister(ACPIOffsets::LVTInt0, 0xFF | LVTMasked | LVTDeliveryModeExtINT	| LVTPinPolarityHigh | LVTTriggerModeLevel);
-		SetAPICRegister(ACPIOffsets::LVTInt1, 0x00 | LVTMasked | LVTDeliveryModeNMI		| LVTPinPolarityHigh | LVTTriggerModeEdge);
 	}
 
 	if(Mode == PICMode::Mixed)
@@ -281,12 +287,9 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 		OutPortb(0xA0, 0x11);
     
 		// When we remap the IRQs we will make them linear
-		IRQBase1 = 0x20;
-		IRQBase2 = 0x20 + 8;
-
 		// ICW2 Is the vector offset
-		OutPortb(0x21, IRQBase1);
-		OutPortb(0xA1, IRQBase2);
+		OutPortb(0x21, 0x20);
+		OutPortb(0xA1, 0x28);
     
 		// ICW3 is the master slave relationship
 		OutPortb(0x21, 0x04);	// Tell chip one that it has a slave on IRQ 2
@@ -301,9 +304,9 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 		OutPortb(0xA1, 0xFF);
 
 		// Set up the handlers for IRQs
-		for(int x = BaseVector; x < BaseVector + VectorCount; x++)
+		for(int x = 0; x < VectorCount; x++)
 		{
-			m_IDTManager->SetInterupt(x, IRQInterrupt, reinterpret_cast<uintptr_t *>(this));
+			m_IDTManager->SetInterupt(0x20 + x, IRQInterrupt, reinterpret_cast<uintptr_t *>(this));
 		}
 	}	
 
@@ -368,6 +371,16 @@ void InterruptControler::SetIOAPICRegister(int Reg, uint32_t Value)
 	RegisterBase[4] = Value;
 }
 
+uint64_t InterruptControler::GetIOAPICVector(int Vector)
+{
+	if(IOAPICRegisterBase == 0)
+		return 0;
+
+	uint32_t Index = 0x10 + (Vector * 2);
+
+	return (uint64_t)GetIOAPICRegister(Index) | ((uint64_t)GetIOAPICRegister(Index + 1) << 32);	
+}
+
 void InterruptControler::SetIOAPICVector(int Vector, uint64_t Value)
 {
 	if(IOAPICRegisterBase == 0)
@@ -378,7 +391,6 @@ void InterruptControler::SetIOAPICVector(int Vector, uint64_t Value)
 	SetIOAPICRegister(Index, Value & 0xFFFFFFFF);
 	SetIOAPICRegister(Index + 1, (Value >> 32) & 0xFFFFFFFF);
 }
-
 
 InterruptControler::~InterruptControler(void)
 {
@@ -428,7 +440,10 @@ uint8_t InterruptControler::MapIntToIRQ(uint8_t Int)
 
 uint8_t InterruptControler::MapIRQToInt(uint8_t IRQ)
 {
-	return BaseVector + IRQ;
+	if(IRQ < VectorCount)
+		return Mapping[IRQ].Vector;	
+	else 
+		return 0xFF;
 }
 
 void InterruptControler::SetSpuriousInterruptVector(uint8_t Vector)
@@ -462,10 +477,8 @@ void InterruptControler::EnableIRQ(uint8_t IRQ)
 	{
 		if(IRQ < VectorCount)
 		{
-			uint32_t Index = 0x10 + (Mapping[IRQ].Mapping * 2);
-
-			uint32_t Value = GetIOAPICRegister(Index);
-			SetIOAPICRegister(Index, Value & ~LVTMasked);
+			uint64_t Value = GetIOAPICVector(Mapping[IRQ].Mapping);
+			SetIOAPICVector(Mapping[IRQ].Mapping, Value & ~LVTMasked);
 		}
 	}
 	else
@@ -493,10 +506,8 @@ void InterruptControler::DisableIRQ(uint8_t IRQ)
 	{
 		if(IRQ < VectorCount)
 		{
-			uint32_t Index = 0x10 + (IRQ * 2);
-
-			uint32_t Value = GetIOAPICRegister(Index);
-			SetIOAPICRegister(Index, Value | LVTMasked);
+			uint64_t Value = GetIOAPICVector(Mapping[IRQ].Mapping);
+			SetIOAPICVector(Mapping[IRQ].Mapping, Value | LVTMasked);
 		}
 	}
 	else

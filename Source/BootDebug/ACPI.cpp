@@ -621,7 +621,7 @@ void ACPI::Dump(char *Options)
 				case 0:
 					{
 						ACPI_MADT_LOCAL_APIC *Entry = reinterpret_cast<ACPI_MADT_LOCAL_APIC *>((uint32_t)Blob + Offset);
-						KernalPrintf(" Processor ID: %02X, APIC ID: %02X %s\n", Entry->ProcessorId, Entry->Id, Entry->LapicFlags ? "Enabled" : "");
+						KernalPrintf(" Processor ID: %02X, APIC ID: %02X %s\n", Entry->ProcessorId, Entry->Id, (Entry->LapicFlags & 0x01) ? "Enabled" : "");
 					}
 					break;
 

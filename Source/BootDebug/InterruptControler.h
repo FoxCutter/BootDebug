@@ -50,7 +50,6 @@ class InterruptControler
 		uintptr_t * Data;
 		
 		uint32_t VectorMode;	// High/Low, Edge/Level
-
 	};
 	
 	MappingData *Mapping;
@@ -60,10 +59,6 @@ class InterruptControler
 	uint32_t APICRegisterBase;
 	uint32_t IOAPICRegisterBase;
 	uint8_t VectorCount;
-	uint8_t BaseVector;
-
-	uint8_t IRQBase1;
-	uint8_t IRQBase2;
 
 	IDTManager *m_IDTManager;
 
@@ -74,6 +69,7 @@ class InterruptControler
 	uint32_t GetIOAPICRegister(int Reg);
 	void SetIOAPICRegister(int Reg, uint32_t Value);
 
+	uint64_t GetIOAPICVector(int Vector);
 	void SetIOAPICVector(int Vector, uint64_t Value);
 
 	static void IRQInterrupt(InterruptContext * Context, uintptr_t * Data);

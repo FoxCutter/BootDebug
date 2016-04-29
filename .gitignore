@@ -239,3 +239,5 @@ $RECYCLE.BIN/
 /Tools/Core.lib
 /Tools/Cored.lib
 /Tools/LibOut.txt
+/Source/BootDebug/finalbuild.bat
+

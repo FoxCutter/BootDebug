@@ -240,7 +240,25 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 		}
 	}
 
-	// Disable the old PIC chip.
+	// Remap and disable the only PIC
+
+	// Start with the Initialize code
+	OutPortb(0x20, 0x11);
+	OutPortb(0xA0, 0x11);
+    
+	// ICW2 Is the vector offset
+	OutPortb(0x21, 0x20);
+	OutPortb(0xA1, 0x28);
+    
+	// ICW3 is the master slave relationship
+	OutPortb(0x21, 0x04);	// Tell chip one that it has a slave on IRQ 2
+	OutPortb(0xA1, 0x02);   
+    
+	// ICW4 is the environment info
+	OutPortb(0x21, 0x01);	// We are still x86
+	OutPortb(0xA1, 0x01);
+
+	// Samk them all
 	OutPortb(0x21, 0xFF);
 	OutPortb(0xA1, 0xFF);
 
@@ -278,27 +296,10 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 
 	}
 
+	// Set up the PIC
+
 	if(Mode == PICMode::Mixed || Mode == PICMode::Legacy)
 	{
-		// Set up the PIC
-
-		// Start with the Initialize code
-		OutPortb(0x20, 0x11);
-		OutPortb(0xA0, 0x11);
-    
-		// When we remap the IRQs we will make them linear
-		// ICW2 Is the vector offset
-		OutPortb(0x21, 0x20);
-		OutPortb(0xA1, 0x28);
-    
-		// ICW3 is the master slave relationship
-		OutPortb(0x21, 0x04);	// Tell chip one that it has a slave on IRQ 2
-		OutPortb(0xA1, 0x02);   
-    
-		// ICW4 is the environment info
-		OutPortb(0x21, 0x01);	// We are still x86
-		OutPortb(0xA1, 0x01);
-
 		// Disable all IRQ (except for 2 which needs to be on to correctly route them)
 		OutPortb(0x21, 0xFB);
 		OutPortb(0xA1, 0xFF);
@@ -309,6 +310,11 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 			m_IDTManager->SetInterupt(0x20 + x, IRQInterrupt, reinterpret_cast<uintptr_t *>(this));
 		}
 	}	
+	else
+	{
+		OutPortb(0x21, 0xFF);
+		OutPortb(0xA1, 0xFF);
+	}
 
 
 	switch(Mode)

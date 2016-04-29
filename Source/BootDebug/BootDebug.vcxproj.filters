@@ -86,9 +86,6 @@
     <ClCompile Include="EnhancedHCI.cpp">
       <Filter>Drivers\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ACPI.cpp">
-      <Filter>Drivers\Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="PCI.cpp">
       <Filter>Drivers\Source Files</Filter>
     </ClCompile>
@@ -108,6 +105,9 @@
       <Filter>Drivers\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DescriptorTable.cpp">
+      <Filter>Kernal\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ACPI.cpp">
       <Filter>Kernal\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -187,9 +187,6 @@
     <ClInclude Include="OpenHCI.h">
       <Filter>Drivers\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ACPI.h">
-      <Filter>Drivers\Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="EnhancedHCI.h">
       <Filter>Drivers\Header Files</Filter>
     </ClInclude>
@@ -212,6 +209,9 @@
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DescriptorTable.h">
+      <Filter>Kernal\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ACPI.h">
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
   </ItemGroup>

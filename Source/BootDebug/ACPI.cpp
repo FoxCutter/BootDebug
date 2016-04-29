@@ -38,16 +38,14 @@ void PrintGenAddress(ACPI_GENERIC_ADDRESS &Address)
 
 ACPI::ACPI(void)
 {
+	m_Loaded = false;
+	m_Enabled = false;
+	m_PICMode = 0;
 }
 
 
 ACPI::~ACPI(void)
 {
-}
-
-bool ACPI::Initilize()
-{
-	return true;
 }
 
 ACPI_STATUS WalkResourceCallback (ACPI_RESOURCE *Resource, void *Context)
@@ -462,20 +460,18 @@ UINT32 PowerEvent(void *Context)
 	return AE_OK;
 }
 
-void ACPI::Dump(char *Options)
+bool ACPI::InitilizeTables()
 {
 	AcpiGbl_DbOutputFlags = ACPI_DB_DISABLE_OUTPUT;
-
+	
 	ACPI_STATUS Status;
 	Status = AcpiInitializeSubsystem ();
 	Status = AcpiInitializeTables(nullptr, 32, false);
 	Status = AcpiLoadTables();
-	
-	Status = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
-	Status = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
-	AcpiEnable();
-	AcpiInstallFixedEventHandler(2, PowerEvent, nullptr);
-	
+
+	if(Status != AE_OK)
+		return false;
+
 	// One of my test machines has some... interesting erros in the FADT. First off the it cuts off the middle, so the size is wrong, this results in the
 	// Bootflags getting cleared. So we assume a hopefully sane default heer. 
 	if (AcpiGbl_FADT.Header.Length <= ACPI_FADT_V2_SIZE)
@@ -486,19 +482,58 @@ void ACPI::Dump(char *Options)
 	{
 		AcpiGbl_FADT.Flags |= ACPI_FADT_RESET_REGISTER;
 	}
+	
+	m_Loaded = true;
 
-	//ACPI_OBJECT Input;
-	//Input.Type = ACPI_TYPE_INTEGER;
-	//Input.Integer.Type = ACPI_TYPE_INTEGER;
-	//Input.Integer.Value = 1;
-	//
-	//ACPI_OBJECT_LIST Params;
-	//Params.Count = 1;
-	//Params.Pointer = &Input;
-	//
-	//Status = AcpiEvaluateObject(ACPI_ROOT_OBJECT, "_PIC", &Params, nullptr);
-	//KernalPrintf("%02X\n", Status);
+	return true;
+}
 
+bool ACPI::Enable()
+{
+	if(!m_Loaded)
+		return false;
+	
+	ACPI_STATUS Status = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
+	Status = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
+	Status = AcpiEnable();
+
+	m_Enabled = true;
+
+	return Status == AE_OK;
+}
+
+ACPI_TABLE_HEADER *ACPI::GetTable(char *Table, uint16_t Index)
+{
+	if(!m_Loaded)
+		return nullptr;
+
+	ACPI_TABLE_HEADER *Ret = nullptr;
+	if(AcpiGetTable(Table, Index, &Ret) != AE_OK)
+		return nullptr;
+
+	return Ret;
+}
+
+bool ACPI::SetAPICMode(uint32_t Mode)
+{
+	if(!m_Enabled)
+		return false;
+
+	if(Evaluate(ACPI_NS_ROOT_PATH, "_PIC", Mode) != AE_OK)
+		return false;
+
+	m_PICMode = Mode;
+
+	return true;
+}
+
+
+void ACPI::Dump(char *Options)
+{
+	if(!m_Loaded)
+		return;
+	
+	ACPI_STATUS Status;
 
 	if(Options == nullptr)
 	{		
@@ -535,7 +570,7 @@ void ACPI::Dump(char *Options)
 		
 		if(_stricmp("APRT", Options) == 0)
 		{
-			Status = Evaluate("\\", "_PIC", 1);
+			Status = Evaluate("\\", "_PIC", m_PICMode == 0 ? 1 : 0);
 		}
 		
 		if(AcpiGetIrqRoutingTable(RootNode, &IRQ) == AE_OK)
@@ -557,14 +592,12 @@ void ACPI::Dump(char *Options)
 				Table = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(CurrentEntry);
 			}
 
-			//printf("!%08X\n", RootNode);
-
 			ACPI_FREE(IRQ.Pointer);
 		}
 
 		if(_stricmp("APRT", Options) == 0)
 		{
-			Status = Evaluate("\\", "_PIC", 0u);
+			Status = Evaluate("\\", "_PIC", m_PICMode);
 		}
 
 	}
@@ -740,8 +773,6 @@ void ACPI::Dump(char *Options)
 			KernalPrintf("  Table %s not found\n", Options);
 		}
 	}
-
-	AcpiTerminate();
 }
 
 //******************************************************************************************

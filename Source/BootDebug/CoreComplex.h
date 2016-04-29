@@ -11,6 +11,7 @@
 
 #include "HardwareTree.h"
 #include "ObjectManager.h"
+#include "ACPI.h"
 
 struct CoreComplexObj
 {
@@ -45,6 +46,8 @@ struct CoreComplexObj
 
 	GDTManager GDTTable;
 	IDTManager IDTTable;
+
+	ACPI ACPIComplex;
 
 	static CoreComplexObj *GetComplex()
 	{

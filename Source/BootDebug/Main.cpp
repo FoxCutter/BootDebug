@@ -1222,11 +1222,10 @@ void InfoCommand(CommandSet & Data)
 	}
 	else if(_stricmp("ACPI", Data.ArgData[1]) == 0)
 	{
-		if(Data.ArgCount == 2)		
-			ACPI::Dump(nullptr);
+		if(Data.ArgCount == 2)	
+			CoreComplexObj::GetComplex()->ACPIComplex.Dump(nullptr);
 		else
-			ACPI::Dump(Data.ArgData[2]);
-
+			CoreComplexObj::GetComplex()->ACPIComplex.Dump(Data.ArgData[2]);
 	}
 	else if(_stricmp("USB", Data.ArgData[1]) == 0)
 	{

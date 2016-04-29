@@ -34,11 +34,6 @@
 #include "..\StdLib\argcargv.h"
 #include "..\StdLib\initterm.h"
 
-extern "C"
-{
-	#include <acpi.h>
-}
-
 void main(int argc, char *argv[]);
 extern MMU * MMUManager;
 extern OpenHCI * USBManager;
@@ -978,15 +973,15 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	_initterm();
 
 	KernalPrintf(" Loading ACPI...\n");
-	ACPI_STATUS Status = AcpiInitializeTables(nullptr, 0x20, true);
-	ACPI_TABLE_HEADER *Blob = nullptr;
-	AcpiGetTable(ACPI_SIG_MADT, 0, &Blob);
+	CoreComplex->ACPIComplex.InitilizeTables();
+	
+	//ACPI_TABLE_HEADER *Blob = nullptr;
+	//AcpiGetTable(ACPI_SIG_MADT, 0, &Blob);
 	
 	// Step 3: Remap IRQs
 	KernalPrintf(" Setting up IRQs...\n");
 
-	m_InterruptControler.Initialize(&CoreComplex->IDTTable, reinterpret_cast<ACPI_TABLE_MADT *>(Blob));
-	AcpiTerminate();
+	m_InterruptControler.Initialize(&CoreComplex->IDTTable, reinterpret_cast<ACPI_TABLE_MADT *>(CoreComplex->ACPIComplex.GetTable("APIC")));
 
 	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
 
@@ -1061,6 +1056,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	//m_InterruptControler.EnableIRQ(2);
 	//m_InterruptControler.EnableIRQ(9);
+	//m_InterruptControler.ClearIRQ(0x00);
 
 	ASM_STI;
 
@@ -1082,6 +1078,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	AHCI SATADriver;
 	SATADriver.Setup(PCIBus);
+
+	CoreComplex->ACPIComplex.Enable();
 
 	// Step 6: Start the full kernel
 	char * CommandLine = (char * )KernalAlloc(strlen(CoreComplex->MultiBoot.CommandLine) + 11);

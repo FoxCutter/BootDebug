@@ -187,8 +187,14 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 
 	if(Mode == PICMode::IOAPIC || Mode == PICMode::Mixed)
 	{
-		SetAPICRegister(ACPIOffsets::LVTInt0, 0xFF | LVTMasked | LVTDeliveryModeExtINT	| LVTPinPolarityHigh | LVTTriggerModeLevel);
-		SetAPICRegister(ACPIOffsets::LVTInt1, 0x00 | LVTMasked | LVTDeliveryModeNMI		| LVTPinPolarityHigh | LVTTriggerModeEdge);
+		SetAPICRegister(ACPIOffsets::LVTMachineCheck,		0x1F | LVTMasked | LVTDeliveryModeFixed);
+		SetAPICRegister(ACPIOffsets::LVTTimer,				0x1F | LVTMasked | LVTDeliveryModeFixed | LVTTimeerOneShot);
+		SetAPICRegister(ACPIOffsets::LVTThermalSensor,		0x1F | LVTMasked | LVTDeliveryModeFixed);
+		SetAPICRegister(ACPIOffsets::LVTPerformanteCounter, 0x1F | LVTMasked | LVTDeliveryModeFixed);
+		SetAPICRegister(ACPIOffsets::LVTError,				0x1F | LVTMasked | LVTDeliveryModeFixed);
+
+		SetAPICRegister(ACPIOffsets::LVTInt0,				0xFF | LVTMasked | LVTDeliveryModeExtINT	| LVTPinPolarityHigh | LVTTriggerModeLevel);
+		SetAPICRegister(ACPIOffsets::LVTInt1,				0x00 | LVTMasked | LVTDeliveryModeNMI		| LVTPinPolarityHigh | LVTTriggerModeEdge);
 	}
 
 
@@ -240,7 +246,7 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 		}
 	}
 
-	// Remap and disable the only PIC
+	// Remap and disable the old PIC
 
 	// Start with the Initialize code
 	OutPortb(0x20, 0x11);
@@ -258,7 +264,7 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 	OutPortb(0x21, 0x01);	// We are still x86
 	OutPortb(0xA1, 0x01);
 
-	// Samk them all
+	// Mask them all
 	OutPortb(0x21, 0xFF);
 	OutPortb(0xA1, 0xFF);
 
@@ -266,7 +272,7 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 	{
 		uint64_t APCIID = GetAPICRegister(ACPIOffsets::LocalACPIID);
 		APCIID = APCIID << 32;
-		APCIID |=LVTDeliveryModePhysical;
+		APCIID |= LVTDeliveryModePhysical;
 
 		SetIOAPICVector(0, LVTMasked | LVTDeliveryModePhysical);
 
@@ -337,7 +343,7 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 
 uint32_t InterruptControler::GetAPICRegister(ACPIOffsets Reg)
 {
-	if(APICRegisterBase == 0)
+	if(APICRegisterBase == 0xFFFFFFFF)
 		return 0x00000000;
 
 	uint32_t *Register = reinterpret_cast<uint32_t *>(APICRegisterBase + (static_cast<uint32_t>(Reg) * 0x10));
@@ -347,7 +353,7 @@ uint32_t InterruptControler::GetAPICRegister(ACPIOffsets Reg)
 
 void InterruptControler::SetAPICRegister(ACPIOffsets Reg, uint32_t Value)
 {
-	if(APICRegisterBase == 0)
+	if(APICRegisterBase == 0xFFFFFFFF)
 		return;
 
 	uint32_t *Register = reinterpret_cast<uint32_t *>(APICRegisterBase + (static_cast<uint32_t>(Reg) * 0x10));
@@ -357,7 +363,7 @@ void InterruptControler::SetAPICRegister(ACPIOffsets Reg, uint32_t Value)
 
 uint32_t InterruptControler::GetIOAPICRegister(int Reg)
 {
-	if(IOAPICRegisterBase == 0)
+	if(IOAPICRegisterBase == 0xFFFFFFFF)
 		return 0x00000000;
 
 	uint32_t volatile *RegisterBase = reinterpret_cast<uint32_t *>(IOAPICRegisterBase);
@@ -368,7 +374,7 @@ uint32_t InterruptControler::GetIOAPICRegister(int Reg)
 
 void InterruptControler::SetIOAPICRegister(int Reg, uint32_t Value)
 {
-	if(IOAPICRegisterBase == 0)
+	if(IOAPICRegisterBase == 0xFFFFFFFF)
 		return;
 
 	uint32_t volatile *RegisterBase = reinterpret_cast<uint32_t *>(IOAPICRegisterBase);
@@ -379,7 +385,7 @@ void InterruptControler::SetIOAPICRegister(int Reg, uint32_t Value)
 
 uint64_t InterruptControler::GetIOAPICVector(int Vector)
 {
-	if(IOAPICRegisterBase == 0)
+	if(IOAPICRegisterBase == 0xFFFFFFFF)
 		return 0;
 
 	uint32_t Index = 0x10 + (Vector * 2);
@@ -389,7 +395,7 @@ uint64_t InterruptControler::GetIOAPICVector(int Vector)
 
 void InterruptControler::SetIOAPICVector(int Vector, uint64_t Value)
 {
-	if(IOAPICRegisterBase == 0)
+	if(IOAPICRegisterBase == 0xFFFFFFFF)
 		return;
 
 	uint32_t Index = 0x10 + (Vector * 2);
@@ -479,7 +485,16 @@ void InterruptControler::ClearIRQ(uint8_t IRQ)
 
 void InterruptControler::EnableIRQ(uint8_t IRQ)
 {
-	if(Mode == PICMode::IOAPIC)
+	if(IRQ == 0xFF || IRQ == 0xFE)
+	{
+		if(Mode != PICMode::Legacy)
+		{
+			ACPIOffsets Reg = (IRQ == 0xFF ? ACPIOffsets::LVTInt0 : ACPIOffsets::LVTInt1);
+			
+			SetAPICRegister(Reg, (GetAPICRegister(Reg) & ~LVTMasked));	
+		}
+	}	
+	else if(Mode == PICMode::IOAPIC)
 	{
 		if(IRQ < VectorCount)
 		{
@@ -508,7 +523,16 @@ void InterruptControler::EnableIRQ(uint8_t IRQ)
 
 void InterruptControler::DisableIRQ(uint8_t IRQ)
 {
-	if(Mode == PICMode::IOAPIC)
+	if(IRQ == 0xFF || IRQ == 0xFE)
+	{
+		if(Mode != PICMode::Legacy)
+		{
+			ACPIOffsets Reg = (IRQ == 0xFF ? ACPIOffsets::LVTInt0 : ACPIOffsets::LVTInt1);
+			
+			SetAPICRegister(Reg, (GetAPICRegister(Reg) | LVTMasked));	
+		}
+	}	
+	else if(Mode == PICMode::IOAPIC)
 	{
 		if(IRQ < VectorCount)
 		{
@@ -554,15 +578,11 @@ void InterruptControler::PrintAPICIntStatus(ACPIOffsets StartIndex)
 {
 	uint32_t RealIndex = static_cast<uint32_t>(StartIndex);
 	
-	uint32_t Value = GetAPICRegister(static_cast<ACPIOffsets>(RealIndex));
-	RealIndex++;
-	
-	uint32_t Mask = 0x010000;
-	for(int x = 0x10; x < 0x100; x++)
+	uint32_t Value = 0;GetAPICRegister(static_cast<ACPIOffsets>(RealIndex));
+
+	uint32_t Mask = 0;
+	for(int x = 0; x < 0x100; x++)
 	{
-		if(Value & Mask)
-			printf(" %02X", x);
-		
 		if(x % 32 == 0)
 		{
 			Mask = 0x01;
@@ -573,6 +593,10 @@ void InterruptControler::PrintAPICIntStatus(ACPIOffsets StartIndex)
 		{
 			Mask <<= 1;
 		}
+
+		if(Value & Mask)
+			printf(" %02X", x);
+		
 	}
 }
 
@@ -629,7 +653,9 @@ void PrintInt(uint32_t Value, bool Internal = false)
 }
 
 void InterruptControler::DumpPIC()
-{
+{	
+	ASM_CLI;
+
 	uint16_t Port;
 	printf("Mode: %02X, Count: %08X\n", Mode, VectorCount);
 	printf("IRQ        0 1 2 3 4 5 6 7 8 9 A B C D E F\n");
@@ -690,20 +716,20 @@ void InterruptControler::DumpPIC()
 	printf("\n");
 	OutPortb(0x20, 0x0a);
 	OutPortb(0xA0, 0x0a);
+
+	ASM_STI;
 }
 
 void InterruptControler::DumpAPIC()
 {
+	ASM_CLI;
+
 	printf("Mode: %02X, Count: %08X\n", Mode, VectorCount);
 	printf("APIC (%08X) ID: %02X, Logical ID %02X, Version: %08X\n", APICRegisterBase, GetAPICRegister(ACPIOffsets::LocalACPIID) >> 24, (GetAPICRegister(ACPIOffsets::LocalACPIVersion) & 0xFF000000) >> 24, GetAPICRegister(ACPIOffsets::LocalACPIVersion));
 	printf(" Spurious Interrupt Vector: %02X, Error Status %03X\n", GetAPICRegister(ACPIOffsets::SpuriousInterruptVector) & 0xFF, GetAPICRegister(ACPIOffsets::ErrorStatus) & 0x1FF);
 	printf(" Task Priority: %02X, Arbitration Priority: %02X, Processor Priority: %02X\n", GetAPICRegister(ACPIOffsets::TaskPriority) & 0xFF, GetAPICRegister(ACPIOffsets::ArbitrationPriority) & 0xFF, GetAPICRegister(ACPIOffsets::ProcessorPriority) & 0xFF);
 	printf(" Timer Count: %08X, Initial Count: %08X, Timer Divider: %X\n", GetAPICRegister(ACPIOffsets::TimerCurrentCount), GetAPICRegister(ACPIOffsets::TimerInitialCount), GetAPICRegister(ACPIOffsets::TimerDivideConfig) & 0x0F);
 
-	//printf(" CMCI:     ");
-	//PrintInt(Registers[0x2F * 4], true);
-	//printf("\n");
-						  
 	printf(" Timer:    ");
 	PrintInt(GetAPICRegister(ACPIOffsets::LVTTimer), true);
 	if(GetAPICRegister(ACPIOffsets::LVTTimer) & 0x20000)
@@ -711,6 +737,10 @@ void InterruptControler::DumpAPIC()
 	else
 		printf(" One-Shot");
 
+	printf("\n");
+
+	printf(" CMCI:     ");
+	PrintInt(GetAPICRegister(ACPIOffsets::LVTMachineCheck), true);
 	printf("\n");
 
 	printf(" Thermal:  ");
@@ -721,6 +751,10 @@ void InterruptControler::DumpAPIC()
 	PrintInt(GetAPICRegister(ACPIOffsets::LVTPerformanteCounter), true);
 	printf("\n");
 
+	printf(" Error:    ");
+	PrintInt(GetAPICRegister(ACPIOffsets::LVTError), true);
+	printf("\n");
+
 	printf(" LINT0:    ");
 	PrintInt(GetAPICRegister(ACPIOffsets::LVTInt0));
 	printf("\n");
@@ -729,26 +763,23 @@ void InterruptControler::DumpAPIC()
 	PrintInt(GetAPICRegister(ACPIOffsets::LVTInt1));
 	printf("\n");
 
-	printf(" Error:    ");
-	PrintInt(GetAPICRegister(ACPIOffsets::LVTError), true);
-	printf("\n");
-
 	printf(" In Service: ");
 	PrintAPICIntStatus(ACPIOffsets::InServiceBase);
 	printf("\n");
+
 	printf(" Request   : ");
 	PrintAPICIntStatus(ACPIOffsets::InterruptRequestBase);
 	printf("\n");
+
 	printf(" Trigger   : ");
 	PrintAPICIntStatus(ACPIOffsets::TriggerModeBase);
 	printf("\n");
+
+	ASM_STI;
 }
 
 void InterruptControler::DumpIOAPIC()
 {
-	// Hack to dump I/O ACPI info						
-	IOAPICRegisterBase = 0xFEC00000;
-
 	uint32_t Temp, Temp2;
 
 	Temp = GetIOAPICRegister(0);
@@ -781,8 +812,6 @@ void InterruptControler::DumpIOAPIC()
 		}
 
 		PrintInt(Temp);
-
-		//printf("IRQ%02X: %08X:%08X\n", x, Temp2, Temp);
 
 		printf("\n");
 	}

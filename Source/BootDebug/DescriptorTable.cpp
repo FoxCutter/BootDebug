@@ -32,18 +32,17 @@ void DescriptorTable::Initilize(uint16_t EntryCount, bool Fill)
 	m_NextFreeSlot = 0;
 
 	if(Fill)
-	{
 		m_NextFreeSlot = EntryCount;
-		DescriptiorData::TableEntry Fill;
-		Fill.Present = false;
-		Fill.Avaliable1 = 0;
-		Fill.Avaliable2 = 0;
-		Fill.Avaliable3 = 0;
 
-		for(int x = 0; x < EntryCount; x++)
-		{
-			m_Table[x] = Fill;
-		}
+	DescriptiorData::TableEntry Filler;
+	Filler.Present = false;
+	Filler.Avaliable1 = 0;
+	Filler.Avaliable2 = 0;
+	Filler.Avaliable3 = 0;
+
+	for(int x = 0; x < EntryCount; x++)
+	{
+		m_Table[x] = Filler;
 	}
 }
 
@@ -91,7 +90,7 @@ void DescriptorTable::BuildGateEntry(DescriptiorData::TableEntry *Entry, uint16_
 
 void DescriptorTable::BuildTableEntry(DescriptiorData::TableEntry *Entry, DescriptorTable & Table, uint8_t DPL)
 {
-	BuildMemoryEntry(Entry, reinterpret_cast<uint32_t>(Table.m_Table), Table.m_NextFreeSlot * sizeof(DescriptiorData::TableEntry), DescriptiorData::Present, DescriptiorData::LDTSegment, DPL);
+	BuildMemoryEntry(Entry, reinterpret_cast<uint32_t>(Table.m_Table), Table.m_TableLength * sizeof(DescriptiorData::TableEntry), DescriptiorData::Present, DescriptiorData::LDTSegment, DPL);
 }
 
 
@@ -178,9 +177,22 @@ void DescriptorTable::UpdateTableEntry(uint16_t Selector, DescriptorTable & Tabl
 void DescriptorTable::PopulateTablePointer(DescriptiorData::TablePtr &Pointer)
 {
 	Pointer.Address = reinterpret_cast<uint32_t>(m_Table);
-	Pointer.Limit = (m_NextFreeSlot * sizeof(DescriptiorData::TableEntry)) - 1;
+	Pointer.Limit = (m_TableLength * sizeof(DescriptiorData::TableEntry)) - 1;
 }
 	
+
+uint16_t DescriptorTable::FindFreeSelector()
+{
+	for(uint16_t x = 0; x < m_TableLength; x++)
+	{
+		if(!m_Table[x].Present)
+			return x;
+	}
+
+	return -1;
+}
+
+
 void DescriptorTable::Dump()
 {
 	for(int x = 0; x < m_NextFreeSlot; x++)

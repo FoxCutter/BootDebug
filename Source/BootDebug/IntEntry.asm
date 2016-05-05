@@ -16,27 +16,26 @@ public C IntData, IntCallback
 Common_Interrupt PROC
 	pushad
 	
+	push gs
+	push fs
 	push ds
 	push es
-	push fs
-	push gs
 	
-	mov ax, IntData
+	mov ax, cs:IntData
 	mov ds, ax
 	mov es, ax
 	
 	mov eax, esp
 	push eax
 	
-	mov eax, IntCallback
-	call eax
+	call IntCallback
 	
 	pop eax
 
-	pop gs
-	pop fs
 	pop es
 	pop ds
+	pop fs
+	pop gs
 	
 	popad
 	add esp, 8
@@ -45,43 +44,49 @@ Common_Interrupt PROC
 Common_Interrupt ENDP
 
 
+Default_Interrupt PROC
+	iretd
+Default_Interrupt ENDP
+
 Generic_Interrupt:
 	; Save our state
 	pushad	
+
+	push gs
+	push fs
 	push ds
 	push es
-	push fs
-	push gs
 	
 	; Set up the Data segment
-	mov ax, IntData
+	mov ax, cs:IntData
 	mov ds, ax
 	mov es, ax
 	
+	; Save the pointer to the interrupt context
+	mov eax, esp
+
 	; Put a Pointer to the context on the stack.
 InterruptContextPtr:
 	push dword ptr 00h
 
-	; Put a Pointer to the register context as well
-	mov eax, esp
-	sub eax, 4
+	; Put a Pointer to the interrupt context on the stack
 	push eax
 	
 	; Call handler
 	mov eax, IntCallback
-	call eax
+	call eax 
 
-	pop eax
-	pop eax
+	; Remove the params from the stack
+	add esp, 8
 
-	pop gs
-	pop fs
 	pop es
 	pop ds
+	pop fs
+	pop gs
 	
 	popad
 
-	add esp, 4
+	;add esp, 4
 	iretd
 	nop
 	nop

@@ -156,10 +156,6 @@ namespace DescriptiorData
 
 class DescriptorTable
 {
-	DescriptiorData::TableEntry *	m_Table;
-	uint16_t						m_TableLength;
-	uint16_t						m_NextFreeSlot;
-
 public:
 	DescriptorTable(void);
 	~DescriptorTable(void);
@@ -181,10 +177,15 @@ public:
 	int TableSize() const { return m_NextFreeSlot; }
 
 protected:
+	DescriptiorData::TableEntry *	m_Table;
+	uint16_t						m_TableLength;
+	uint16_t						m_NextFreeSlot;
+
 	void SetTable(DescriptiorData::TableEntry *	Address) { m_Table = Address; }
 
 	DescriptiorData::TableEntry *GetEntry(uint16_t SelectorIndex);
 	void PrintSelector(DescriptiorData::TableEntry *Entry);
+	uint16_t FindFreeSelector();
 
 	static void BuildMemoryEntry(DescriptiorData::TableEntry *Entry, uint32_t Base, uint32_t Limit, uint16_t Attributes, uint8_t Type, uint8_t DPL);
 	static void BuildGateEntry(DescriptiorData::TableEntry *Entry, uint16_t Selector, uint32_t Offset, uint8_t ParamCount, bool Present, uint8_t Type, uint8_t DPL);

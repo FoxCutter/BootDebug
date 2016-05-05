@@ -134,6 +134,7 @@
     <ClCompile Include="IDT.cpp" />
     <ClCompile Include="InterruptControler.cpp" />
     <ClCompile Include="KernalLib.cpp" />
+    <ClCompile Include="LDT.cpp" />
     <ClCompile Include="MemoryMap.cpp" />
     <ClCompile Include="MMU.cpp" />
     <ClCompile Include="MPConfig.cpp" />
@@ -163,6 +164,7 @@
     <ClInclude Include="IDT.h" />
     <ClInclude Include="InterruptControler.h" />
     <ClInclude Include="KernalLib.h" />
+    <ClInclude Include="LDT.h" />
     <ClInclude Include="ListNode.h" />
     <ClInclude Include="LowLevel.h" />
     <ClInclude Include="MemoryMap.h" />

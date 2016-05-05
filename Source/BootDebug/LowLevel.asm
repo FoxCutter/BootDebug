@@ -313,4 +313,42 @@ CallService PROC C
 
 CallService ENDP
 
+;extern "C" uint16_t SetLDT(uint16_t Selector);
+SetLDT PROC C
+	xor eax, eax
+	sldt ax
+	mov dx, [esp + 4]
+	lldt dx
+	ret
+SetLDT ENDP
+
+;extern "C" uint16_t SetTR(uint16_t Selector);
+SetTR PROC C
+	xor eax, eax
+	str ax
+	mov dx, [esp + 4]
+	ltr dx
+	ret
+SetTR ENDP
+
+;extern "C" void StartV86(uint16_t CS, uint16_t IP, uint16_t SS, uint16_t SP);
+StartV86 PROC C
+	mov ebp, esp
+
+	push 0 ; GS
+	push 0 ; FS
+	push 0 ; DS
+	push 0 ; ES
+	push [ebp + 12] ; SS
+	push [ebp + 16] ; SP
+
+	pushd 00020002h ; EFlags with VM bit set and Ints enabled
+
+	push [ebp + 4] ; CS
+	push [ebp + 8] ; IP
+	iretd
+StartV86 ENDP
+
+
+
 END

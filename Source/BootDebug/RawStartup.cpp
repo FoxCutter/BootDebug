@@ -45,23 +45,145 @@ void SystemTrap(InterruptContext * Context, uintptr_t * Data)
 		// Bad MSRs through GPFs, so eat them and move on.
 		// 0F 30 WRMSR
 		// 0F 32 RDMSR
-		if(reinterpret_cast<uint16_t *>(Context->SourceEIP)[0] == 0x300F || reinterpret_cast<uint16_t *>(Context->SourceEIP)[0] == 0x320F)
+		if(reinterpret_cast<uint16_t *>(Context->Origin.Return.Address)[0] == 0x300F || reinterpret_cast<uint16_t *>(Context->Origin.Return.Address)[0] == 0x320F)
 		{
-			//KernalPrintf("\nInvalid MSR [%X]\n", Context->ECX);
-			Context->EAX = 0x00000000;
-			Context->EDX = 0x00000000;
-			Context->SourceEFlags = Context->SourceEFlags & ~EFlags::Carry;
-			Context->SourceEIP += 2;
+			KernalPrintf("\nInvalid MSR [%X]\n", Context->Registers.ECX);
+			Context->Registers.EAX = 0x00000000;
+			Context->Registers.EDX = 0x00000000;
+			Context->Origin.EFlags = Context->Origin.EFlags & ~EFlags::Carry;
+			Context->Origin.Return.Address += 2;
 			return;
+		}
+		else if(Context->Origin.EFlags & EFlags::Virtual8086Mode)
+		{
+			uint8_t * Memory = reinterpret_cast<uint8_t *>((Context->Origin.Return.Selector << 4) + Context->Origin.Return.Address);
+
+			bool Address32 = false;
+			bool Opcode32 = false;
+			
+			int Index = 0;
+			bool Done = false;
+			while(!Done)
+			{
+				switch(Memory[Index])
+				{
+					// OP Size Prefix
+					case 0x66:
+						Opcode32 = true;
+						break;
+
+					// Address size Prefix
+					case 0x67:
+						Address32 = true;
+						break;				
+
+					//// REPNE
+					//case 0xF3:
+					//	break;
+
+					//// REP
+					//case 0xf4:
+					//	break;
+					//
+					//case 0xF0:	// LOCK
+					//case 0x26:	// ES
+					//case 0x2E:	// CS
+					//case 0x36:	// SS
+					//case 0x3E:	// DS
+					//case 0x64:	// FS
+					//case 0x65:	// GS
+					//	break;
+					//					
+					//case 0xCC:	// INT 3
+					//case 0xCD:	// Int Immediate Byte
+					//case 0xCE:	// INTO (int 4)
+					//	break;
+
+					//// IRET
+					//case 0xCF:
+					//	break;
+
+					//// Pushf
+					//case 0x9C:
+					//	break;
+
+					//// PopF
+					//case 0x9D:
+					//	break;
+
+					//// CLI
+					//case 0xFA:
+					//	break;
+
+					//// STI
+					//case 0xFB:
+					//	break;
+
+					//// IN Immediate Byte
+					//case 0xE4:
+					//	break;
+
+					//// IN Immediate Byte
+					//case 0xE5:
+					//	break;
+
+					//// IN No Param
+					//case 0xEC:	
+					//	break;
+					//
+					//// IN No Param
+					//case 0xED:
+					//	break;
+					//
+					//// OUT Immediate Byte
+					//case 0xE6:
+					//	break;
+
+					//// OUT Immediate Byte
+					//case 0xE7:
+					//	break;
+
+					//// OUT No Param
+					//case 0xEE:
+					//	break;
+
+					//// OUT No Param
+					//case 0xEF:
+					//	break;
+
+					//// INS No Param
+					//case 0x6C: 
+					//	break;
+
+					//// INS No Param
+					//case 0x6D:
+					//	break;
+
+					//// OUTS No Param
+					//case 0x6E:
+					//	break;
+
+					//// OUTS No Param
+					//case 0x6F:
+					//	break;
+
+					default:
+						KernalPrintf("\nGPF Fault %08X-%02X at: %08X in Virtual Monitor\n", Context->ErrorCode, Memory[Index], &Memory[Index]);
+						Done = true;
+						break;
+				}
+
+				Index++;
+			}
 		}
 		else
 		{
-			KernalPrintf("\nGPF Fault %08X at: %08X\n Error: ", Context->ErrorCode, Context->SourceEIP);
+			KernalPrintf("\nGPF Fault %08X at: %08X. %08X\n", Context->ErrorCode, Context->Origin.Return.Address, Context->Origin.EFlags);
 		}
 	}
 	else if(Context->InterruptNumber == 0x0e)
 	{
-		KernalPrintf("\nPage Fault from: %08X\n", Context->SourceEIP);
+		KernalPrintf("\nPage Fault from: %08X\n", Context->Origin.Return.Address);
 		uint32_t CR2 = ReadCR2();
 		KernalPrintf("Address: %08X\n", CR2);
 
@@ -92,7 +214,7 @@ void SystemTrap(InterruptContext * Context, uintptr_t * Data)
 	}
 	else if(Context->InterruptNumber == 0x12)
 	{
-		KernalPrintf("\nMachine Check at %08X\n", Context->SourceEIP);
+		KernalPrintf("\nMachine Check at %08X\n", Context->Origin.Return.Address);
 		uint64_t Error;
 		
 		Error = ReadMSR(0x17A); // IA32_MCG_STATUS
@@ -101,7 +223,7 @@ void SystemTrap(InterruptContext * Context, uintptr_t * Data)
 	}
 	else
 	{	
-		KernalPrintf("\nSystem Error: %02X (%08X) at %08X\n", Context->InterruptNumber, Context->ErrorCode, Context->SourceEIP);
+		KernalPrintf("\nSystem Error: %02X (%08X) at %08X\n", Context->InterruptNumber, Context->ErrorCode, Context->Origin.Return.Address);
 	};
 
 	ASM_CLI;
@@ -446,7 +568,7 @@ char FetchKeyboardBuffer()
 	return value;
 }
 
-void KeyboardInterrupt(InterruptContext * Context, uintptr_t * Data)
+void KeyboardInterrupt(InterruptContext * OldContext, uintptr_t * Data)
 {
 	unsigned char scancode = InPortb(0x60);		
 	unsigned char scancode2 = 0;
@@ -578,7 +700,7 @@ ThreadInformation *FindNextThread(ThreadInformation *CurrentThread)
 // Because that's the point in this case. 
 #pragma warning(disable: 4731)
 
-void ClockInterrupt(volatile InterruptContext * Context, uintptr_t * Data)
+void ClockInterrupt(volatile InterruptContext * OldContext, uintptr_t * Data)
 {
 	ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(ReadFS(8));
 	
@@ -627,7 +749,7 @@ void ClockInterrupt(volatile InterruptContext * Context, uintptr_t * Data)
 
 		uint16_t OldFS;
 		ASM_ReadReg(fs, OldFS);
-		GDTManager::UpdateGDTEntry(OldFS, reinterpret_cast<uint32_t>(NextThread), sizeof(ThreadInformation), DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
+		CoreComplexObj::GetComplex()->GDTTable.UpdateMemoryEntry(OldFS, reinterpret_cast<uint32_t>(NextThread), sizeof(ThreadInformation), DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
 		ASM_WriteReg(fs, OldFS);
 	}
 	else
@@ -800,10 +922,13 @@ void BuildGDT(CoreComplexObj *CoreComplex)
 	CoreComplex->DataSegment1	= CoreComplex->GDTTable.AddMemoryEntry(0, 0xFFFFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 1);
 	CoreComplex->CoreSegment	= CoreComplex->GDTTable.AddMemoryEntry(reinterpret_cast<uint32_t>(CoreComplex), 0x10000, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 0);
 	CoreComplex->ThreadSegment	= CoreComplex->GDTTable.AddMemoryEntry(0, sizeof(ThreadInformation), DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
-	//CoreComplex->TaskSegment	= CoreComplex->GDTTable.AddMemoryEntry(reinterpret_cast<uint32_t>(&MyTSS), sizeof(DescriptiorData::TSS), DescriptiorData::Present, DescriptiorData::TSS32BitSegment, 0);
+	CoreComplex->TaskSegment	= CoreComplex->GDTTable.AddMemoryEntry(reinterpret_cast<uint32_t>(&MyTSS), sizeof(DescriptiorData::TaskStateSegment), DescriptiorData::Present, DescriptiorData::TSS32BitSegment, 0);
 	
 	// Switch to our GDT
-	KernalPrintf("  GDT %08X, Entries %02X\n", &CoreComplex->GDTTable, CoreComplex->GDTTable.TableSize());
+	DescriptiorData::TablePtr Pointer;
+	CoreComplex->GDTTable.PopulateTablePointer(Pointer);
+	
+	KernalPrintf("  GDT %08X, Entries %02X\n", Pointer.Address, CoreComplex->GDTTable.TableSize());
 	CoreComplex->GDTTable.SetActive(CoreComplex->CodeSegment0, CoreComplex->DataSegment0);
 
 	// Set our system segments	
@@ -911,6 +1036,10 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	KernalPrintf(" Building GDT...\n");
 	BuildGDT(CoreComplex);
 
+	// Step 3b: Set up the LDT
+	CoreComplex->LDTTable.Initilize(CoreComplex->GDTTable);
+	CoreComplex->LDTTable.SetActive();
+
 	// Step 2: Set our IDT
 	KernalPrintf(" Setting up IDT...\n");
 	CoreComplex->IDTTable.Initilize(CoreComplex->CodeSegment0, CoreComplex->DataSegment0);
@@ -985,7 +1114,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
 
-	
+	//KernalPrintf(" '%f'\n", fcos);
+
 	CoreComplex->HardwareComplex.Add("KB", "PS/2 Keyboard");	
 
 	// Create the Idle Thread
@@ -1040,7 +1170,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	ThreadListHead->InsertLast(MyThread);
 
-	CoreComplex->GDTTable.UpdateGDTEntry(CoreComplex->ThreadSegment, reinterpret_cast<uint32_t>(MyThread), sizeof(ThreadInformation), DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
+	CoreComplex->GDTTable.UpdateMemoryEntry(CoreComplex->ThreadSegment, reinterpret_cast<uint32_t>(MyThread), sizeof(ThreadInformation), DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
 	uint16_t TempSegment = CoreComplex->ThreadSegment;
 	ASM_WriteReg(fs, TempSegment);
 
@@ -1059,6 +1189,11 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	//m_InterruptControler.ClearIRQ(0x00);
 
 	ASM_STI;
+
+	MyTSS.SS0 = CoreComplex->DataSegment0;
+	MyTSS.ESP0 = 0x40000;
+	
+	SetTR(CoreComplex->TaskSegment);
 
 	HardwareTree * PCIRoot = CoreComplex->HardwareComplex.Add("PCI", "PCI Bus");
 	

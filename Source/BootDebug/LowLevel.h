@@ -25,37 +25,131 @@
 #define ASM_WriteReg(reg, val) __asm { __asm mov reg, [val] }
 
 #pragma pack(push, 1)
-struct InterruptContext
+
+struct SegmentContext
 {
-	// Added by the Int handler
-	uint32_t GS;
-	uint32_t FS;
 	uint32_t ES;
 	uint32_t DS;
-
-	// Added by Pushad
-	uint32_t EDI;
-	uint32_t ESI;
-	uint32_t EBP;
-	uint32_t ESP;
-
-	uint32_t EBX;
-	uint32_t EDX;
-	uint32_t ECX;
-	uint32_t EAX;
-
-	// Added by the per Int handler
-	uint32_t InterruptNumber;
-	uint32_t ErrorCode;
-
-	// From the CPU itself (SS:ESP will only be on the stack if we had a Privilege Level Switch, otherwise it will be noise)
-	uint32_t SourceEIP;
-	uint32_t SourceCS;
-	uint32_t SourceEFlags;
-	uint32_t SourceESP;
-	uint32_t SourceSS;
+	uint32_t FS;
+	uint32_t GS;
 };
 
+struct FullPointer
+{
+	uint32_t Address;
+	uint32_t Selector;
+};
+
+struct InterruptReturnContext
+{
+	// Return Address and flags
+	// EIP/CS
+	FullPointer		Return;
+	uint32_t		EFlags;
+	
+	// Old stack if there was a stack switch
+	// ESP/SS
+	FullPointer		Stack;
+
+	// Virtual X86 Mode segments if EFlags.VM = 1
+	SegmentContext	V86Segments;
+};
+
+struct RegisterContext
+{
+	// In PUSHAD/POPAD order
+	union 
+	{
+		uint32_t EDI;
+		uint16_t DI;
+	};
+	
+	union 
+	{
+		uint32_t ESI;
+		uint16_t SI;
+	};
+
+	union 
+	{
+		uint32_t EBP;
+		uint16_t BP;
+	};
+
+	union 
+	{
+		uint32_t ESP;
+		uint16_t SP;
+	};
+
+	union 
+	{
+		uint32_t EBX;
+		uint16_t BX;
+		struct
+		{
+			uint8_t BL;
+			uint8_t BH;
+		};
+	};
+
+	union 
+	{
+		uint32_t EDX;
+		uint16_t DX;
+		struct
+		{
+			uint8_t DL;
+			uint8_t DH;
+		};
+	};
+
+	union 
+	{
+		uint32_t ECX;
+		uint16_t CX;
+		struct
+		{
+			uint8_t CL;
+			uint8_t CH;
+		};
+	};
+
+	union 
+	{
+		uint32_t EAX;
+		uint16_t AX;
+		struct
+		{
+			uint8_t AL;
+			uint8_t AH;
+		};
+	};
+};
+
+struct TrapContext
+{
+	SegmentContext			Segments;
+	RegisterContext			Registers;
+	InterruptReturnContext	Origin;
+};
+
+struct ErrorContext
+{
+	SegmentContext			Segments;
+	RegisterContext			Registers;
+	uint32_t				ErrorCode;
+	InterruptReturnContext	Origin;
+};
+
+struct InterruptContext
+{
+	SegmentContext			Segments;
+	RegisterContext			Registers;
+	uint32_t				InterruptNumber;
+	uint32_t				ErrorCode;
+	InterruptReturnContext	Origin;
+};
 
 struct Registers
 {
@@ -435,7 +529,12 @@ extern "C"
 	void FireInt(uint32_t IntNum, Registers *Result);
 
 	void CallService(uint32_t ServiceAddress, Registers *Result);
+	void StartV86(uint16_t CS, uint16_t IP, uint16_t SS, uint16_t SP);
+
+	uint16_t SetLDT(uint16_t Selector);
+	uint16_t SetTR(uint16_t Selector);
 };
+
 
 
 #pragma pack(pop)

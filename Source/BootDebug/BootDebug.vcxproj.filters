@@ -110,6 +110,9 @@
     <ClCompile Include="ACPI.cpp">
       <Filter>Kernal\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="LDT.cpp">
+      <Filter>Kernal\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RawTerminal.h">
@@ -212,6 +215,9 @@
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ACPI.h">
+      <Filter>Kernal\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LDT.h">
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
   </ItemGroup>

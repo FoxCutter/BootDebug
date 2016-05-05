@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "GDT.h"
+#include "LDT.h"
 #include "IDT.h"
 #include "MMU.h"
 
@@ -45,6 +46,7 @@ struct CoreComplexObj
 	ObjectManager ObjectComplex;
 
 	GDTManager GDTTable;
+	LDTManager LDTTable;
 	IDTManager IDTTable;
 
 	ACPI ACPIComplex;

@@ -34,6 +34,7 @@ extern "C"
 	extern uint32_t IntTable[];
 	extern uintptr_t Generic_Interrupt, Generic_InterruptEnd;
 	extern uintptr_t InterruptSelector, InterruptCall, InterruptContextPtr;
+	extern void Default_Interrupt();
 }
 
 uint8_t DataBlock[128];
@@ -77,6 +78,8 @@ void IDTManager::Initilize(uint16_t CodeSelector, uint16_t DataSelector)
 		BuildGateEntry(GetEntry(Pos), CodeSelector, IntTable[Pos], 0, true, DescriptiorData::IntGate32BitSegment, 0);
 		Pos++;
 	}
+
+	KernalPrintf("!INT %08X ", IntCallback);
 }
 
 void IDTManager::SetInterupt(unsigned int IntNum, InterruptCallbackPtr CallBack, uintptr_t *Data)

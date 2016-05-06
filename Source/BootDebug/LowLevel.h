@@ -144,6 +144,7 @@ struct ErrorContext
 
 struct InterruptContext
 {
+	uint32_t				EFlags;
 	SegmentContext			Segments;
 	RegisterContext			Registers;
 	uint32_t				InterruptNumber;

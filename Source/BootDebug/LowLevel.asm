@@ -333,20 +333,51 @@ SetTR ENDP
 
 ;extern "C" void StartV86(uint16_t CS, uint16_t IP, uint16_t SS, uint16_t SP);
 StartV86 PROC C
+	push ebp
 	mov ebp, esp
+		
+	; Calculate the address of the stack
+	mov esi, [ebp + 16] ; SS
+	shl esi, 4
+	add esi, [ebp + 20] ; SP
+	
+	; swap stacks
+	mov esp, esi
+
+	; Save the address of the thread data
+	push ds
+	push dword ptr FS:[8]
+	
+	; The old stack address
+	push ss
+	mov esi, ebp
+	push esi
+
+	; And the return address
+	push cs
+	push OFFSET Callback
+
+	; Build the v86 context
 
 	push 0 ; GS
 	push 0 ; FS
 	push 0 ; DS
 	push 0 ; ES
-	push [ebp + 12] ; SS
-	push [ebp + 16] ; SP
+	push [ebp + 16] ; SS
+	mov eax, [ebp + 20] ; SP
+	sub eax, 24
+	push eax
 
-	pushd 00020002h ; EFlags with VM bit set and Ints enabled
+	pushd 00020002h ; EFlags with VM bit set 
 
-	push [ebp + 4] ; CS
-	push [ebp + 8] ; IP
+	push [ebp + 8] ; CS
+	push [ebp + 12] ; IP
 	iretd
+
+Callback:
+	pop ebp
+	ret
+
 StartV86 ENDP
 
 

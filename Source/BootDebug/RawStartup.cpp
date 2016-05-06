@@ -38,7 +38,20 @@ void main(int argc, char *argv[]);
 extern MMU * MMUManager;
 extern OpenHCI * USBManager;
 
-void SystemTrap(InterruptContext * Context, uintptr_t * Data)
+void PrintContext(volatile InterruptContext * Context)
+{
+	KernalPrintf(" %08X EFLAGS:%08X \n", &Context->EFlags, Context->EFlags);
+	KernalPrintf(" %08X ES:%04X DS:%04X FS:%04X GS:%04X - %08X\n", &Context->Segments.ES, Context->Segments.ES & 0xFFFF, Context->Segments.DS & 0xFFFF, Context->Segments.FS & 0xFFFF, Context->Segments.GS & 0xFFFF, &Context->Segments.GS);
+	KernalPrintf(" %08X EDI:%08X ESI:%08X EBP:%08X ESP:%08X - %08X\n", &Context->Registers.EDI, Context->Registers.EDI, Context->Registers.ESI, Context->Registers.EBP, Context->Registers.ESP, &Context->Registers.ESP);
+	KernalPrintf(" %08X EBX:%08X EDX:%08X ECX:%08X EAX:%08X - %08X\n", &Context->Registers.EBX, Context->Registers.EBX, Context->Registers.EDX, Context->Registers.ECX, Context->Registers.EAX, &Context->Registers.EAX);
+	KernalPrintf(" %08X Int: %02X, Error: %08X - %08X\n", &Context->InterruptNumber, Context->InterruptNumber, Context->ErrorCode, &Context->ErrorCode);
+	KernalPrintf(" %08X EIP:%08X CS:%04X EFLAGS:%08X - %08X\n", &Context->Origin.Return.Address, Context->Origin.Return.Address, Context->Origin.Return.Selector & 0xFFFF, Context->Origin.EFlags, &Context->Origin.EFlags);
+	KernalPrintf(" %08X ESP:%08X SS:%04X - %08X\n", &Context->Origin.Stack.Address, Context->Origin.Stack.Address, Context->Origin.Stack.Selector & 0xFFFF, &Context->Origin.Stack.Selector);
+	KernalPrintf(" %08X ES:%04X DS:%04X FS:%04X GS:%04X - %08X\n", &Context->Origin.V86Segments.ES, Context->Origin.V86Segments.ES & 0xFFFF, Context->Origin.V86Segments.DS & 0xFFFF, Context->Origin.V86Segments.FS & 0xFFFF, Context->Origin.V86Segments.GS & 0xFFFF, &Context->Origin.V86Segments.GS);
+
+}
+
+void SystemTrap(volatile InterruptContext * Context, uintptr_t * Data)
 {
 	if(Context->InterruptNumber == 0x0d)
 	{
@@ -47,7 +60,7 @@ void SystemTrap(InterruptContext * Context, uintptr_t * Data)
 		// 0F 32 RDMSR
 		if(reinterpret_cast<uint16_t *>(Context->Origin.Return.Address)[0] == 0x300F || reinterpret_cast<uint16_t *>(Context->Origin.Return.Address)[0] == 0x320F)
 		{
-			KernalPrintf("\nInvalid MSR [%X]\n", Context->Registers.ECX);
+			//KernalPrintf("\nInvalid MSR [%X]\n", Context->Registers.ECX);
 			Context->Registers.EAX = 0x00000000;
 			Context->Registers.EDX = 0x00000000;
 			Context->Origin.EFlags = Context->Origin.EFlags & ~EFlags::Carry;
@@ -55,7 +68,15 @@ void SystemTrap(InterruptContext * Context, uintptr_t * Data)
 			return;
 		}
 		else if(Context->Origin.EFlags & EFlags::Virtual8086Mode)
-		{
+		{	
+			// Check for a simple segement overflow and return
+			if(Context->Origin.Return.Address == 0x10000)
+				return;
+
+			//KernalPrintf(" %08X %08X %08X\n", Context, Data, &Context);
+			//PrintContext(Context);
+			
+			uint32_t * Stack = reinterpret_cast<uint32_t *>((Context->Origin.Stack.Selector << 4) + 0xFF00);
 			uint8_t * Memory = reinterpret_cast<uint8_t *>((Context->Origin.Return.Selector << 4) + Context->Origin.Return.Address);
 
 			bool Address32 = false;
@@ -168,17 +189,31 @@ void SystemTrap(InterruptContext * Context, uintptr_t * Data)
 					//	break;
 
 					default:
-						KernalPrintf("\nGPF Fault %08X-%02X at: %08X in Virtual Monitor\n", Context->ErrorCode, Memory[Index], &Memory[Index]);
+						KernalPrintf("\nGPF Fault %08X-%02X at: %04X:%04X (%08X) in Virtual Monitor\n", Context->ErrorCode, Memory[Index], Context->Origin.Return.Selector, Context->Origin.Return.Address + Index, &Memory[Index]);
+						KernalPrintf(" v86 Stack: %04X:%04X (%08X) %08X, %08X, %08X\n", Context->Origin.Stack.Selector, Context->Origin.Stack.Address, &Stack[0], Stack[-2], Stack[-4], Stack[-6]);
 						Done = true;
 						break;
 				}
 
 				Index++;
 			}
+			//Context->Origin.Return.Address += Index;
+
+			// Return from the v86 mode
+			Context->Origin.EFlags = (Context->Origin.EFlags & ~EFlags::Virtual8086Mode) | 0x3000 | EFlags::InterruptEnable;
+			Context->Origin.Stack.Selector = Stack[-3];
+			Context->Origin.Stack.Address = Stack[-4];
+
+			Context->Origin.Return.Selector = Stack[-5];
+			Context->Origin.Return.Address = Stack[-6];
+
+			Context->Segments.DS = Stack[-3];
+			//Context->Segments.FS = 0x53; // Stack[-3];
+			//Context->Segments.GS = 0x4B; // Stack[-3];
 		}
 		else
 		{
-			KernalPrintf("\nGPF Fault %08X at: %08X. %08X\n", Context->ErrorCode, Context->Origin.Return.Address, Context->Origin.EFlags);
+			KernalPrintf("\nGPF Fault %08X at: %04X:%08X. %08X\n", Context->ErrorCode, Context->Origin.Return.Selector, Context->Origin.Return.Address, Context->Origin.EFlags);
 		}
 	}
 	else if(Context->InterruptNumber == 0x0e)
@@ -223,9 +258,11 @@ void SystemTrap(InterruptContext * Context, uintptr_t * Data)
 	}
 	else
 	{	
-		KernalPrintf("\nSystem Error: %02X (%08X) at %08X\n", Context->InterruptNumber, Context->ErrorCode, Context->Origin.Return.Address);
+		KernalPrintf("\nSystem Error: %02X (%08X) at %04X:%08X\n", Context->InterruptNumber, Context->ErrorCode, Context->Origin.Return.Selector, Context->Origin.Return.Address);
 	};
 
+	PrintContext(Context);
+	
 	ASM_CLI;
 
 	for(;;) ASM_HLT;
@@ -1047,7 +1084,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	// Set up the handlers for System errors
 	for(int x = 0; x < 0x20; x++)
 	{
-		CoreComplex->IDTTable.SetInterupt(x, SystemTrap);
+		CoreComplex->IDTTable.SetInterupt(x, (InterruptCallbackPtr)SystemTrap);
 	}
 
 	CoreComplex->IDTTable.SetActive();
@@ -1191,7 +1228,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	ASM_STI;
 
 	MyTSS.SS0 = CoreComplex->DataSegment0;
-	MyTSS.ESP0 = 0x40000;
+	MyTSS.ESP0 = 0x41004;
 	
 	SetTR(CoreComplex->TaskSegment);
 

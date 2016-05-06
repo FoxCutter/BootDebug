@@ -21,6 +21,8 @@ Common_Interrupt PROC
 	push ds
 	push es
 	
+	pushfd
+
 	mov ax, cs:IntData
 	mov ds, ax
 	mov es, ax
@@ -30,6 +32,7 @@ Common_Interrupt PROC
 	
 	call IntCallback
 	
+	pop eax
 	pop eax
 
 	pop es

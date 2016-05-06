@@ -40,7 +40,6 @@ extern OpenHCI * USBManager;
 
 void PrintContext(volatile InterruptContext * Context)
 {
-	KernalPrintf(" %08X EFLAGS:%08X \n", &Context->EFlags, Context->EFlags);
 	KernalPrintf(" %08X ES:%04X DS:%04X FS:%04X GS:%04X - %08X\n", &Context->Segments.ES, Context->Segments.ES & 0xFFFF, Context->Segments.DS & 0xFFFF, Context->Segments.FS & 0xFFFF, Context->Segments.GS & 0xFFFF, &Context->Segments.GS);
 	KernalPrintf(" %08X EDI:%08X ESI:%08X EBP:%08X ESP:%08X - %08X\n", &Context->Registers.EDI, Context->Registers.EDI, Context->Registers.ESI, Context->Registers.EBP, Context->Registers.ESP, &Context->Registers.ESP);
 	KernalPrintf(" %08X EBX:%08X EDX:%08X ECX:%08X EAX:%08X - %08X\n", &Context->Registers.EBX, Context->Registers.EBX, Context->Registers.EDX, Context->Registers.ECX, Context->Registers.EAX, &Context->Registers.EAX);
@@ -1079,7 +1078,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	// Step 2: Set our IDT
 	KernalPrintf(" Setting up IDT...\n");
-	CoreComplex->IDTTable.Initilize(CoreComplex->CodeSegment0, CoreComplex->DataSegment0);
+	CoreComplex->IDTTable.Initilize(CoreComplex->CodeSegment0, CoreComplex->DataSegment0, CoreComplex->CoreSegment);
 
 	// Set up the handlers for System errors
 	for(int x = 0; x < 0x20; x++)

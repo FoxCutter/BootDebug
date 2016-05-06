@@ -25,6 +25,7 @@ class IDTManager : DescriptorTable
 {
 	uint16_t m_CodeSelector;
 	uint16_t m_DataSelector;
+	uint16_t m_GlobalSelector;
 
 	InterruptData InterruptCallback[256]; 
 
@@ -33,7 +34,7 @@ class IDTManager : DescriptorTable
 public:
 	IDTManager();
 
-	void Initilize(uint16_t CodeSelector, uint16_t DataSelector);
+	void Initilize(uint16_t CodeSelector, uint16_t DataSelector, uint16_t GlobalSelector);
 
 	void SetInterupt(unsigned int  IntNum, InterruptCallbackPtr CallBack, uintptr_t * Data = nullptr);
 

@@ -127,24 +127,8 @@ struct RegisterContext
 	};
 };
 
-struct TrapContext
-{
-	SegmentContext			Segments;
-	RegisterContext			Registers;
-	InterruptReturnContext	Origin;
-};
-
-struct ErrorContext
-{
-	SegmentContext			Segments;
-	RegisterContext			Registers;
-	uint32_t				ErrorCode;
-	InterruptReturnContext	Origin;
-};
-
 struct InterruptContext
 {
-	uint32_t				EFlags;
 	SegmentContext			Segments;
 	RegisterContext			Registers;
 	uint32_t				InterruptNumber;

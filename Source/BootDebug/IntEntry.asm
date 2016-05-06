@@ -5,9 +5,10 @@
 ; This file implements our basic Int handlers.
 
 IntData			WORD 00h
+GlobalData		WORD 00h
 IntCallback		DWORD 00000000
 
-public C IntData, IntCallback
+public C IntData, IntCallback, GlobalData
 
 ; IntCallback needs to be a pointer to a function with this def:
 ; extern "C" void HandleInterrupt(InterruptContext * Context)
@@ -21,19 +22,22 @@ Common_Interrupt PROC
 	push ds
 	push es
 	
-	pushfd
-
 	mov ax, cs:IntData
 	mov ds, ax
 	mov es, ax
 	
+	; Make sure we have the global data segment
+	mov ax, cs:GlobalData
+	mov gs, ax
+	
+	; Put the pointer in the context on the stack
 	mov eax, esp
 	push eax
 	
 	call IntCallback
 	
-	pop eax
-	pop eax
+	; Clean up the call
+	add esp, 4
 
 	pop es
 	pop ds
@@ -41,64 +45,16 @@ Common_Interrupt PROC
 	pop gs
 	
 	popad
+	
+	; Remove the Int and Error Code
 	add esp, 8
 	iretd
 
 Common_Interrupt ENDP
 
-
-Default_Interrupt PROC
+Default_Interrupt PROC C
 	iretd
 Default_Interrupt ENDP
-
-Generic_Interrupt:
-	; Save our state
-	pushad	
-
-	push gs
-	push fs
-	push ds
-	push es
-	
-	; Set up the Data segment
-	mov ax, cs:IntData
-	mov ds, ax
-	mov es, ax
-	
-	; Save the pointer to the interrupt context
-	mov eax, esp
-
-	; Put a Pointer to the context on the stack.
-InterruptContextPtr:
-	push dword ptr 00h
-
-	; Put a Pointer to the interrupt context on the stack
-	push eax
-	
-	; Call handler
-	mov eax, IntCallback
-	call eax 
-
-	; Remove the params from the stack
-	add esp, 8
-
-	pop es
-	pop ds
-	pop fs
-	pop gs
-	
-	popad
-
-	;add esp, 4
-	iretd
-	nop
-	nop
-	nop
-Generic_InterruptEnd:
-
-
-public C Generic_Interrupt, Generic_InterruptEnd
-public C InterruptContextPtr
 
 
 ; A quick table of all our interrupt handlers so we can build them dynamically.

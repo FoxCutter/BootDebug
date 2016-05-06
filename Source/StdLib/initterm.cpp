@@ -18,6 +18,9 @@ _PVFV __xc_z[] = { nullptr };
 #pragma comment(linker, "/section:.CRT,RW")
 #pragma comment(linker, "/merge:.CRT=.data")
 
+// Gives up FPU support
+extern "C" const int _fltused = 0;
+
 typedef void (__cdecl *_PVFV)(void);
 
 void __cdecl _initterm ()

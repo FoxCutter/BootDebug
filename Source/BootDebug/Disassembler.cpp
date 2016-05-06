@@ -299,7 +299,7 @@ uint32_t ConvertReg(uint32_t Reg, uint32_t AdSize)
 }
 
 
-void PrintModRM(uint32_t ModData, int32_t Displacement, uint32_t PointerSize, uint32_t AdSize)
+void PrintModRM(uint32_t ModData, int32_t Displacement, uint32_t PointerSize, uint32_t AdSize, uint32_t SegmentPrefix)
 {
 	bool RexB = (ModData & 0x0100) == 0x0100;
 	bool RexX = (ModData & 0x0200) == 0x0200;
@@ -333,6 +333,11 @@ void PrintModRM(uint32_t ModData, int32_t Displacement, uint32_t PointerSize, ui
 			case 64:
 				printf("qword ");
 				break;
+		}
+		if(SegmentPrefix != 0)
+		{
+			PrintReg(SegmentPrefix, AdSize);
+			printf(":");
 		}
 		
 		printf("[");
@@ -388,7 +393,6 @@ void PrintModRM(uint32_t ModData, int32_t Displacement, uint32_t PointerSize, ui
 		if(!(Mod == 0 && Base == 5))
 		{
 			PrintReg(ConvertReg(Base, AdSize), AdSize);
-			printf(".");
 		}
 		else
 		{
@@ -474,7 +478,7 @@ void Disassembler::PrintOpcode(uint8_t *Address, OpcodeData &Data)
 				break;
 
 			case ParamModRM:				
-				PrintModRM(Data.Params[x], Data.Displacement, Data.PointerSize, Data.AddressSize);
+				PrintModRM(Data.Params[x], Data.Displacement, Data.PointerSize, Data.AddressSize, Data.SegmentPrefix);
 				break;
 
 			case ParamRegOpSize:				
@@ -498,6 +502,31 @@ void Disassembler::PrintOpcode(uint8_t *Address, OpcodeData &Data)
 				break;
 
 			case ParamAddress:
+				switch(Data.PointerSize)
+				{
+					case 8:
+						printf("byte ");
+						break;
+
+					case 16:
+						printf("word ");
+						break;
+
+					case 32:
+						printf("dword ");
+						break;
+
+					case 64:
+						printf("qword ");
+						break;
+				}
+
+				if(Data.SegmentPrefix != 0)
+				{
+					PrintReg(Data.SegmentPrefix, Data.OpSize);
+					printf(":");
+				}
+
 				printf("[0%Xh]", Data.Params[x]);
 				break;
 

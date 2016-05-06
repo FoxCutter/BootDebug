@@ -173,6 +173,7 @@
 #define HAVE_UNSIGNED_LONG_LONG_INT 1
 #define HAVE_INTMAX_T 1
 #define HAVE_UINTMAX_T 1
+#define HAS_FLTLIB 1
 #define intmax_t long long 
 #define uintmax_t unsigned long long
 

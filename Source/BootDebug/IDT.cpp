@@ -49,8 +49,8 @@ extern "C" void HandleInterrupt(InterruptContext * Context)
 	// Forward the Interrupt to the correct function
 	if(InterruptCallbackTable[Context->InterruptNumber].InterruptCallback != nullptr)
 		InterruptCallbackTable[Context->InterruptNumber].InterruptCallback(Context, InterruptCallbackTable[Context->InterruptNumber].Data);
-	else
-		KernalPrintf("!INT %02X ", Context->InterruptNumber);
+	//else
+		//KernalPrintf("!INT %02X ", Context->InterruptNumber);
 
 	return;
 }
@@ -79,7 +79,7 @@ void IDTManager::Initilize(uint16_t CodeSelector, uint16_t DataSelector)
 		Pos++;
 	}
 
-	KernalPrintf("!INT %08X ", IntCallback);
+	//KernalPrintf("!INT %08X ", IntCallback);
 }
 
 void IDTManager::SetInterupt(unsigned int IntNum, InterruptCallbackPtr CallBack, uintptr_t *Data)

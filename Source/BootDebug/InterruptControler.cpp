@@ -420,7 +420,7 @@ void InterruptControler::Interrupt(InterruptContext * Context)
 		}
 		else
 		{
-			printf("IRQ %02X ", IRQ);
+			//printf("IRQ %02X ", IRQ);
 		}
 
 		ClearIRQ(IRQ);

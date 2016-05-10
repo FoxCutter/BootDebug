@@ -248,6 +248,10 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 
 	// Remap and disable the old PIC
 
+	// Mask them all
+	OutPortb(0x21, 0xFF);
+	OutPortb(0xA1, 0xFF);
+
 	// Start with the Initialize code
 	OutPortb(0x20, 0x11);
 	OutPortb(0xA0, 0x11);
@@ -264,9 +268,9 @@ void InterruptControler::Initialize(IDTManager *oIDTManager, ACPI_TABLE_MADT *MA
 	OutPortb(0x21, 0x01);	// We are still x86
 	OutPortb(0xA1, 0x01);
 
-	// Mask them all
-	OutPortb(0x21, 0xFF);
-	OutPortb(0xA1, 0xFF);
+	//// Mask them all
+	//OutPortb(0x21, 0xFF);
+	//OutPortb(0xA1, 0xFF);
 
 	if(Mode == PICMode::IOAPIC)
 	{

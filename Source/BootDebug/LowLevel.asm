@@ -2,8 +2,23 @@
 .MODEL FLAT
 .CODE
 
-JmpAddr DWORD offset FlushCS	
-JmpSeg  WORD 0
+SaveState MACRO
+	pushad
+	
+	push gs
+	push fs
+	push ds
+	push es
+ENDM
+
+RestoreState MACRO
+	pop es
+	pop ds
+	pop fs
+	pop gs
+	
+	popad
+ENDM
 
 ;extern "C" void SwapSelectors(uint32_t CodeSeg, uint32_t DataSeg);
 SwapSelectors PROC C
@@ -14,15 +29,42 @@ SwapSelectors PROC C
 	mov gs, ax
 	mov ss, ax
 
-	mov ax, [esp + 4]
-	mov word ptr [JmpSeg], ax	
-	
-	jmp fword ptr [JmpAddr]
+	push [esp + 4]
+	push offset FlushCS
+	retf
 
-FlushCS::
+  FlushCS:
 	ret
 
 SwapSelectors ENDP
+
+;extern "C" void EnterPrivlage(uint32_t CodeSeg, uint32_t EIP, uint32_t DataSeg, uint32_t ESP);
+EnterPrivlage PROC C
+	; Set the Data Segments
+	mov ax, [esp + 12]
+	mov ds, ax
+	mov es, ax
+	
+	mov ecx, [esp + 16]
+	cmp ecx, 0
+	jnz SkipAdjust
+	
+	; If we don't have an ESP, use the current stack pointer
+	mov ecx, esp
+
+ SkipAdjust:
+	; Push the new stack pointer with the new data segment
+	push [esp + 12]
+	push [esp + 16]
+
+	; New code segment
+	push [ebp + 4]
+	push [ebp + 8]
+
+	; return to the new code CS:EIP
+	retf
+EnterPrivlage ENDP
+
 
 ;extern "C" void OutPortb(uint16_t Port, uint8_t Value);
 OutPortb PROC C
@@ -335,7 +377,11 @@ SetTR ENDP
 StartV86 PROC C
 	push ebp
 	mov ebp, esp
-		
+	
+	SaveState
+
+	mov edi, esp
+
 	; Calculate the address of the stack
 	mov esi, [ebp + 16] ; SS
 	shl esi, 4
@@ -350,8 +396,7 @@ StartV86 PROC C
 	
 	; The old stack address
 	push ss
-	mov esi, ebp
-	push esi
+	push edi
 
 	; And the return address
 	push cs
@@ -374,8 +419,10 @@ StartV86 PROC C
 	push [ebp + 12] ; IP
 	iretd
 
-Callback:
+  Callback:
+	RestoreState
 	pop ebp
+
 	ret
 
 StartV86 ENDP

@@ -13,7 +13,8 @@ MultiBootEntry Proc C public
 	mov		esp, (offset MyStack + StackSize)
 
 	; Clear out the EFLAGS
-	xor		ecx, ecx
+	;xor		ecx, ecx
+	mov		ecx, 01000h
 	push	ecx
 	popfd	
 

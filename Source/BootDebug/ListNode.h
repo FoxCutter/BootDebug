@@ -2,12 +2,13 @@
 
 // Lists seem to be everywhere, so lets just make a simple template to handle them and the most common functions
 template<typename T>
-struct ListNode
+struct ListNodeBase
 {	
 	typedef typename T * ListEntry;
 	
-	ListEntry Prev;
-	ListEntry Next;
+	// These must be provided somewhere in the child Object
+	//ListEntry Prev;
+	//ListEntry Next;
 
 	// Get the first node in this list
 	inline ListEntry First()
@@ -78,31 +79,39 @@ struct ListNode
 	inline ListEntry RemoveFromList()
 	{
 		// We always return the next node in the list.
-		ListEntry Ret = Next;
+		ListEntry Ret = static_cast<ListEntry>(this)->Next;
 		
-		if(Prev == nullptr && Next == nullptr)
+		if(static_cast<ListEntry>(this)->Prev == nullptr && static_cast<ListEntry>(this)->Next == nullptr)
 			return Ret;
 
-		if(Prev == nullptr)
+		if(static_cast<ListEntry>(this)->Prev == nullptr)
 		{
 			// We are at the start of our list, so cut out the back pointer on the next block in the chain
-			Next->Prev = nullptr;
+			static_cast<ListEntry>(this)->Next->Prev = nullptr;
 		}
-		else if(Next == nullptr)
+		else if(static_cast<ListEntry>(this)->Next == nullptr)
 		{
 			// We're at the end of the chain, so just drop ourselves out.
-			Prev->Next = nullptr;
+			static_cast<ListEntry>(this)->Prev->Next = nullptr;
 		}
 		else
 		{
 			// Stuck in the middle, so slice ourselves out.
-			Prev->Next = Next;
-			Next->Prev = Prev;
+			static_cast<ListEntry>(this)->Prev->Next = static_cast<ListEntry>(this)->Next;
+			static_cast<ListEntry>(this)->Next->Prev = static_cast<ListEntry>(this)->Prev;
 		}
 
-		Next = nullptr;
-		Prev = nullptr;
+		static_cast<ListEntry>(this)->Next = nullptr;
+		static_cast<ListEntry>(this)->Prev = nullptr;
 
 		return Ret;
 	}
+};
+
+// Lists seem to be everywhere, so lets just make a simple template to handle them and the most common functions
+template<typename T>
+struct ListNode : ListNodeBase<T>
+{	
+	ListNodeBase<T>::ListEntry Prev;
+	ListNodeBase<T>::ListEntry Next;
 };

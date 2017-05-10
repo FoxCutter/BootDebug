@@ -2,18 +2,18 @@
 #include "ListNode.h"
 #include "KernalLib.h"
 
-struct HardwareTree : ListNode<HardwareTree>
+struct HardwareTree : ListNodeBase<HardwareTree>
 {
-	//ListEntry Prev;
-	//ListEntry Next;
-	HardwareTree * Parent;
-	HardwareTree * Child;
-
 	// ID string of the device
 	char ID[16];
 
 	// A text name of the device
 	char Name[32];
+
+	ListEntry Prev;
+	ListEntry Next;
+	HardwareTree * Parent;
+	HardwareTree * Child;
 
 	uint32_t BusID;
 	uint32_t DeviceAddress; 

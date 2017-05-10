@@ -6,10 +6,13 @@
 
 class ObjectManager : public ObjectCallback
 {
-	struct ObjectEntry : ListNode<ObjectEntry>
+	struct ObjectEntry : ListNodeBase<ObjectEntry>
 	{
 		char Name[32];
 		ObjectCallback * CallBack;
+		
+		ListEntry Prev;
+		ListEntry Next;
 	};
 
 	RawMemory *m_Heap;

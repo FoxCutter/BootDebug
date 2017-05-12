@@ -218,6 +218,7 @@ void PrintType(ACPI_OBJECT_TYPE Type)
 			break;
 		
 		case ACPI_TYPE_LOCAL_SCOPE:
+			KernalPrintf("Local Scope");
 			break;
 
 		default:
@@ -253,14 +254,21 @@ ACPI_STATUS WalkCallback (ACPI_HANDLE Object, UINT32 NestingLevel, void *Context
 		if(Info->Valid & ACPI_VALID_HID)
 			KernalPrintf(" HID: %s", Info->HardwareId.String);
 
+		if(Info->Valid & ACPI_VALID_CID)
+		{
+			KernalPrintf(" CID:");//%s", Info->CompatibleIdList.Ids);
+			for(unsigned x = 0; x < Info->CompatibleIdList.Count; x++)
+				KernalPrintf(" %s", Info->CompatibleIdList.Ids[x].String);
+		}
+
 		if(Info->Valid & ACPI_VALID_ADR)
 			KernalPrintf(" ADR: %08llX", Info->Address);
 
 		if(Info->Valid & ACPI_VALID_CLS)
 			KernalPrintf(" CLS: %s", Info->ClassCode.String);
 
-		if(Info->Valid & ACPI_VALID_CLS)
-			KernalPrintf(" CLS: %s", Info->ClassCode.String);
+		if(Info->Valid & ACPI_VALID_UID)
+			KernalPrintf(" UID: %s", Info->UniqueId.String);
 
 		if(Info->Valid & ACPI_VALID_STA)
 		{

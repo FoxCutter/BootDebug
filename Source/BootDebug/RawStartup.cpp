@@ -530,8 +530,8 @@ uint8_t kbdus[128] =
 	'q',	'w',	'e',	'r',	't',	'y',	'u',	'i',	'o',	'p',	'[',	']',	'\n',	0,		'a',	's',	// 1x
 	'd',	'f',	'g',	'h',	'j',	'k',	'l',	';',	'\'',	'`',	0,		'\\',	'z',	'x',	'c',	'v',	// 2x
 	'b',	'n',	'm',	',',	'.',	'/',	0,		'*',	0,		' ',	0,		0,		0,		0,		0,		0,		// 3x
-	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		'-',	0,		0,		0,		'+',	0,		// 4x
-	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 5x
+	0,		0,		0,		0,		0,		0,		0,		'7',	'8',	'9',	'-',	'4',	'5',	'6',	'+',	'1',	// 4x
+	'2',	'3',	'0',	'.',	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 5x
 	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 6x
 	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 7x
 };
@@ -543,8 +543,8 @@ uint8_t kbdus_Shift[128] =
 	'Q',	'W',	'E',	'R',	'T',	'Y',	'U',	'I',	'O',	'P',	'{',	'}',	'\n',	0,		'A',	'S',	// 1x
 	'D',	'F',	'G',	'H',	'J',	'K',	'L',	':',	'\"',	'~',	0,		'|',	'Z',	'X',	'C',	'V',	// 2x
 	'B',	'N',	'M',	'<',	'>',	'?',	0,		'*',	0,		' ',	0,		0,		0,		0,		0,		0,		// 3x
-	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		'-',	0,		0,		0,		'+',	0,		// 4x
-	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 5x
+	0,		0,		0,		0,		0,		0,		0,		'7',	'8',	'9',	'-',	'4',	'5',	'6',	'+',	'1',	// 4x
+	'2',	'3',	'0',	'.',	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 5x
 	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 6x
 	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 7x
 };
@@ -606,6 +606,10 @@ char FetchKeyboardBuffer()
 
 void KeyboardInterrupt(InterruptContext * OldContext, uintptr_t * Data)
 {
+	unsigned char Temp = InPortb(0x64);
+	if((Temp & 0x01) == 0)
+		return;
+	
 	unsigned char scancode = InPortb(0x60);		
 	unsigned char scancode2 = 0;
 	int Escape = 0;
@@ -981,7 +985,7 @@ void ClearBSS(intptr_t ImageHeader)
 {
 	intptr_t Address = ImageHeader;
 	
-	KernalPrintf("Clear BSS Data for image at %08X\n", Address);
+	//KernalPrintf("Clear BSS Data for image at %08X\n", Address);
 
 	PEFile::IMAGE_DOS_HEADER * DOSHeader = reinterpret_cast<PEFile::IMAGE_DOS_HEADER *>(Address);
 	if (DOSHeader->e_magic != 0x5A4D)
@@ -997,7 +1001,7 @@ void ClearBSS(intptr_t ImageHeader)
     if (NTHeader->Signature != 0x00004550)
     {
         // And the signature is wrong or missing, so shut 'er down.
-		KernalPrintf("     NO NT\n");
+		//KernalPrintf("     NO NT\n");
 		return;
     }
 
@@ -1009,7 +1013,7 @@ void ClearBSS(intptr_t ImageHeader)
     if (OptionalHeader->Magic != PEFile::OptionSignature::NT_32Bit)
     {
         // We only work with 32 bit headers at the moment
-		KernalPrintf("     NO 32\n");
+		//KernalPrintf("     NO 32\n");
         return;
     }
 
@@ -1023,6 +1027,7 @@ void ClearBSS(intptr_t ImageHeader)
 		if(strncmp(SectionHeader->Name, ".data", 5) == 0)
 		{
 			void * Ptr = reinterpret_cast<void *>(ImageHeader + SectionHeader->VirtualAddress + SectionHeader->SizeOfRawData);
+			//KernalPrintf("  Base %08X, VA %08X, RS %08X, VS %08X\n", ImageHeader, SectionHeader->VirtualAddress, SectionHeader->SizeOfRawData, SectionHeader->VirtualSize);
 			if(SectionHeader->SizeOfRawData < SectionHeader->VirtualSize)
 			{
 				//KernalPrintf("  Patch. Base %08X, RD %08X, VS %08X, %08X\n", Ptr, SectionHeader->SizeOfRawData, SectionHeader->VirtualSize, SectionHeader->VirtualSize - SectionHeader->SizeOfRawData);
@@ -1038,6 +1043,9 @@ void ClearBSS(intptr_t ImageHeader)
 
 extern "C" void MultiBootMain(void *Address, uint32_t Magic) 
 {
+	// Make sure the BSS data is cleared first
+	ClearBSS(MB1Header.load_address);
+
 	// At this point we are officially alive, but we're still a long ways away from being up and running.
 	MultiBootInfo MBReader;
 
@@ -1047,18 +1055,18 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	// Panic if we don't have a text mode display of some sort
 	if(MBReader.FrameBuffer.Type != 0x02)
 		ASM_HLT;
-
+	
 	// Set up a simple text terminal for the kernal to use
 	RawTerminal TextTerm(static_cast<uint32_t>(MBReader.FrameBuffer.Address), MBReader.FrameBuffer.Width, MBReader.FrameBuffer.Height, MBReader.FrameBuffer.Pitch);
 	TextTerm.SetPauseFullScreen(false);
 	TextTerm.Clear();
+
 	KernalTerminal = &TextTerm;
 
 	KernalPrintf("Starting up BootDebug...\n");
 	KernalPrintf(" MultiBoot v%u %s\n", MBReader.Type, MBReader.BootLoader);
 
-	ClearBSS(MB1Header.load_address);
-	
+
 	// Step 1: Build the memory map in physical memory
 	KernalPrintf(" Building Memory Map...\n");
 	MemoryPageMap TempMap = BuildMemoryPageMap(MBReader);
@@ -1267,7 +1275,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	
 	while(KBBufferFirst != KBBufferLast)
 		FetchKeyboardBuffer();
-
+	
 	for(;;)
 		main(argc, argv);
 	

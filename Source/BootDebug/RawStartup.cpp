@@ -1043,9 +1043,8 @@ void ClearBSS(intptr_t ImageHeader)
 
 extern "C" void MultiBootMain(void *Address, uint32_t Magic) 
 {
-	// Make sure the BSS data is cleared first
 	ClearBSS(MB1Header.load_address);
-
+	
 	// At this point we are officially alive, but we're still a long ways away from being up and running.
 	MultiBootInfo MBReader;
 
@@ -1065,7 +1064,6 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	KernalPrintf("Starting up BootDebug...\n");
 	KernalPrintf(" MultiBoot v%u %s\n", MBReader.Type, MBReader.BootLoader);
-
 
 	// Step 1: Build the memory map in physical memory
 	KernalPrintf(" Building Memory Map...\n");
@@ -1164,7 +1162,12 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	// Create the Idle Thread
 	KernalPrintf(" Setting up Threads...\n");
-	ThreadListHead = reinterpret_cast<ThreadInformation *>(0x20000000);
+	
+	CoreComplex->ThreadComplex = reinterpret_cast<ThreadInformation *>(CoreComplex->PageMap.AllocateRange(0, sizeof(ThreadInformation) + 0x8000));
+
+	KernalPrintf("  Thread Base: %08X\n", CoreComplex->ThreadComplex);
+
+	ThreadListHead = CoreComplex->ThreadComplex;
 	ThreadListHead->Prev = 0;
 	ThreadListHead->Next = 0;
 
@@ -1194,7 +1197,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	ThreadListHead->SavedESP -= 10 * sizeof(uint32_t);
 	Stack::Push(ThreadListHead->SavedESP, OldESP);  // Current BP
 
-	ThreadInformation * MyThread = reinterpret_cast<ThreadInformation *>(reinterpret_cast<uint32_t>(ThreadListHead->Stack) + ThreadListHead->StackLimit + sizeof(ThreadInformation));
+	//ThreadInformation * MyThread = reinterpret_cast<ThreadInformation *>(reinterpret_cast<uint32_t>(ThreadListHead->Stack) + ThreadListHead->StackLimit + sizeof(ThreadInformation));
+	ThreadInformation * MyThread = reinterpret_cast<ThreadInformation *>(CoreComplex->PageMap.AllocateRange(0, sizeof(ThreadInformation) + 0x8000));
 
 	// Convert ourselves into a full thread
 	MyThread->RealAddress = reinterpret_cast<uintptr_t *>(MyThread);

@@ -1203,12 +1203,11 @@ void InfoCommand(CommandSet & Data)
 			return;
 
 		ASM_CLI;					
-		extern ThreadInformation *ThreadListHead;
 
 		printf("Thread Information\n");
 		printf(" Current Thread: %08X\n", CurrentThread->ThreadID);
 
-		CurrentThread = ThreadListHead;
+		CurrentThread = CoreComplexObj::GetComplex()->ThreadComplex;
 		while(CurrentThread != nullptr)
 		{
 			printf(" Thread ID %08X, Ticks %16llX\n", CurrentThread->ThreadID, CurrentThread->TickCount);
@@ -1257,8 +1256,11 @@ void InfoCommand(CommandSet & Data)
 		else
 		{
 			printf(" %08X: PCI Interrupt Routing Table\n", TableAddress);
-			PIRTable * Table = reinterpret_cast<PIRTable *>(TableAddress);
+			PIRTable * Table = reinterpret_cast<PIRTable *>(TableAddress);			
 			size_t Count = (Table->Size - 32) / 16;
+			if(Table->Size == 0)
+				Count = 0;
+
 			printf("  IRQ Rounter: %02X:%02X:%02X, Vender:Dev %04X:%04X\n", Table->RounterBus, Table->RounterDevFunction >> 3, Table->RounterDevFunction & 0x07, Table->RounterVenderID, Table->RounterDeviceID);
 							
 			printf("  PCI Only IRQs: ");

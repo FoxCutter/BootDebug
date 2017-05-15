@@ -148,7 +148,8 @@ void IDE::Setup(PCI &Bus)
 		if(InPortb(m_Primary.Status) != 0)
 		{
 			ReadPIO(m_Primary, &m_DevID[0], 0x100);
-			m_Primary.Device0Type = ATADrive;
+			if((InPortb(m_Primary.Status) & 0x01) == 0)
+				m_Primary.Device0Type = ATADrive;
 		}
 	}
 	else
@@ -156,7 +157,8 @@ void IDE::Setup(PCI &Bus)
 		if(SendCommand(m_Primary, false, 0, 0, 0xA1))
 		{
 			ReadPIO(m_Primary, &m_DevID[0], 0x100);
-			m_Primary.Device0Type = ATAPIDrive;
+			if((InPortb(m_Primary.Status) & 0x01) == 0)
+				m_Primary.Device0Type = ATAPIDrive;
 		}
 	}
 
@@ -167,7 +169,8 @@ void IDE::Setup(PCI &Bus)
 		if(InPortb(m_Primary.Status) != 0)
 		{
 			ReadPIO(m_Primary, &m_DevID[1], 0x100);
-			m_Primary.Device1Type = ATADrive;
+			if((InPortb(m_Primary.Status) & 0x01) == 0)
+				m_Primary.Device1Type = ATADrive;
 		}
 	}
 	else
@@ -175,7 +178,8 @@ void IDE::Setup(PCI &Bus)
 		if(SendCommand(m_Primary, true, 0, 0, 0xA1))
 		{
 			ReadPIO(m_Primary, &m_DevID[1], 0x100);
-			m_Primary.Device1Type = ATAPIDrive;
+			if((InPortb(m_Primary.Status) & 0x01) == 0)
+				m_Primary.Device1Type = ATAPIDrive;
 		}
 	}
 
@@ -185,7 +189,8 @@ void IDE::Setup(PCI &Bus)
 		if(InPortb(m_Secondary.Status) != 0)
 		{
 			ReadPIO(m_Secondary, &m_DevID[2], 0x100);
-			m_Secondary.Device0Type = ATADrive;
+			if((InPortb(m_Secondary.Status) & 0x01) == 0)
+				m_Secondary.Device0Type = ATADrive;
 		}
 	}
 	else
@@ -193,7 +198,8 @@ void IDE::Setup(PCI &Bus)
 		if(SendCommand(m_Secondary, false, 0, 0, 0xA1))
 		{
 			ReadPIO(m_Secondary, &m_DevID[2], 0x100);
-			m_Secondary.Device0Type = ATAPIDrive;
+			if((InPortb(m_Secondary.Status) & 0x01) == 0)
+				m_Secondary.Device0Type = ATAPIDrive;
 		}
 	}
 
@@ -203,7 +209,8 @@ void IDE::Setup(PCI &Bus)
 		if(InPortb(m_Secondary.Status) != 0)
 		{
 			ReadPIO(m_Secondary, &m_DevID[3], 0x100);
-			m_Secondary.Device1Type = ATADrive;
+			if((InPortb(m_Secondary.Status) & 0x01) == 0)
+				m_Secondary.Device1Type = ATADrive;
 		}
 	}
 	else
@@ -211,7 +218,8 @@ void IDE::Setup(PCI &Bus)
 		if(SendCommand(m_Secondary, true, 0, 0, 0xA1))
 		{
 			ReadPIO(m_Secondary, &m_DevID[3], 0x100);
-			m_Secondary.Device1Type = ATAPIDrive;
+			if((InPortb(m_Secondary.Status) & 0x01) == 0)
+				m_Secondary.Device1Type = ATAPIDrive;
 		}
 	}
 
@@ -276,8 +284,13 @@ bool IDE::ReadPIO(DeviceInfo &Device, void *Address, uint32_t WordCount)
 {
 	uint16_t * Data = reinterpret_cast<uint16_t *>(Address);
 
-	while((InPortb(Device.Status) & 0x08) == 0x00);
+	// Wait for Busy to clear
+	while((InPortb(Device.Status) & 0x80) != 0x00);	
+	//while((InPortb(Device.Status) & 0x08) == 0x00);
 
+	if((InPortb(Device.Status) & 0x01) != 0x00)
+		return false;
+	
 	// Slow read time.
 	for(uint32_t x = 0; x < WordCount; x++)
 	{

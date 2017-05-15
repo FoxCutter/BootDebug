@@ -38,7 +38,7 @@ struct CoreComplexObj
 	RawMemory KernalHeap;
 	MemoryPageMap PageMap;
 
-	//ThreadInformation *ThreadComplex;
+	ThreadInformation *ThreadComplex;
 	//ProcessInformation *ProcessComplex;
 	//DeviceInformation * DeviceComplex;
 	HardwareComplexObj HardwareComplex;

@@ -115,6 +115,7 @@ PCINameEntry DeviceNameList[] =
 	{0x080300, "Generic RTC Controller"},
 	{0x080301, "ISA RTC Controller"},
 	{0x080400, "Generic PCI Hot-Plug Controller"},
+	{0x080500, "SD Host Controller"},
 	{0x088000, "Other System Peripheral"},
 	
 	// Class 9
@@ -122,7 +123,8 @@ PCINameEntry DeviceNameList[] =
 	{0x090100, "Digitizer"},
 	{0x090200, "Mouse Controller"},
 	{0x090300, "Scanner Controller"},
-	{0x090400, "Gameport Controller"},
+	{0x090400, "Gameport Controller (Generic)"},
+	{0x090410, "Gameport Controller"},
 	{0x098000, "Other Input Controller"},
 
 	// Class A
@@ -153,6 +155,8 @@ PCINameEntry DeviceNameList[] =
 	{0x0C0500, "SMBus"},
 	{0x0C0600, "InfiniBand"},
 	{0x0C0700, "IPMI SMIC Interface"},
+	{0x0C0701, "IPMI Kybd Controller Style Interface"},
+	{0x0C0702, "IPMI Block Transfer Interface"},
 	{0x0C0800, "SERCOS Interface Standard (IEC 61491)"},
 	{0x0C0900, "CANbus"},
 	

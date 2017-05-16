@@ -220,6 +220,9 @@
     <ClInclude Include="LDT.h">
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Handles.h">
+      <Filter>Kernal\Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="IntEntry.asm">

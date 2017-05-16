@@ -20,8 +20,11 @@ enum ThreadState
 	Completed,
 };
 
-struct ThreadInformation : ListNode<ThreadInformation>
+struct ThreadInformation : ListNodeBase<ThreadInformation>
 {
+	ListEntry Prev;
+	ListEntry Next;
+
 	uintptr_t *	RealAddress;
 	uint32_t ThreadID;
 	ThreadState State;

@@ -1167,7 +1167,16 @@ void InfoCommand(CommandSet & Data)
 
 		return;
 	}
-	if(_stricmp("MMU", Data.ArgData[1]) == 0)
+	if(_stricmp("XX", Data.ArgData[1]) == 0)
+	{
+		OutPortb(0x64, 0x60);
+		OutPortb(0x60, 0x05);
+		
+		OutPortb(0x60, 0xF0);
+		OutPortb(0x60, 0x02);
+
+	}
+	else if(_stricmp("MMU", Data.ArgData[1]) == 0)
 	{
 		MMUManager->Dump();
 	}
@@ -1261,57 +1270,41 @@ void InfoCommand(CommandSet & Data)
 			if(Table->Size == 0)
 				Count = 0;
 
-			printf("  IRQ Rounter: %02X:%02X:%02X, Vender:Dev %04X:%04X\n", Table->RounterBus, Table->RounterDevFunction >> 3, Table->RounterDevFunction & 0x07, Table->RounterVenderID, Table->RounterDeviceID);
+			printf("  Version %02u.%02u, Size %04X, Miniport %08X\n", (Table->Version & 0xFF00) >> 8, Table->Version & 0xFF, Table->Size, Table->MiniportData);
+
+			printf("  IRQ Rounter Address: %02X:%02X:%02X, Vender:Dev %04X:%04X\n", Table->RounterBus, Table->RounterDevFunction >> 3, Table->RounterDevFunction & 0x07, Table->RounterVenderID, Table->RounterDeviceID);
 							
-			printf("  PCI Only IRQs: ");
+			printf("  PCI Exclusive IRQs: ");
 			for(int x = 0; x < 16; x++)
 			{
-				if(Table->PCIExcuslveIRQ & 0x1 << x)
+				if(Table->PCIExcuslveIRQ & (0x1 << x))
 				{
-					printf("%02X ", x);
+					printf("%X ", x);
 				}
 			}
 
 			printf("\n");
 							
+			printf("  Slot Bus  Dev  Pin  Link  IRQs\n");
 			for(size_t x = 0; x < Count; x++)
 			{
-				printf("   DEV %02X:%02X", Table->Entries[x].Bus, Table->Entries[x].Device >> 3);
 				for(int y = 0; y < 4; y++)
 				{
 					if(Table->Entries[x].INT[y].LinkValue == 0)
-						break;
+						continue;
 
-					printf(", INT%c: %02X", 'A' + y, Table->Entries[x].INT[y].LinkValue);
-				}
-
-				printf("\n");
-			}
-
-			/*
- 			for(size_t x = 0; x < Count; x++)
-			{
-				for(int y = 0; y < 4; y++)
-				{
-					if(Table->Entries[x].INT[y].LinkValue == 0)
-						break;
-
-					printf("   DEV %02X:%02X", Table->Entries[x].Bus, Table->Entries[x].Device >> 3);
-	
-					printf(", INT%c: %02X IRQS: ", 'A' + y, Table->Entries[x].INT[y].LinkValue);
-
+					printf("  % 2u   %02X   %02X    %c   %02X    ", Table->Entries[x].SlotNum, Table->Entries[x].Bus, Table->Entries[x].Device >> 3, 'A' + y, Table->Entries[x].INT[y].LinkValue);
 					for(int z = 0; z < 16; z++)
 					{
-						if(Table->Entries[x].INT[y].IRQBitmap & 0x1 << z)
+						if(Table->Entries[x].INT[y].IRQBitmap & (0x1 << z))
 						{
-							printf("%02X ", z);
+							printf("%X ", z);
 						}
 					}
 
 					printf("\n");
 				}
 			}
-			*/
 		}
 	}
 	else if(_stricmp("BIOS", Data.ArgData[1]) == 0)

@@ -159,6 +159,7 @@
     <ClInclude Include="EnhancedHCI.h" />
     <ClInclude Include="ExtensibleHCI.h" />
     <ClInclude Include="GDT.h" />
+    <ClInclude Include="Handles.h" />
     <ClInclude Include="HardwareTree.h" />
     <ClInclude Include="IDE.h" />
     <ClInclude Include="IDT.h" />

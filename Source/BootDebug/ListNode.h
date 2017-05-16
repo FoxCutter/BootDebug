@@ -110,8 +110,12 @@ struct ListNodeBase
 
 // Lists seem to be everywhere, so lets just make a simple template to handle them and the most common functions
 template<typename T>
-struct ListNode : ListNodeBase<T>
+struct NodeList : T, ListNodeBase<NodeList<T>>
 {	
-	ListNodeBase<T>::ListEntry Prev;
-	ListNodeBase<T>::ListEntry Next;
+	NodeList() : T()
+	{
+		Prev = Next = nullptr;
+	}
+	ListNodeBase<NodeList<T>>::ListEntry Prev;
+	ListNodeBase<NodeList<T>>::ListEntry Next;
 };

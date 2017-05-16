@@ -268,258 +268,177 @@ void SystemTrap(volatile InterruptContext * Context, uintptr_t * Data)
 }
 
 // Displayable characters will map to their ANSII key codes, none display characters that dosn't have a matching ANSII code will get codes with the high bit set.
-enum class KeyCodes : uint8_t
-{	
-	Blank				= 0x00,
+enum KeyCodes : uint8_t
+{
+	KeyCode_Blank = 0x00,
 
-	Backspace			= 0x08,
-	Tab,
-	Enter,
+	KeyCode_Backspace	= 0x08,
+	KeyCode_Tab,
+	KeyCode_Enter,
+	KeyCode_Escape		= 0x1B,
 
-	Escape				= 0x1B,
+	KeyCode_Space		= ' ',	// 0x20
+	KeyCode_0			= '0',	// 0x30
+	KeyCode_a			= 'a',	// 0x41
+	KeyCode_A			= 'A',	// 0x61
+	KeyCode_Delete		= 0x7F,
 
-	Space				= 0x20,
-	Exclimation,
-	DoubleQuote,
-	Hash,
-	DollarSign,
-	Percent,
-	Ampersand,
-	SingleQuote,
-	LeftParentheses,
-	RightParentheses,
-	Star,
-	Plus,
-	Comma,
-	Dash,
-	Period,
-	Slash,
-
-	_0					= 0x30,
-	_1,
-	_2,
-	_3,
-	_4,
-	_5,
-	_6,
-	_7,
-	_8,
-	_9,
-	Colon,
-	Semicolon,
-	LessThen,
-	Equals,
-	GreaterThen,
-	QuestionMark,
-
-	AtSign				= 0x40,
-	_a,
-	_b,
-	_c,
-	_d,
-	_e,
-	_f,
-	_g,
-	_h,
-	_i,
-	_j,
-	_k,
-	_l,
-	_m,
-	_n,
-	_o,
-	_p,
-	_q,
-	_r,
-	_s,
-	_t,
-	_u,
-	_v,
-	_w,
-	_x,
-	_y,
-	_z,	
-	LeftBracket,
-	BackSlash,
-	RightBracket,
-	Carrot,
-	UnderLine,
-
-	ReverseQuote		= 0x60,
-	_A,
-	_B,
-	_C,
-	_D,
-	_E,
-	_F,
-	_G,
-	_H,
-	_I,
-	_J,
-	_K,
-	_L,
-	_M,
-	_N,
-	_O,
-	_P,
-	_Q,
-	_R,
-	_S,
-	_T,
-	_U,
-	_V,
-	_W,
-	_X,
-	_Y,
-	_Z,	
-	LeftCurlyBrace,
-	Pipe,
-	RightCurlyBrace,
-	Tilde,
-	Delete,
-	
-	Extended_1			= 0x81, // Extended codes
-	
-	// F keys
-	F1					= 0x91,
-	F2,
-	F3,
-	F4,
-	F5,
-	F6,
-	F7,
-	F8,
-	F9,
-	F10,
-	F11,
-	F12,
-	F13,
-	F14,
-	F15,
-	
-	Insert,
-	PrintScreen,
-	Pause,
-	Break,
+	KeyCode_Extended	= 0x80, // Extended codes
 
 	// Movement
-	Up					= 0xA0,
-	Down,
-	Left,
-	Right,
-	PageUp,
-	PageDown,
-	Home,
-	End,
+	KeyCode_Insert		= KeyCode_Extended,
+	KeyCode_End,
+	KeyCode_Down,
+	KeyCode_PageDown,
+	KeyCode_Left,
+	KeyCode_Right,
+	KeyCode_Home,
+	KeyCode_Up,
+	KeyCode_PageUp,
 
+	// F keys
+	KeyCode_F0					= 0x90,
+	KeyCode_F1,
+	KeyCode_F2,
+	KeyCode_F3,
+	KeyCode_F4,
+	KeyCode_F5,
+	KeyCode_F6,
+	KeyCode_F7,
+	KeyCode_F8,
+	KeyCode_F9,
+	KeyCode_F10,
+	KeyCode_F11,
+	KeyCode_F12,
+	KeyCode_F13,
+	KeyCode_F14,
+	KeyCode_F15,
+	
 	// Modifiers (LSB = Right)
-	LeftShift			= 0xB0,
-	RightShift,
-	LeftCtrl			= 0xB2,
-	RightCtrl,
-	LeftAlt				= 0xB4,
-	RightAlt,
-	LeftGUI				= 0xB6,
-	RightGUI,
+	KeyCode_LeftShift			= 0xA0,
+	KeyCode_RightShift,
+	KeyCode_LeftCtrl			= 0xA2,
+	KeyCode_RightCtrl,
+	KeyCode_LeftAlt				= 0xA4,
+	KeyCode_RightAlt,
+	KeyCode_LeftGUI				= 0xA6,
+	KeyCode_RightGUI,
+	KeyCode_AltGr               = 0xA8,
 	
-	Keypad_0			= 0xC0,		// 0 / Insert
-	Keypad_1,						// 1 / End
-	Keypad_2,						// 2 / Down
-	Keypad_3,						// 3 / PageDown
-	Keypad_4,						// 4 / Left 
-	Keypad_5,						// 5 / Blank
-	Keypad_6,						// 6 / Right
-	Keypad_7,						// 7 / Home
-	Keypad_8,						// 8 / Up
-	Keypad_9,						// 9 / PageUp
-	Keypad_Period,
-	Keypad_Slash,
-	Keypad_Star,
-	Keypad_Dash,
-	Keypad_Plus,
-	Keypad_Enter,
-
+	KeyCode_Keypad_0			= 0xB0,		// 0 / Insert
+	KeyCode_Keypad_1,						// 1 / End
+	KeyCode_Keypad_2,						// 2 / Down
+	KeyCode_Keypad_3,						// 3 / PageDown
+	KeyCode_Keypad_4,						// 4 / Left 
+	KeyCode_Keypad_5,						// 5 / Blank
+	KeyCode_Keypad_6,						// 6 / Right
+	KeyCode_Keypad_7,						// 7 / Home
+	KeyCode_Keypad_8,						// 8 / Up
+	KeyCode_Keypad_9,						// 9 / PageUp
+	KeyCode_Keypad_Period,
+	KeyCode_Keypad_Slash,
+	KeyCode_Keypad_Star,
+	KeyCode_Keypad_Dash,
+	KeyCode_Keypad_Plus,
+	KeyCode_Keypad_Enter,
 	
-	CapsLock			= 0xF0,
-	NumberLock,
-	ScrollLock,
-	Apps,
-	Power,
-	Sleep,
-	Wake,
-	SysRequest			= 0xFF
+	KeyCode_Keypad_Insert		= 0xC0,		// 0 / Insert
+	KeyCode_Keypad_End,						// 1 / End
+	KeyCode_Keypad_Down,					// 2 / Down
+	KeyCode_Keypad_PageDown,				// 3 / PageDown
+	KeyCode_Keypad_Left,					// 4 / Left 
+	KeyCode_Keypad_Shift_5,					// 5 / Blank
+	KeyCode_Keypad_Right,					// 6 / Right
+	KeyCode_Keypad_Home,					// 7 / Home
+	KeyCode_Keypad_Up,						// 8 / Up
+	KeyCode_Keypad_PageUp,					// 9 / PageUp
+	
+	KeyCode_CapsLock			= 0xD0,
+	KeyCode_NumberLock,
+	KeyCode_ScrollLock,
+	KeyCode_Apps,
+	KeyCode_Power,
+	KeyCode_Sleep,
+	KeyCode_Wake,
+	KeyCode_PrintScreen,
+	KeyCode_Pause,
+	KeyCode_Break,
+
+	KeyCode_SysRequest			= 0xFF
+
 };
 
-KeyCodes kbdus2[] =
-{
-//	x0						x1						x2						x3							x4						x5						x6						x7						
-//	x8						x9						xA						xB							xC						xD						xE						xF
-	KeyCodes::Blank,		KeyCodes::F9,			KeyCodes::Blank,		KeyCodes::F5,				KeyCodes::F3,			KeyCodes::F1,			KeyCodes::F2,			KeyCodes::F12,			// 00	
-	KeyCodes::Blank,		KeyCodes::F10,			KeyCodes::F8,			KeyCodes::F6,				KeyCodes::F4,			KeyCodes::Tab,			KeyCodes::Tilde,		KeyCodes::Blank,		// 08
-	KeyCodes::Blank,		KeyCodes::LeftAlt,		KeyCodes::LeftShift,	KeyCodes::Blank,			KeyCodes::LeftCtrl,		KeyCodes::_q,			KeyCodes::_1,			KeyCodes::Blank,		// 10
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::_z,			KeyCodes::_s,				KeyCodes::_a,			KeyCodes::_w,			KeyCodes::_2,			KeyCodes::Blank,		// 18
-	KeyCodes::Blank,		KeyCodes::_c,			KeyCodes::_x,			KeyCodes::_d,				KeyCodes::_e,			KeyCodes::_4,			KeyCodes::_3,			KeyCodes::Blank,		// 20	
-	KeyCodes::Blank,		KeyCodes::Space,		KeyCodes::_v,			KeyCodes::_f,				KeyCodes::_t,			KeyCodes::_r,			KeyCodes::_5,			KeyCodes::Blank,		// 28
-	KeyCodes::Blank,		KeyCodes::_n,			KeyCodes::_b,			KeyCodes::_h,				KeyCodes::_g,			KeyCodes::_y,			KeyCodes::_6,			KeyCodes::Blank,		// 30
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::_m,			KeyCodes::_j,				KeyCodes::_u,			KeyCodes::_7,			KeyCodes::_8,			KeyCodes::Blank,		// 38
-	KeyCodes::Blank,		KeyCodes::Comma,		KeyCodes::_k,			KeyCodes::_i,				KeyCodes::_o,			KeyCodes::_0,			KeyCodes::_9,			KeyCodes::Blank,		// 40
-	KeyCodes::Blank,		KeyCodes::Period,		KeyCodes::Slash,		KeyCodes::_l,				KeyCodes::Semicolon,	KeyCodes::_p,			KeyCodes::Dash,			KeyCodes::Blank,		// 48
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::SingleQuote,	KeyCodes::Blank,			KeyCodes::LeftBracket,	KeyCodes::Equals,		KeyCodes::Blank,		KeyCodes::Blank,		// 50
-	KeyCodes::CapsLock,		KeyCodes::RightShift,	KeyCodes::Enter,		KeyCodes::RightBracket,		KeyCodes::Blank,		KeyCodes::BackSlash,	KeyCodes::Blank,		KeyCodes::Blank,		// 58
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Backspace,	KeyCodes::Blank,		// 60
-	KeyCodes::Blank,		KeyCodes::Keypad_1,		KeyCodes::Blank,		KeyCodes::Keypad_4,			KeyCodes::Keypad_7,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 68
-	KeyCodes::Keypad_0,		KeyCodes::Keypad_Period,KeyCodes::Keypad_2,		KeyCodes::Keypad_5,			KeyCodes::Keypad_6,		KeyCodes::Keypad_8,		KeyCodes::Escape,		KeyCodes::NumberLock,	// 70
-	KeyCodes::F11,			KeyCodes::Keypad_Plus,	KeyCodes::Keypad_3,		KeyCodes::Keypad_Dash,		KeyCodes::Keypad_Star,	KeyCodes::Keypad_9,		KeyCodes::ScrollLock,	KeyCodes::Blank,		// 78
 
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::F7,				KeyCodes::SysRequest,	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 80
+uint8_t kbdus2[] =
+{
+//	x0					x1						x2						x3						x4						x5					x6					x7						
+//	x8					x9						xA						xB						xC						xD					xE					xF
+	KeyCode_Blank,		KeyCode_F9,				KeyCode_Blank,			KeyCode_F5,				KeyCode_F3,				KeyCode_F1,			KeyCode_F2,			KeyCode_F12,		// 00	
+	KeyCode_Blank,		KeyCode_F10,			KeyCode_F8,				KeyCode_F6,				KeyCode_F4,				KeyCode_Tab,		'`',				KeyCode_Blank,		// 08
+	KeyCode_Blank,		KeyCode_LeftAlt,		KeyCode_LeftShift,		KeyCode_Blank,			KeyCode_LeftCtrl,		'q',				'1',				KeyCode_Blank,		// 10
+	KeyCode_Blank,		KeyCode_Blank,			'z',					's',					'a',					'w',				'2',				KeyCode_Blank,		// 18
+	KeyCode_Blank,		'c',					'x',					'd',					'e',					'4',				'3',				KeyCode_Blank,		// 20	
+	KeyCode_Blank,		KeyCode_Space,			'v',					'f',					't',					'r',				'5',				KeyCode_Blank,		// 28
+	KeyCode_Blank,		'n',					'b',					'h',					'g',					'y',				'6',				KeyCode_Blank,		// 30
+	KeyCode_Blank,		KeyCode_Blank,			'm',					'j',					'u',					'7',				'8',				KeyCode_Blank,		// 38
+	KeyCode_Blank,		',',					'k',					'i',					'o',					'0',				'9',				KeyCode_Blank,		// 40
+	KeyCode_Blank,		'.',					'/',					'l',					';',					'p',				'-',				KeyCode_Blank,		// 48
+	KeyCode_Blank,		KeyCode_Blank,			'\'',					KeyCode_Blank,			'[',					'=',				KeyCode_Blank,		KeyCode_Blank,		// 50
+	KeyCode_CapsLock,	KeyCode_RightShift,		KeyCode_Enter,			']',					KeyCode_Blank,			'\\',				KeyCode_Blank,		KeyCode_Blank,		// 58
+	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Backspace,	KeyCode_Blank,		// 60
+	KeyCode_Blank,		KeyCode_Keypad_1,		KeyCode_Blank,			KeyCode_Keypad_4,		KeyCode_Keypad_7,		KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 68
+	KeyCode_Keypad_0,	KeyCode_Keypad_Period,	KeyCode_Keypad_2,		KeyCode_Keypad_5,		KeyCode_Keypad_6,		KeyCode_Keypad_8,	KeyCode_Escape,		KeyCode_NumberLock,	// 70
+	KeyCode_F11,		KeyCode_Keypad_Plus,	KeyCode_Keypad_3,		KeyCode_Keypad_Dash,	KeyCode_Keypad_Star,	KeyCode_Keypad_9,	KeyCode_ScrollLock,	KeyCode_Blank,		// 78
+
+	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_F7,				KeyCode_SysRequest,		KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 80
 };
 
-KeyCodes kbdusShift[] =
+uint8_t kbdus2Shift[] =
 {
-//	x0						x1						x2						x3							x4						x5						x6						x7						
-//	x8						x9						xA						xB							xC						xD						xE						xF
-	KeyCodes::Blank,		KeyCodes::F9,			KeyCodes::Blank,		KeyCodes::F5,				KeyCodes::F3,			KeyCodes::F1,			KeyCodes::F2,			KeyCodes::F12,			// 00	
-	KeyCodes::Blank,		KeyCodes::F10,			KeyCodes::F8,			KeyCodes::F6,				KeyCodes::F4,			KeyCodes::Tab,			KeyCodes::ReverseQuote,	KeyCodes::Blank,		// 08
-	KeyCodes::Blank,		KeyCodes::LeftAlt,		KeyCodes::LeftShift,	KeyCodes::Blank,			KeyCodes::LeftCtrl,		KeyCodes::_Q,			KeyCodes::Exclimation,	KeyCodes::Blank,		// 10
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::_Z,			KeyCodes::_S,				KeyCodes::_A,			KeyCodes::_W,			KeyCodes::AtSign,		KeyCodes::Blank,		// 18
-	KeyCodes::Blank,		KeyCodes::_C,			KeyCodes::_X,			KeyCodes::_D,				KeyCodes::_E,			KeyCodes::DollarSign,	KeyCodes::Hash,			KeyCodes::Blank,		// 20	
-	KeyCodes::Blank,		KeyCodes::Space,		KeyCodes::_V,			KeyCodes::_F,				KeyCodes::_T,			KeyCodes::_R,			KeyCodes::Percent,		KeyCodes::Blank,		// 28
-	KeyCodes::Blank,		KeyCodes::_N,			KeyCodes::_B,			KeyCodes::_H,				KeyCodes::_G,			KeyCodes::_Y,			KeyCodes::Carrot,		KeyCodes::Blank,		// 30
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::_M,			KeyCodes::_J,				KeyCodes::_U,			KeyCodes::Ampersand,	KeyCodes::Star,			KeyCodes::Blank,		// 38
-	KeyCodes::Blank,		KeyCodes::LessThen,		KeyCodes::_K,			KeyCodes::_I,				KeyCodes::_O,			KeyCodes::RightParentheses,	KeyCodes::LeftParentheses,	KeyCodes::Blank,// 40
-	KeyCodes::Blank,		KeyCodes::GreaterThen,	KeyCodes::QuestionMark,	KeyCodes::_L,				KeyCodes::Colon,		KeyCodes::_P,			KeyCodes::UnderLine,	KeyCodes::Blank,		// 48
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::DoubleQuote,	KeyCodes::Blank,			KeyCodes::LeftCurlyBrace,	KeyCodes::Plus,		KeyCodes::Blank,		KeyCodes::Blank,		// 50
-	KeyCodes::CapsLock,		KeyCodes::RightShift,	KeyCodes::Enter,		KeyCodes::RightCurlyBrace,	KeyCodes::Blank,		KeyCodes::Pipe,			KeyCodes::Blank,		KeyCodes::Blank,		// 58
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Backspace,	KeyCodes::Blank,		// 60
-	KeyCodes::Blank,		KeyCodes::Keypad_1,		KeyCodes::Blank,		KeyCodes::Keypad_4,			KeyCodes::Keypad_7,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 68
-	KeyCodes::Keypad_0,		KeyCodes::Keypad_Period,KeyCodes::Keypad_2,		KeyCodes::Keypad_5,			KeyCodes::Keypad_6,		KeyCodes::Keypad_8,		KeyCodes::Escape,		KeyCodes::NumberLock,	// 70
-	KeyCodes::F11,			KeyCodes::Keypad_Plus,	KeyCodes::Keypad_3,		KeyCodes::Keypad_Dash,		KeyCodes::Keypad_Star,	KeyCodes::Keypad_9,		KeyCodes::ScrollLock,	KeyCodes::Blank,		// 78
+//	x0					x1						x2						x3						x4						x5					x6					x7						
+//	x8					x9						xA						xB						xC						xD					xE					xF
+	KeyCode_Blank,		KeyCode_F9,				KeyCode_Blank,			KeyCode_F5,				KeyCode_F3,				KeyCode_F1,			KeyCode_F2,			KeyCode_F12,		// 00	
+	KeyCode_Blank,		KeyCode_F10,			KeyCode_F8,				KeyCode_F6,				KeyCode_F4,				KeyCode_Tab,		'~',				KeyCode_Blank,		// 08
+	KeyCode_Blank,		KeyCode_LeftAlt,		KeyCode_LeftShift,		KeyCode_Blank,			KeyCode_LeftCtrl,		'Q',				'!',				KeyCode_Blank,		// 10
+	KeyCode_Blank,		KeyCode_Blank,			'Z',					'S',					'A',					'W',				'@',				KeyCode_Blank,		// 18
+	KeyCode_Blank,		'C',					'X',					'D',					'E',					'$',				'#',				KeyCode_Blank,		// 20	
+	KeyCode_Blank,		KeyCode_Space,			'V',					'F',					'T',					'R',				'%',				KeyCode_Blank,		// 28
+	KeyCode_Blank,		'N',					'B',					'H',					'G',					'Y',				'^',				KeyCode_Blank,		// 30
+	KeyCode_Blank,		KeyCode_Blank,			'M',					'J',					'U',					'&',				'*',				KeyCode_Blank,		// 38
+	KeyCode_Blank,		'<',					'K',					'I',					'O',					')',				'(',				KeyCode_Blank,		// 40
+	KeyCode_Blank,		'>',					'?',					'L',					':',					'P',				'_',				KeyCode_Blank,		// 48
+	KeyCode_Blank,		KeyCode_Blank,			'\"',					KeyCode_Blank,			'{',					'+',				KeyCode_Blank,		KeyCode_Blank,		// 50
+	KeyCode_CapsLock,	KeyCode_RightShift,		KeyCode_Enter,			'}',					KeyCode_Blank,			'\\',				KeyCode_Blank,		KeyCode_Blank,		// 58
+	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Backspace,	KeyCode_Blank,		// 60
+	KeyCode_Blank,		KeyCode_Keypad_1,		KeyCode_Blank,			KeyCode_Keypad_4,		KeyCode_Keypad_7,		KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 68
+	KeyCode_Keypad_0,	KeyCode_Keypad_Period,	KeyCode_Keypad_2,		KeyCode_Keypad_5,		KeyCode_Keypad_6,		KeyCode_Keypad_8,	KeyCode_Escape,		KeyCode_NumberLock,	// 70
+	KeyCode_F11,		KeyCode_Keypad_Plus,	KeyCode_Keypad_3,		KeyCode_Keypad_Dash,	KeyCode_Keypad_Star,	KeyCode_Keypad_9,	KeyCode_ScrollLock,	KeyCode_Blank,		// 78
 
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::F7,				KeyCodes::SysRequest,	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 80
+	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_F7,				KeyCode_SysRequest,		KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 80
 };
 
-KeyCodes kbdusE0[] =
+uint8_t kbdus2E0[] =
 {
-//	x0						x1						x2						x3							x4						x5						x6						x7						
-//	x8						x9						xA						xB							xC						xD						xE						xF
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 00
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 08
-	KeyCodes::Blank,		KeyCodes::RightAlt,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::RightCtrl,	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 10
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::LeftGUI,		// 18
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::RightGUI,		// 20
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Apps,			// 28
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Power,		// 30
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Sleep,		// 38
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 40
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Keypad_Slash,	KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 48
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 50
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Keypad_Enter,	KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Wake,			KeyCodes::Blank,		// 58
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 60
-	KeyCodes::Blank,		KeyCodes::End,			KeyCodes::Blank,		KeyCodes::Left,				KeyCodes::Home,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 68
-	KeyCodes::Insert,		KeyCodes::Delete,		KeyCodes::Down,			KeyCodes::Blank,			KeyCodes::Right,		KeyCodes::Up,			KeyCodes::Blank,		KeyCodes::Blank,		// 70
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::PageDown,		KeyCodes::Blank,			KeyCodes::PrintScreen,	KeyCodes::PageUp,		KeyCodes::Break,		KeyCodes::Blank,		// 78
+//	x0						x1						x2						x3					x4						x5					x6					x7						
+//	x8						x9						xA						xB					xC						xD					xE					xF
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 00
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 08
+	KeyCode_Blank,			KeyCode_RightAlt,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_RightCtrl,		KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 10
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_LeftGUI,	// 18
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_RightGUI,	// 20
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Apps,		// 28
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Power,		// 30
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Sleep,		// 38
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 40
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Keypad_Slash,	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 48
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 50
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Keypad_Enter,	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Wake,		KeyCode_Blank,		// 58
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 60
+	KeyCode_Blank,			KeyCode_End,			KeyCode_Blank,			KeyCode_Left,		KeyCode_Home,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 68
+	KeyCode_Insert,			KeyCode_Delete,			KeyCode_Down,			KeyCode_Blank,		KeyCode_Right,			KeyCode_Up,			KeyCode_Blank,		KeyCode_Blank,		// 70
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_PageDown,		KeyCode_Blank,		KeyCode_PrintScreen,	KeyCode_PageUp,		KeyCode_Break,		KeyCode_Blank,		// 78
 
-	KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,			KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		KeyCodes::Blank,		// 80
+	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 80
 };
 
 
@@ -1280,6 +1199,18 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	while(KBBufferFirst != KBBufferLast)
 		FetchKeyboardBuffer();
 	
+	struct TempK
+	{
+		uint32_t Test;
+		uint16_t K;
+	};
+
+	typedef NodeList<TempK> TempR;
+	TempR RootJ;
+	TempR KitJ;
+
+	RootJ.InsertAfter(&KitJ);
+
 	for(;;)
 		main(argc, argv);
 	

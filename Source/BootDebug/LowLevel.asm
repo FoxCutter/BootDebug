@@ -427,6 +427,59 @@ StartV86 PROC C
 
 StartV86 ENDP
 
+;-----------------------
+; stack
+;-----------------------
+; 20 ; ReturnValue
+; 16 ; New CR3
+; 12 ; New ESP
+; 8  ; Address to Saved ESP
+; 4  ; Return Address
+; 0  ; Saved EBP
 
+
+;extern "C" void SwitchContext(uintptr_t * SavedESP, uint32_t NewESP, uint32_t NewCR3, uint32_t ReturnValue)
+SwitchContext PROC C
+	push ebp
+
+	mov edi, [eSP + 8] ; Address to Saved ESP
+	mov [edi], esp
+
+	mov ebx, [eSP + 12]	; NewESP
+	mov ecx, [eSP + 16] ; NewCR3
+	mov eax, [eSP + 20] ; ReurnValue
+	mov edx, cr3 	
+
+	mov esp, ebx
+
+	cmp edx, ecx
+	je SkipCR		
+	mov cr3, ecx
+
+SkipCR:
+	
+	pop ebp
+	ret
+
+SwitchContext ENDP
+
+ThreadRoot PROC C
+	mov ebx, 0
+	mov ecx, 0
+	mov edx, 0
+	mov edi, 0
+	mov esi, 0
+	mov ebp, esp
+
+ThreadLoop:	
+	mov edx, dword ptr[ebp]
+	push eax
+	call edx
+
+	jmp ThreadLoop
+	
+ThreadRoot ENDP
 
 END
+
+

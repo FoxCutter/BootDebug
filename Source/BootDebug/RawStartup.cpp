@@ -653,11 +653,7 @@ ThreadInformation *FindNextThread(ThreadInformation *CurrentThread)
 	return NextThread;
 }
 
-#pragma warning(push)
-// This turns off the warning: 
-//       warning C4731: 'ClockInterrupt' : frame pointer register 'ebp' modified by inline assembly code
-// Because that's the point in this case. 
-#pragma warning(disable: 4731)
+extern "C" uintptr_t * SwitchContext(uintptr_t * SavedESP, uint32_t NewESP, uint32_t NewCR3, uint32_t ReturnValue);
 
 void ClockInterrupt(volatile InterruptContext * OldContext, uintptr_t * Data)
 {
@@ -673,38 +669,7 @@ void ClockInterrupt(volatile InterruptContext * OldContext, uintptr_t * Data)
 		if(NextThread == CurrentThread)
 			return;
 		
-		_asm
-		{
-			mov ebx, CurrentThread
-			mov ecx, NextThread
-			lea esi, [ebx]
-			lea edi, [ecx]
-
-			push ebp
-
-			mov eax, cr3 
-			mov [esi].SavedCR3, eax
-			mov edx, [edi].SavedCR3
-
-			mov [esi].SavedESP, esp
-			mov esp, [edi].SavedESP
-
-			cmp eax, edx
-			je SkipCR		
-			mov cr3, edx
-		SkipCR:
-			pop ebp
-			
-			mov CurrentThread, ebx
-			mov NextThread, ecx
-
-			mov eax, 0
-			mov ebx, 0
-			mov ecx, 0
-			mov edx, 0
-			mov edi, 0
-			mov esi, 0
-		}
+		NextThread = reinterpret_cast<ThreadInformation *>(SwitchContext(&CurrentThread->SavedESP, NextThread->SavedESP, NextThread->SavedCR3, reinterpret_cast<uint32_t>(NextThread)));
 
 		uint16_t OldFS;
 		ASM_ReadReg(fs, OldFS);
@@ -717,23 +682,25 @@ void ClockInterrupt(volatile InterruptContext * OldContext, uintptr_t * Data)
 	}
 }
 
-
-#pragma warning(pop)
-
 typedef void (*ThreadPtr)(ThreadInformation * Context, uintptr_t * Data);
 
-void ThreadStart()
+extern "C" void ThreadRoot();
+
+void __stdcall ThreadStart(uint32_t Current)
 {
 	ASM_STI;
-	//OutPortb(0x20, 0x20);
 	m_InterruptControler.ClearIRQ(0);
 
-	ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(ReadFS(8));
-
+	ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(Current);
+	
+	uint16_t OldFS;
+	ASM_ReadReg(fs, OldFS);
+	CoreComplexObj::GetComplex()->GDTTable.UpdateMemoryEntry(OldFS, reinterpret_cast<uint32_t>(CurrentThread), sizeof(ThreadInformation), DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
+	ASM_WriteReg(fs, OldFS);
 	ThreadPtr Call = reinterpret_cast<ThreadPtr>(CurrentThread->StartingPoint);
 
 	Call(CurrentThread, CurrentThread->StartingData);
-
+	
 	while(true)
 		printf("!");
 }
@@ -1091,7 +1058,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	ThreadListHead->Next = 0;
 
 	ThreadListHead->RealAddress = reinterpret_cast<uintptr_t *>(ThreadListHead);
-	ThreadListHead->ThreadID = reinterpret_cast<uint32_t>(ThreadListHead);// 0;
+	ThreadListHead->ThreadID = reinterpret_cast<uint32_t>(ThreadListHead);
 	ThreadListHead->State = PreCreate;
 	ThreadListHead->TimeSliceCount = 0;
 	ThreadListHead->TimeSliceAllocation = 10;
@@ -1108,20 +1075,16 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	
 	int StackSize = ThreadListHead->StackLimit / 4;
 	ThreadListHead->SavedESP = reinterpret_cast<uint32_t>(&(ThreadListHead->Stack[StackSize]));
-	Stack::Push(ThreadListHead->SavedESP, reinterpret_cast<uint32_t>(ThreadStart)); // IP
-	Stack::Push(ThreadListHead->SavedESP, ThreadListHead->SavedESP); // The old BP
+	Stack::Push(ThreadListHead->SavedESP, reinterpret_cast<uint32_t>(ThreadStart)); // Return point
+	Stack::Push(ThreadListHead->SavedESP, reinterpret_cast<uint32_t>(ThreadRoot)); // IP
+	Stack::Push(ThreadListHead->SavedESP, 0); // The old BP
 
-	uint32_t OldESP = ThreadListHead->SavedESP;
-
-	ThreadListHead->SavedESP -= 10 * sizeof(uint32_t);
-	Stack::Push(ThreadListHead->SavedESP, OldESP);  // Current BP
-
-	//ThreadInformation * MyThread = reinterpret_cast<ThreadInformation *>(reinterpret_cast<uint32_t>(ThreadListHead->Stack) + ThreadListHead->StackLimit + sizeof(ThreadInformation));
 	ThreadInformation * MyThread = reinterpret_cast<ThreadInformation *>(CoreComplex->PageMap.AllocateRange(0, sizeof(ThreadInformation) + 0x8000));
 
 	// Convert ourselves into a full thread
 	MyThread->RealAddress = reinterpret_cast<uintptr_t *>(MyThread);
-	MyThread->ThreadID = reinterpret_cast<uint32_t>(MyThread);// 1;
+	MyThread->ThreadID = reinterpret_cast<uint32_t>(MyThread);
+	MyThread->SavedCR3 = ReadCR3();
 	MyThread->State = Running;
 	MyThread->TimeSliceCount = 0;
 	MyThread->TimeSliceAllocation = 30;
@@ -1175,11 +1138,11 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 		USBManager = &USB;
 	}
 
-	IDE IDEDriver;
-	IDEDriver.Setup(PCIBus);
+	//IDE IDEDriver;
+	//IDEDriver.Setup(PCIBus);
 
-	AHCI SATADriver;
-	SATADriver.Setup(PCIBus);
+	//AHCI SATADriver;
+	//SATADriver.Setup(PCIBus);
 
 	CoreComplex->ACPIComplex.Enable();
 
@@ -1199,17 +1162,17 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	while(KBBufferFirst != KBBufferLast)
 		FetchKeyboardBuffer();
 	
-	struct TempK
-	{
-		uint32_t Test;
-		uint16_t K;
-	};
+	//struct TempK
+	//{
+	//	uint32_t Test;
+	//	uint16_t K;
+	//};
 
-	typedef NodeList<TempK> TempR;
-	TempR RootJ;
-	TempR KitJ;
+	//typedef NodeList<TempK> TempR;
+	//TempR RootJ;
+	//TempR KitJ;
 
-	RootJ.InsertAfter(&KitJ);
+	//RootJ.InsertAfter(&KitJ);
 
 	for(;;)
 		main(argc, argv);

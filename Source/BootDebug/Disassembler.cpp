@@ -23,7 +23,8 @@ bool HasModRM(ASMParseTypes ParseType)
 			ParseType == ParseModRM || 
 			ParseType == ParseImmediateByte || 
 			ParseType == ParseImmediate || 
-			ParseType == ParseOpImmediateByte;
+			ParseType == ParseOpImmediateByte ||
+			ParseType == ParseModRMPacked;
 }
 
 bool HasImmediate(ASMParseTypes ParseType)
@@ -102,6 +103,15 @@ char * RegName[] =
 	"DS",
 	"FS",
 	"GS",
+
+	"%MMX0",
+	"%MMX1",
+	"%MMX2",
+	"%MMX3",
+	"%MMX4",
+	"%MMX5",
+	"%MMX6",
+	"%MMX7",
 };
 
 char * ModRM16[8] = 
@@ -216,21 +226,26 @@ void PrintReg(uint32_t Reg, uint32_t OpSize)
 		if(*Name == '#')
 		{
 			if(OpSize == 32)
-				printf("E", *Name);		
+				printf("E");		
 
 			else if(OpSize == 64)
-				printf("R", *Name);		
+				printf("R");		
 		}
 		else if(*Name == '!')
 		{
 			if(OpSize == 8)
-				printf("L", *Name);		
+				printf("L");		
 
 			else if(OpSize == 16)
-				printf("W", *Name);		
+				printf("W");		
 
 			else if(OpSize == 32)
-				printf("D", *Name);		
+				printf("D");		
+		}
+		else if(*Name == '%')
+		{
+			if(OpSize != 32)
+				printf("X");		
 		}
 		else
 		{

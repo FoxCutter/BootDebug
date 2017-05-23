@@ -45,6 +45,9 @@ enum ASMParseTypes
 	// There is an Immediate Address OpSized value following the opcode (16 = 32, 32 = 48)
 	ParseOnlyFarAddress,
 
+	// The Registers in the Reg bites are packed MMX registers
+	ParseModRMPacked,
+
 	// Everything after this is a prefix
 	ParsePrefix,
 	
@@ -138,6 +141,15 @@ enum ASMParamTypes
 	SegDS,
 	SegFS,
 	SegGS,
+
+	RegMM0,
+	RegMM1,
+	RegMM2,
+	RegMM3,
+	RegMM4,
+	RegMM5,
+	RegMM6,
+	RegMM7,
 };
 
 struct ASMTableEntry
@@ -418,7 +430,7 @@ const ASMTableEntry SingleByteOpCodes[256] =
 	{"\x02",	ParseModRM,				0,	2,	{ParamModRM, RegCL}},
 	{"AAM",		ParseOnlyImmediateByte,	0,	1,	{ParamImmediate}},
 	{"AAD",		ParseOnlyImmediateByte,	0,	1,	{ParamImmediate}},
-	{"",		ParseInvalid,			0,	0,	{}},
+	{"SETALC",	ParseNoParam,			0,	0,	{}},
 	{"XLAT",	ParseNoParam,			0,	0,	{}},
 
 	// D8
@@ -453,7 +465,7 @@ const ASMTableEntry SingleByteOpCodes[256] =
 
 	// F0
 	{"LOCK",	ParsePrefix,			0,	0,	{}},
-	{"",		ParseInvalid,			0,	0,	{}},
+	{"INT1",	ParseNoParam,			0,	0,	{}},
 	{"REPNE",	ParsePrefix,			0,	0,	{}},
 	{"REP",		ParsePrefix,			0,	0,	{}},
 	{"HLT",		ParseNoParam,			0,	0,	{}},

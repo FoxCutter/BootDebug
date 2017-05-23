@@ -18,6 +18,7 @@ public:
 	void Clear();
 
 	void SetPauseFullScreen(bool Value) { m_PauseFullScreen = Value; }
+	void TogglePauseFullScreen() { m_PauseFullScreen = !m_PauseFullScreen; }
 private:
 	
 	int m_Row;

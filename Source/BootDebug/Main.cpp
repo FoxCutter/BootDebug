@@ -52,7 +52,7 @@ char * CPUIDFlags[] =
 	"",
 	"Debug Store",
 	"Thermal Monitor and Software Controlled Clock Facilities",
-	"Intel MMX Technology",
+	"MMX",
 	"FXSAVE and FXRSTOR Instructions",
 	"SSE",
 	"SSE2",
@@ -72,14 +72,14 @@ char * CPUIDFlags[] =
 	"Safer Mode Extensions",
 	"Enhanced Intel SpeedStep technology",
 	"Thermal Monitor 2",
-	"SSSE3",
+	"Supplemental SSE3",
 	"L1 Context ID",
 	"IA32_DEBUG_INTERFACE MSR",
 	"FMA extensions",
 	"CMPXCHG16B Available",
 	"xTPR Update Control",
 	"Perfmon and Debug Capability",
-	"",
+	"",	
 	"Process-context identifiers",
 	"Memory Map Prefech",
 	"SSE4.1",
@@ -89,21 +89,21 @@ char * CPUIDFlags[] =
 	"POPCNT Instruction",
 	"TSC Deadline",
 	"AESNI",
-	"XSAVE/XRSTOR Instructions",
+	"XSAVE/XRSTOR Instructions and XCR0",
 	"OSXSAVE Enabled",
 	"AVX",
 	"16-Bit Floating Point Conversion",
 	"RDRAND Instruction",
-	"",
+	"Running on a Hypervisor",
 
 	// Structured Extended Feature - EBX
 	"FS and GS Base",
-	"IA32_TSC_ADJUST MSR Supported",
-	"",
+	"Time Stamp Counter Adjust MSR Supported",
+	"Intel SGX",
 	"BMI1",
 	"Hardware Lock Elision",
 	"AVX2",
-	"",
+	"FDP_EXCPTN_ONLY",
 	"Supervisor-Mode Execution Prevention",
 	"BMI2",
 	"Enhanced REP MOVSB/STOSB",
@@ -111,10 +111,31 @@ char * CPUIDFlags[] =
 	"Restricted Transactional Memory",
 	"Platform Quality of Service Monitoring",
 	"Deprecates FPU CS and FPU DS (64-Bit)",
-	"",
+	"Memory Protection Extensions",
 	"Platform Quality of Service Enforcement",
 	"",
 	"",
+	"RDSEED",
+	"ADX",
+	"SMAP",
+	"",
+	"",
+	"CLFLUSHOPT",
+	"CLWB",
+	"Intel Processor Trace",
+	"",
+	"",
+	"",
+	"SHA Extensions",
+	"",
+	"",
+
+	// Structured Extended Feature - ECX
+	"PREFETCHWT1",
+	"",
+	"UMIP",
+	"PKU",
+	"OSPKE",
 	"",
 	"",
 	"",
@@ -127,7 +148,20 @@ char * CPUIDFlags[] =
 	"",
 	"",
 	"",
+	"MAWAU 1",
+	"MAWAU 2",
+	"MAWAU 3",
+	"MAWAU 4",
+	"MAWAU 5",
+	"RDPID",
 	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"SGX_LC",
 	"",
 
 	// Extended Features - EDX
@@ -153,47 +187,47 @@ char * CPUIDFlags[] =
 	"",
 	"Execute Disable available",
 	"",
+	"(AMD) Extensions to MMX",
 	"",
 	"",
-	"",
-	"",
+	"(AMD) FXSAVE/FXRSTOR optimizations",
 	"1-GByte Pages",
 	"RDTSCP Avaliable",
 	"",
-	"EMT64",
-	"",
-	"",
+	"Long Mode (EMT64)",
+	"(AMD) 3dNow Extensions",
+	"(AMD) 3dNow ",
 
 	// Extended Features - ECX
 	"LAHF/SAHF Available (64 bit)",
-	"CmpLegacy",
-	"Secure Virtual Machine",
-	"",
-	"AltMovCR8",
+	"(AMD) Hyperthreading not valid",
+	"(AMD) Secure Virtual Machine",
+	"(AMD) Extended APIC space",
+	"(AMD) AltMovCR8",
 	"LZCNT Instruction",
-	"",
-	"",
+	"(AMD) SSE4a",
+	"(AMD) Misaligned SSE mode",
 	"PREFETCHW Instruction",
+	"(AMD) OS Visible Workaround",
+	"(AMD) Instruction Based Sampling",
+	"(AMD) XOP instruction set",
+	"(AMD) SKINIT/STGI instructions",
+	"(AMD) Watchdog timer",
 	"",
+	"(AMD) Light Weight Profiling",
+	"(AMD) 4 operands fused multiply-add",
+	"(AMD) Translation Cache Extension",
 	"",
+	"(AMD) NodeID MSR",
 	"",
+	"(AMD) Trailing Bit Manipulation",
+	"(AMD) Topology Extensions",
+	"(AMD) Core performance counter extensions",
+	"(AMD) NB performance counter extensions",
 	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
+	"(AMD) Data breakpoint extensions",
+	"(AMD) Performance TSC",
+	"(AMD) L2I perf counter extensions",
 	"",
 	"",
 	"",
@@ -1520,8 +1554,8 @@ void InfoCommand(CommandSet & Data)
 			printf(" Leaf Count:            %X\n", LeafCount);
 			printf(" Extended Leaf Count:   %X\n", ExtendedLeafCount);
 
-			uint32_t Features[5];
-			Features[0] = Features[1] = Features[2] = Features[3] = Features[4] = 0;
+			uint32_t Features[6];
+			Features[0] = Features[1] = Features[2] = Features[3] = Features[4] = Features[5] = 0;
 
 			ReadCPUID(1, 0, &Res);
 			uint8_t Model = (Res.EAX & 0xF0) >> 4;
@@ -1553,11 +1587,32 @@ void InfoCommand(CommandSet & Data)
 			{								
 				ReadCPUID(0x07, 0, &Res);
 				////////123456789012345678901234
-				printf(" Structured Features:   %08X\n", Res.EBX);
+				printf(" Structured Features 1: %08X\n", Res.EBX);
+				printf(" Structured Features 2: %08X\n", Res.ECX);
 				Features[2] = Res.EBX;
+				Features[3] = Res.ECX;
 
 			}
-							
+
+			if(Extended)							
+			{
+				ReadCPUID(0x80000001, 0, &Res);
+				////////123456789012345678901234
+				printf(" ExFeatures 1 (EDX):    %08X\n", Res.EDX);
+				printf(" ExFeatures 2 (ECX):    %08X\n", Res.ECX);
+
+				Features[4] = (Res.EDX & 0xFE7C0C00); // AMD duplicates a number of feature flags, so makes them out
+				Features[5] = Res.ECX;
+
+				if(ExtendedLeafCount >= 0x80000008)
+				{
+					ReadCPUID(0x80000008, 0, &Res);
+					////////123456789012345678901234
+					printf(" Physical Address:      %u\n", Res.EAX & 0xFF);
+					printf(" Linear Address:        %u\n", (Res.EAX & 0xFF00) >> 8);
+				}
+			}
+
 			if(LeafCount >= 0x0D)
 			{								
 				ReadCPUID(0x0D, 0, &Res);
@@ -1571,35 +1626,15 @@ void InfoCommand(CommandSet & Data)
 				printf(" XSAVE XSS size:        %08X\n", Res.EBX);
 				printf(" Valid IA32_XSS Bits:   %08X:%08X\n", Res.EDX, Res.ECX);
 			}
-
-
-			if(Extended)							
-			{
-				ReadCPUID(0x80000001, 0, &Res);
-				////////123456789012345678901234
-				printf(" ExFeatures 1 (EDX):    %08X\n", Res.EDX);
-				printf(" ExFeatures 2 (ECX):    %08X\n", Res.ECX);
-
-				Features[3] = Res.EDX;
-				Features[4] = Res.ECX;
-
-				if(ExtendedLeafCount >= 0x80000008)
-				{
-					ReadCPUID(0x80000008, 0, &Res);
-					////////123456789012345678901234
-					printf(" Physical Address:      %u\n", Res.EAX & 0xFF);
-					printf(" Linear Address:        %u\n", (Res.EAX & 0xFF00) >> 8);
-				}
-			}
 							
 			uint32_t Mask = 0;
-			for(int x = 0; x < 32 * 5; x++)
+			for(int x = 0; x < 32 * 6; x++)
 			{
 				if(Mask == 0)
 					Mask = 0x00000001;
 
 				if(Features[x / 32] & Mask)
-					printf("  %s\n", CPUIDFlags[x]);
+					printf("  [%2d] %s\n", x % 32, CPUIDFlags[x]);
 
 				Mask = Mask << 1;
 			}

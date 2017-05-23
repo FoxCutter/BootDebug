@@ -19,6 +19,11 @@ void KernalFree(void * Address)
 	CoreComplexObj::GetComplex()->KernalHeap.free(Address);
 }
 
+void KernalSetPauseFullScreen(bool Value)
+{
+	KernalTerminal->SetPauseFullScreen(Value);
+}
+
 int KernalSprintf(char * Dest, uint32_t cCount, const char * format, ...)
 {
     int retValue;
@@ -27,8 +32,8 @@ int KernalSprintf(char * Dest, uint32_t cCount, const char * format, ...)
     va_start( argptr, format );
     retValue = vsnprintf( Dest, cCount, format, argptr );
     va_end( argptr );
-
-    return retValue;
+	
+	return retValue;	
 }
 
 int KernalPrintf(const char * format, ...)

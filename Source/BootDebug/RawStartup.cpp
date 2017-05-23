@@ -46,7 +46,7 @@ void PrintContext(volatile InterruptContext * Context)
 	KernalPrintf(" %08X Int: %02X, Error: %08X - %08X\n", &Context->InterruptNumber, Context->InterruptNumber, Context->ErrorCode, &Context->ErrorCode);
 	KernalPrintf(" %08X EIP:%08X CS:%04X EFLAGS:%08X - %08X\n", &Context->Origin.Return.Address, Context->Origin.Return.Address, Context->Origin.Return.Selector & 0xFFFF, Context->Origin.EFlags, &Context->Origin.EFlags);
 	KernalPrintf(" %08X ESP:%08X SS:%04X - %08X\n", &Context->Origin.Stack.Address, Context->Origin.Stack.Address, Context->Origin.Stack.Selector & 0xFFFF, &Context->Origin.Stack.Selector);
-	KernalPrintf(" %08X ES:%04X DS:%04X FS:%04X GS:%04X - %08X\n", &Context->Origin.V86Segments.ES, Context->Origin.V86Segments.ES & 0xFFFF, Context->Origin.V86Segments.DS & 0xFFFF, Context->Origin.V86Segments.FS & 0xFFFF, Context->Origin.V86Segments.GS & 0xFFFF, &Context->Origin.V86Segments.GS);
+	//KernalPrintf(" %08X ES:%04X DS:%04X FS:%04X GS:%04X - %08X\n", &Context->Origin.V86Segments.ES, Context->Origin.V86Segments.ES & 0xFFFF, Context->Origin.V86Segments.DS & 0xFFFF, Context->Origin.V86Segments.FS & 0xFFFF, Context->Origin.V86Segments.GS & 0xFFFF, &Context->Origin.V86Segments.GS);
 
 }
 
@@ -267,6 +267,16 @@ void SystemTrap(volatile InterruptContext * Context, uintptr_t * Data)
 	for(;;) ASM_HLT;
 }
 
+void SystemReset()
+{
+	CoreComplexObj::GetComplex()->ACPIComplex.Reset();
+	
+	KernalPrintf("ACPI Reboot failed, trying old school...\n");
+
+	OutPortb(0x64, 0xFE);
+
+}
+
 // Displayable characters will map to their ANSII key codes, none display characters that dosn't have a matching ANSII code will get codes with the high bit set.
 enum KeyCodes : uint8_t
 {
@@ -479,10 +489,13 @@ uint16_t KeyState = 0;
 
 #define LeftShift	 0x01
 #define RightShift	 0x02
+#define Shift		 (LeftShift | RightShift)
 #define LeftCtrl	 0x04
 #define RightCtrl	 0x08
+#define Ctrl		 (LeftCtrl | RightCtrl)
 #define LeftAlt		 0x10
 #define RightAlt	 0x20
+#define Alt			 (LeftAlt | RightAlt)
 #define LeftGUI		 0x40
 #define RightGUI	 0x80
 
@@ -563,6 +576,13 @@ void KeyboardInterrupt(InterruptContext * OldContext, uintptr_t * Data)
 	if(KeyUp && scancode == 0x0E && (KeyState & LeftCtrl) && (KeyState & LeftAlt)) // CTRL-ALT-Backspace
 	{
 		KeyState ^= EchoLock;
+	}
+
+	if(!KeyUp && scancode == 0x53 && (KeyState & Ctrl) && (KeyState & Alt)) // CTRL-ALT-Delete
+	{
+		KernalSetPauseFullScreen(false);
+		KernalPrintf("\nRebooting...\n");
+		SystemReset();
 	}
 
 	if(scancode == 0x2A && Escape == 0) // LSHIFT
@@ -1104,6 +1124,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	uint16_t TempSegment = CoreComplex->ThreadSegment;
 	ASM_WriteReg(fs, TempSegment);
 
+	KernalPrintf(" Starting Clock...\n");
+	
 	// And set up the PIT for ~1.5ms 
 	int ClockSpeed = 1193180 / 650;
 	//int ClockSpeed = 0;
@@ -1113,10 +1135,6 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	OutPortb(0x40, ClockSpeed >> 8); // High Byte
 
 	m_InterruptControler.SetIRQInterrupt(0x00, IntPriority::System, (InterruptCallbackPtr)ClockInterrupt);	
-
-	//m_InterruptControler.EnableIRQ(2);
-	//m_InterruptControler.EnableIRQ(9);
-	//m_InterruptControler.ClearIRQ(0x00);
 
 	ASM_STI;
 
@@ -1130,13 +1148,13 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	PCI PCIBus;
 	PCIBus.Initilize(PCIRoot);
 
-	uint32_t USBID = PCIBus.FindDeviceID(0x0C, 0x03, 0x10);
+	//uint32_t USBID = PCIBus.FindDeviceID(0x0C, 0x03, 0x10);
 
-	if(USBID != 0xFFFFFFFF)
-	{
-		USB.StartUp(USBID, &m_InterruptControler);
-		USBManager = &USB;
-	}
+	//if(USBID != 0xFFFFFFFF)
+	//{
+	//	USB.StartUp(USBID, &m_InterruptControler);
+	//	USBManager = &USB;
+	//}
 
 	//IDE IDEDriver;
 	//IDEDriver.Setup(PCIBus);

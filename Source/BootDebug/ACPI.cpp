@@ -48,6 +48,11 @@ ACPI::~ACPI(void)
 {
 }
 
+void ACPI::Reset()
+{
+	AcpiReset();
+}
+
 ACPI_STATUS WalkResourceCallback (ACPI_RESOURCE *Resource, void *Context)
 {	
 	if(Resource->Type == ACPI_RESOURCE_TYPE_END_TAG)
@@ -374,7 +379,6 @@ void PrintFlags(uint16_t Flags, bool PCI = false)
 
 
 void PrintMemoryBlock(void *Address, int Length, uint8_t Align);
-ACPI_HANDLE RootNode;
 
 ACPI_STATUS Evaluate(ACPI_STRING Root, ACPI_STRING Object, ACPI_BUFFER *Return = nullptr)
 {
@@ -535,6 +539,59 @@ bool ACPI::SetAPICMode(uint32_t Mode)
 	return true;
 }
 
+void PrintIRQTable(uint16_t Bus, ACPI_BUFFER Buffer)
+{
+	uint32_t CurrentEntry = reinterpret_cast<uint32_t>(Buffer.Pointer);
+			
+	ACPI_PCI_ROUTING_TABLE *Table = nullptr;
+	Table = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(CurrentEntry);
+			
+	while(Table->Length != 0)
+	{
+		printf("%02X:%02llX-%02X", Bus, Table->Address >> 16, Table->Pin);
+		if(Table->Source[0] == 0)
+			printf(" Global Interrupt: 0x%02X\n", Table->SourceIndex);
+		else
+			printf(" Interrupt Source: %s\n", Table->Source);
+				
+		CurrentEntry += Table->Length;
+		Table = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(CurrentEntry);
+	}
+
+}
+
+ACPI_STATUS IRQCallback (ACPI_HANDLE Object, UINT32 NestingLevel, void *Context, void **ReturnValue)
+{
+	ACPI_BUFFER IRQ;
+	IRQ.Length = ACPI_ALLOCATE_BUFFER;
+
+	ACPI_DEVICE_INFO *Info;
+	AcpiGetObjectInfo(Object, &Info);
+
+	if(Info->Valid & ACPI_VALID_ADR)
+	{
+		if(AcpiGetIrqRoutingTable(Object, &IRQ) == AE_OK)
+		{
+			uint32_t DevID = PCI::BuildDeviceID(0, (uint8_t)((Info->Address & 0xFFFF0000) >> 16), (uint8_t)(Info->Address & 0xFFFF));
+			uint32_t Val = PCI::ReadRegister(DevID, 0x18, 4);
+			if(Val != 0xFFFFFFFF)
+			{
+				uint8_t SecondaryBus = (Val & 0x0000FF00) >> 8;
+				uint8_t SubBus =       (Val & 0x00FF0000) >> 16;
+		
+				for(; SecondaryBus <= SubBus; SecondaryBus++)
+					PrintIRQTable(SecondaryBus, IRQ);
+			}
+
+			ACPI_FREE(IRQ.Pointer);
+		}			
+
+	}
+
+
+
+	return AE_OK;
+}
 
 void ACPI::Dump(char *Options)
 {
@@ -569,9 +626,10 @@ void ACPI::Dump(char *Options)
 	}
 	else if(_stricmp("PRT", Options) == 0 || _stricmp("APRT", Options) == 0)
 	{
-		auto Callback = [](ACPI_HANDLE Object, UINT32 NestingLevel, void *Context, void **ReturnValue){RootNode = Object; return AE_OK;};
+		ACPI_HANDLE RootNode = 0;
+		ACPI_WALK_CALLBACK Callback = [](ACPI_HANDLE Object, UINT32 NestingLevel, void *Context, void **ReturnValue) {*reinterpret_cast<ACPI_HANDLE *>(ReturnValue) = Object; return AE_OK;};
 
-		AcpiGetDevices(PCI_ROOT_HID_STRING, Callback, nullptr, nullptr);
+		AcpiGetDevices(PCI_ROOT_HID_STRING, Callback, nullptr, &RootNode);
 						
 		ACPI_BUFFER IRQ;
 		IRQ.Length = ACPI_ALLOCATE_BUFFER;
@@ -583,25 +641,15 @@ void ACPI::Dump(char *Options)
 		
 		if(AcpiGetIrqRoutingTable(RootNode, &IRQ) == AE_OK)
 		{
-			uint32_t CurrentEntry = reinterpret_cast<uint32_t>(IRQ.Pointer);
-			
-			ACPI_PCI_ROUTING_TABLE *Table = nullptr;
-			Table = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(CurrentEntry);
-			
-			while(Table->Length != 0)
-			{
-				printf("%08llX-%02X", Table->Address, Table->Pin);
-				if(Table->Source[0] == 0)
-					printf(" Global Interrupt: 0x%02X\n", Table->SourceIndex);
-				else
-					printf(" Interrupt Source: %s\n", Table->Source);
-				
-				CurrentEntry += Table->Length;
-				Table = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(CurrentEntry);
-			}
-
+			PrintIRQTable(0, IRQ);
 			ACPI_FREE(IRQ.Pointer);
 		}
+
+		//bool Res = false;
+		//ACPI_WALK_CALLBACK Callback2 = [](ACPI_HANDLE Object, UINT32 NestingLevel, void *Context, void **ReturnValue) {*reinterpret_cast<ACPI_HANDLE *>(ReturnValue) = Object; return AE_OK;};
+		AcpiWalkNamespace(ACPI_TYPE_DEVICE, RootNode, UINT32_MAX, IRQCallback, nullptr, nullptr, nullptr);
+		
+
 
 		if(_stricmp("APRT", Options) == 0)
 		{
@@ -623,7 +671,30 @@ void ACPI::Dump(char *Options)
 	}
 	else if(_stricmp("FACP", Options) == 0)
 	{
-		printf(" Fixed ACPI Description Table (FADT) (%08X)\n", ACPI_FADT_V2_SIZE);
+		printf(" Fixed ACPI Description Table (FADT) (%08X)\n", AcpiGbl_FADT.Header.Length);
+		printf(" APCI Version:");
+		switch(AcpiGbl_FADT.Header.Length)
+		{
+			case ACPI_FADT_V1_SIZE:	
+				printf(" V1");
+				break;
+			case ACPI_FADT_V2_SIZE:
+				printf(" V2");
+				break;
+			case ACPI_FADT_V3_SIZE:
+				printf(" V3/V4");
+				break;
+			case ACPI_FADT_V5_SIZE:
+				printf(" V5");
+				break;
+			case ACPI_FADT_V6_SIZE:
+				printf(" V6");
+				break;
+			default:
+				printf(" Newer then V6");
+				break;
+		}		
+		printf("\n");
 		printf(" FACS: %08X, DSDT: %08X\n", AcpiGbl_FADT.Facs, AcpiGbl_FADT.Dsdt);
 		printf(" SCI Int: %04X, Port: %08X, ACPI Enable: %02X, ACPI Disable: %02X\n", AcpiGbl_FADT.SciInterrupt, AcpiGbl_FADT.SmiCommand, AcpiGbl_FADT.AcpiEnable, AcpiGbl_FADT.AcpiDisable); 
 		printf(" PM1 Event Block   %08X/%08X, Length: %02x\n", AcpiGbl_FADT.Pm1aEventBlock, AcpiGbl_FADT.Pm1bEventBlock, AcpiGbl_FADT.Pm1EventLength);

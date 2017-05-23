@@ -24,5 +24,7 @@ public:
 	bool SetAPICMode(uint32_t Mode = 1);
 
 	void Dump(char *Options);
+
+	void Reset();
 };
 

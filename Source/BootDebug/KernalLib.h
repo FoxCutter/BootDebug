@@ -21,6 +21,9 @@ int KernalSprintf(char * Dest, uint32_t cCount, const char * format, ...);
 int KernalVprintf(const char * format, va_list Args);
 int KernalPanic(KernalCode Error, const char * format, ...);
 
+void KernalSetPauseFullScreen(bool Value);
+
+
 enum class KernalPageFlags
 {
 	None = 0x0000,

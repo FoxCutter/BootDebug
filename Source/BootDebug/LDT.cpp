@@ -16,8 +16,8 @@ void LDTManager::Initilize(DescriptorTable &GDT)
 {
 	DescriptorTable::Initilize(0x200);
 
-	// Set up LDT 0 to cover 16-bit Memeory
-	AddMemoryEntry(0, 0xFFFFF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
+	// Set up LDT 0 to cover 16-bit Memeory 
+	AddMemoryEntry(0, 0x10FFEF, DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
 
 	m_Selector = GDT.AddTableEntry(*this, 3);
 }

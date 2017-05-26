@@ -10,18 +10,6 @@
 
 #include <algorithm>
 
-#pragma data_seg(".DRIVER$A")
-void * __dl_a = nullptr;
-
-
-#pragma data_seg(".DRIVER$Z")
-void * __dl_z = nullptr;
-
-#pragma data_seg()  /* reset */
-
-#pragma comment(linker, "/section:.DRIVER,RW")
-#pragma comment(linker, "/merge:.DRIVER=.data")
-
 struct PCINameEntry
 {
 	uint32_t Code;

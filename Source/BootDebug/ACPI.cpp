@@ -468,7 +468,11 @@ void PrintObject(ACPI_OBJECT *Object, uint32_t NestingLevel = 1)
 
 UINT32 PowerEvent(void *Context)
 {
-	KernalPrintf("------EVENT!!------");
+	KernalSetPauseFullScreen(false);
+	KernalPrintf("\n Powering Down \n");
+	AcpiEnterSleepStatePrep(5);
+	AcpiEnterSleepState(5);
+
 	return AE_OK;
 }
 
@@ -508,6 +512,12 @@ bool ACPI::Enable()
 	ACPI_STATUS Status = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
 	Status = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
 	Status = AcpiEnable();
+	Status = AcpiEnableEvent(ACPI_EVENT_POWER_BUTTON, 0);
+	Status = AcpiEnableEvent(ACPI_EVENT_SLEEP_BUTTON, 0);
+
+	Status = AcpiInstallFixedEventHandler(ACPI_EVENT_POWER_BUTTON, PowerEvent, nullptr);
+
+	//AcpiFixedEventCount
 
 	m_Enabled = true;
 
@@ -682,16 +692,16 @@ void ACPI::Dump(char *Options)
 				printf(" V2");
 				break;
 			case ACPI_FADT_V3_SIZE:
-				printf(" V3/V4");
+				printf(" V3/V4");	
 				break;
 			case ACPI_FADT_V5_SIZE:
-				printf(" V5");
+				printf(" V5 Minor %d", AcpiGbl_FADT.MinorRevision);				
 				break;
 			case ACPI_FADT_V6_SIZE:
-				printf(" V6");
+				printf(" V6 Minor %d", AcpiGbl_FADT.MinorRevision);				
 				break;
 			default:
-				printf(" Newer then V6");
+				printf(" Newer then V6. Minor %d", AcpiGbl_FADT.MinorRevision);				
 				break;
 		}		
 		printf("\n");
@@ -703,12 +713,19 @@ void ACPI::Dump(char *Options)
 		printf(" PM Timer Block    %08X, Length: %02x\n", AcpiGbl_FADT.PmTimerBlock, AcpiGbl_FADT.PmTimerLength);
 		printf(" GP0 Event Block   %08X, Length: %02x\n", AcpiGbl_FADT.Gpe0Block, AcpiGbl_FADT.Gpe0BlockLength);
 		printf(" GP1 Event Block   %08X, Length: %02x, Base: %02X\n", AcpiGbl_FADT.Gpe1Block, AcpiGbl_FADT.Gpe1BlockLength, AcpiGbl_FADT.Gpe1Base);
+		printf(" CST: %02X, Lvl2 Lat: %04X, Lvl3 Lat: %04X\n", AcpiGbl_FADT.CstControl, AcpiGbl_FADT.C2Latency, AcpiGbl_FADT.C3Latency);
+		printf(" Duty Offset %02X, Width %02X\n", AcpiGbl_FADT.DutyOffset, AcpiGbl_FADT.DutyWidth);
+		printf(" Alarm Day %02X, Month %02X, Century %02X\n", AcpiGbl_FADT.DayAlarm, AcpiGbl_FADT.MonthAlarm, AcpiGbl_FADT.Century);
 		printf(" Boot Flags: %04X\n", AcpiGbl_FADT.BootFlags);
 		printf("  Legacy: %c, 8042: %c\n", AcpiGbl_FADT.BootFlags & ACPI_FADT_LEGACY_DEVICES ? 'Y' : 'N', AcpiGbl_FADT.BootFlags & ACPI_FADT_8042 ? 'Y' : 'N');
 		printf(" Flags: %08X\n", AcpiGbl_FADT.Flags);
-		printf(" Reset Reg ");
-		PrintGenAddress(AcpiGbl_FADT.ResetRegister);
-		printf(", Reset Value: %02X\n", AcpiGbl_FADT.ResetValue);
+		
+		if(AcpiGbl_FADT.Flags & ACPI_FADT_RESET_REGISTER)
+		{
+			printf(" Reset Reg ");
+			PrintGenAddress(AcpiGbl_FADT.ResetRegister);
+			printf(", Reset Value: %02X\n", AcpiGbl_FADT.ResetValue);
+		}
 
 	}
 	else if(_stricmp(ACPI_SIG_MADT, Options) == 0)

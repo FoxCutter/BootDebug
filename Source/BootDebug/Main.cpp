@@ -1374,7 +1374,7 @@ void InfoCommand(CommandSet & Data)
 
 					// This should point to the PCIR data
 					if(strncmp(ExpansionAddress, "PCIR", 4) == 0)
-						printf("    PCIR: %08X\n", ExpansionAddress);
+						printf("    PCIR: %08X - PCI Data Structure\n", ExpansionAddress);
 				}
 								
 				ExpansionAddress = reinterpret_cast<char *>(TableAddress);
@@ -1384,15 +1384,15 @@ void InfoCommand(CommandSet & Data)
 					// Expansion header, should be $PnP, but video can point to the $VBT data
 					ExpansionAddress += Data[13];
 					if(strncmp(ExpansionAddress, "$PnP", 4) == 0)
-						printf("    $PnP: %08X\n", ExpansionAddress);
+						printf("    $PnP: %08X - PnP Expansion Header\n", ExpansionAddress);
 					else if(strncmp(ExpansionAddress, "$VBT", 4) == 0)
-						printf("    $VBT: %08X\n", ExpansionAddress);
+						printf("    $VBT: %08X - Video BIOS Table\n", ExpansionAddress);
 				}
 
 				uint32_t PMID = SeachMemory(TableAddress, (Data[1] & 0xFF) * 512, "PMID", 4);
 				if(PMID != UINT32_MAX)
 				{
-					printf("    PMID: %08X\n", PMID);
+					printf("    PMID: %08X - Proteced Mode Entry Point\n", PMID);
 				}
 			}
 		}
@@ -1427,6 +1427,10 @@ void InfoCommand(CommandSet & Data)
 		if(TableAddress != UINT32_MAX)
 			printf("   %08X: \"_MP_\" - MultiProcessor Table Pointer\n", TableAddress);
 
+		TableAddress = SearchBIOS("PCMP", 4, 0x10);
+		if(TableAddress != UINT32_MAX)
+			printf("   %08X: \"PCMP\" - Physical Configuration MultiProcessor\n", TableAddress);
+
 		TableAddress = SearchBIOS("_32_", 4, 0x10);
 		if(TableAddress != UINT32_MAX)
 			printf("   %08X: \"_32_\" - 32-Bit BIOS Entry Point\n", TableAddress);
@@ -1443,10 +1447,17 @@ void InfoCommand(CommandSet & Data)
 				printf("   %08X: \"_DMI_\" - DMI Table Pointer\n", TableAddress);
 		}
 
+		TableAddress = SearchBIOS("_SYSID_", 7, 0x10);
+		if(TableAddress != UINT32_MAX)
+			printf("   %08X: \"_SYSID_\" - System ID\n", TableAddress);
+
+		TableAddress = SearchBIOS("_UUID_", 7, 0x10);
+		if(TableAddress != UINT32_MAX)
+			printf("   %08X: \"_UUID_\" - Universal Unique ID\n", TableAddress);
+
 		TableAddress = SearchBIOS("RSD PTR ", 8, 0x10);
 		if(TableAddress != UINT32_MAX)
 			printf("   %08X: \"RDS PTR \" - ACPI Root Pointer\n", TableAddress);
-
 
 		/*
 		uint32_t LastAddress = 0xC0000;

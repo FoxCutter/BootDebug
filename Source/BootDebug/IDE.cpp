@@ -1,9 +1,46 @@
 #include "IDE.h"
-#include "ObjectManager.h"
-#include "KernalLib.h"
-#include "LowLevel.h"
-#include "Utility.h"
-#include <string.h>
+#include "DriverBase.h"
+
+
+static uint32_t IDEFactorFunction(Driver::DriverObject *DriverObject)
+{
+	
+	
+	return 0xFFFFFFFF;
+}
+
+
+#pragma data_seg(".DRIVER$IDE")
+static Driver::PCIDriverCatalog IDEDriverCatalog = { 
+		{ 
+				sizeof(Driver::PCIDriverCatalog),		// Size
+				Driver::eDriverTypePCI,					// Driver Type
+				Driver::eInformationInterfaceDevice |	// We are an PCI interface Driver
+				Driver::eInformationUSBInterfaceIDSkip,	// And we don't use the Interface ID
+				"IDE",									// Name
+				IDEFactorFunction,						// Factory Function
+				nullptr, nullptr,						// Links.
+		}, 
+
+		0xFFFF, 0xFFFF,								// Vender:Device ID
+		0x01, 0x01, 0x00,							// Class, Subclass, IntefaceID
+		0xFF										// Revision ID (unused)
+	};
+#pragma data_seg()
+
+
+
+
+
+
+
+//#include "ObjectManager.h"
+//#include "KernalLib.h"
+//#include "LowLevel.h"
+//#include "Utility.h"
+//#include <string.h>
+
+/*
 
 IDE::IDE(void)
 {
@@ -338,3 +375,4 @@ bool IDE::ReadDMA(DeviceInfo &Device, void *Address, uint32_t ByteCount)
 	
 	return !(InPortb(Device.Status) & 0x01);
 }
+*/

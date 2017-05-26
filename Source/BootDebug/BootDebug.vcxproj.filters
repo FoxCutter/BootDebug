@@ -113,6 +113,9 @@
     <ClCompile Include="LDT.cpp">
       <Filter>Kernal\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DriverBase.cpp">
+      <Filter>Kernal</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RawTerminal.h">
@@ -221,6 +224,9 @@
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Handles.h">
+      <Filter>Kernal\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DriverBase.h">
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
   </ItemGroup>

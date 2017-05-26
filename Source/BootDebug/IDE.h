@@ -1,7 +1,8 @@
 #include <stdint.h>
-#include "PCI.h"
-#include "ObjectCallback.h"
+//#include "PCI.h"
+//#include "ObjectCallback.h"
 
+/*
 #pragma once
 class IDE : public ObjectCallback
 {
@@ -56,3 +57,4 @@ private:
 	bool WriteDMA(DeviceInfo &Device, void *Address, uint32_t ByteCount);
 };
 
+*/

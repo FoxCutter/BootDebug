@@ -18,7 +18,7 @@ namespace Handle
 		ControlObject = 5,		// (Object *HandleObject, uint32_t Operation, void *Data); // Control Functions using the object
 	};
 
-	struct MetaData : ListNode<MetaData>
+	struct MetaData : ListNodeBase<MetaData>
 	{
 		uint8_t Type[4];		// Handle Type
 		uint16_t Size;			// Sive of the object including header data
@@ -31,7 +31,7 @@ namespace Handle
 		HandleFunction Function[27];
 	};
 
-	struct Object : ListNode<Object>
+	struct Object : ListNodeBase<Object>
 	{
 		MetaData * Meta;			// Pointer to the meta data for this object
 		uint16_t Size;				// Size of the object data (including header)

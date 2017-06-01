@@ -19,12 +19,12 @@ namespace Driver
 	 *   4c The function will initialize the hardware
 
 	 */
-	// The Driver Catalog is just a way to collect all the known drivers so it can be searched and then create an instance of the driver
-	
+
+	// The Driver Catalog is just a way to collect all the known drivers so it can be searched and then create an instance of the driver	
 	class DriverObject;
 	class DeviceObject;
 
-	typedef uint32_t (* DriverFunction)(DriverObject *DriverObject);
+	typedef uint32_t (* DriverEntryPoint)(DriverObject *DriverObject);
 
 	// 48 Bytes
 	struct CatalogBase
@@ -34,7 +34,7 @@ namespace Driver
 		uint16_t				Flags;
 
 		char 					Name[32];
-		DriverFunction			EntryPoint;
+		DriverEntryPoint		EntryPoint;
 
 		CatalogBase *			Next;
 		CatalogBase *			Prev;
@@ -72,7 +72,7 @@ namespace Driver
 		eInformationUSBInterfaceIDSkip =	0x0008, // In a PCI driver the Interface ID field can be ignored if there are no other matches
 	};
 
-	// 64 Bytes
+	// 64 Bytes/
 	struct SystemBoardDriverCatalog
 	{
 		CatalogBase		Header; 
@@ -113,24 +113,34 @@ namespace Driver
 		uint32_t		Padding[2];
 	};
 
+	/*
+	// Passing around buffers is very common, so lets try to make them as Universal as possible
+	struct InputBuffer
+	{
+		uint8_t		* Data;
+		uint32_t	ByteCount;
+	};
+	
+	struct OutputBuffer
+	{
+		uint8_t		* Data;
+		uint32_t	MaxByteCount;
+		uint32_t	* ReturnedByteCount;
+	};
+
 	class DriverCallbacks
 	{
 	public:
-		virtual uint32_t UnloadDriver() = 0;
-		virtual uint32_t OpenDevice() = 0;
+		virtual uint32_t UnloadDriver(DriverObject *DriverObject) = 0;
 
-		virtual uint32_t Status() = 0;
-		virtual uint32_t IOControl() = 0;
+		virtual uint32_t OpenDevice(DriverObject *DriverObject, DeviceObject *DeviceObject) = 0;
 
-		virtual uint32_t HandleOpened() = 0;
-		virtual uint32_t HandleClosed() = 0;
+		//virtual uint32_t Status(DriverObject *DriverObject) = 0;
+		//virtual uint32_t IOControl(DriverObject *DriverObject, uint32_t ControlCode, InputBuffer InputData, OutputBuffer OutputData) = 0;
 
-		virtual uint32_t Read() = 0;
-		virtual uint32_t Write() = 0;
-		virtual uint32_t Flush() = 0;
-
-		virtual uint32_t HandleGetMetaData() = 0;
-		virtual uint32_t HandleSetMetaData() = 0;
+		//virtual uint32_t Read(DriverObject *DriverObject, void* ReadInfo, OutputBuffer OutputData) = 0;
+		//virtual uint32_t Write(DriverObject *DriverObject, void* WriteInfo, InputBuffer InputData) = 0;
+		//virtual uint32_t Flush(DriverObject *DriverObject) = 0;
 	};
 	
 	class DriverObject
@@ -145,9 +155,6 @@ namespace Driver
 
 		// Pointer to the Catalog entry for this driver
 		CatalogBase *		CatalogEntry;
-
-		// How maybe devices are initially needed
-		uint32_t			InitialDeviceCount;
 
 		// Flags and state information
 		uint32_t			Flags;
@@ -166,6 +173,7 @@ namespace Driver
 		virtual void RegisterInterruptFunctions();
 		virtual void DeregisterInterruptFunctions();
 
+		// Register a name for this Driver (IDEx, SATAx, USBx)
 		virtual void RegisterName();
 		virtual void DeregisterName();
 
@@ -177,38 +185,41 @@ namespace Driver
 	enum DriverFlags : uint32_t
 	{
 		// The IO Control function is valid
-		eDriverHasIOControl =		0x00000002,
+		eDriverHasIOControl =		0x00000001,
+		eDeviceHasIOControl =		0x00000001,
 
 		// The status function is vaild
-		eDriverHasStatus =			0x00000001,
-		
-		// The handle Open Close functions are valid
-		eDriverHasHandleSupport =	0x00000004,
+		eDriverHasStatus =			0x00000002,
+		eDeviceHasStatus =			0x00000002,
 
-		// The handle Read/write/flush functions are valid
+		// The handle Open Close functions are valid
+		eDeviceHasHandleSupport =	0x00000004,
+
+		// The Read/write/flush functions are valid
 		eDriverHasHandleReadWrite =	0x00000008,
+		eDeviceHasReadWrite =		0x00000008,
 
 		// The handle meta data functions are valid
-		eDriverHasHandleMetaData =	0x00000010,
+		eDeviceHasHandleMetaData =	0x00000010,
 	};
 
 	class DeviceCallbacks
 	{
 	public:
-		virtual uint32_t CloseDevice() = 0;
+		virtual uint32_t CloseDevice(DeviceObject *DeviceObject) = 0;
 
-		virtual uint32_t Status() = 0;
-		virtual uint32_t IOControl() = 0;
+		//virtual uint32_t Status(DeviceObject *DeviceObject) = 0;
+		//virtual uint32_t IOControl(DeviceObject *DeviceObject, uint32_t ControlCode, InputBuffer InputData, OutputBuffer OutputData) = 0;
 
-		virtual uint32_t HandleOpened() = 0;
-		virtual uint32_t HandleClosed() = 0;
+		//virtual uint32_t HandleOpened(DeviceObject *DeviceObject, InputBuffer InputData, void* Handle) = 0;
+		//virtual uint32_t HandleClosed(DeviceObject *DeviceObject, void* Handle) = 0;
 
-		virtual uint32_t Read() = 0;
-		virtual uint32_t Write() = 0;
-		virtual uint32_t Flush() = 0;
+		//virtual uint32_t Read(DeviceObject *DeviceObject, void* Handle, void* ReadInfo, OutputBuffer OutputData) = 0;
+		//virtual uint32_t Write(DeviceObject *DeviceObject, void* Handle, void* WriteInfo, InputBuffer InputData) = 0;
+		//virtual uint32_t Flush(DeviceObject *DeviceObject, void* Handle) = 0;
 
-		virtual uint32_t HandleGetMetaData() = 0;
-		virtual uint32_t HandleSetMetaData() = 0;
+		//virtual uint32_t HandleGetMetaData(DeviceObject *DeviceObject, void* Handle, uint32_t DataType, OutputBuffer OutputData) = 0;
+		//virtual uint32_t HandleSetMetaData(DeviceObject *DeviceObject, void* Handle, uint32_t DataType, InputBuffer InputData) = 0;
 	};
 
 	class DeviceObject
@@ -236,6 +247,7 @@ namespace Driver
 		virtual void RegisterName();
 		virtual void DeregisterName();
 	};
+	*/
 
 }
 

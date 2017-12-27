@@ -116,6 +116,9 @@
     <ClCompile Include="DriverBase.cpp">
       <Filter>Kernal</Filter>
     </ClCompile>
+    <ClCompile Include="v86Mode.cpp">
+      <Filter>Kernal\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RawTerminal.h">

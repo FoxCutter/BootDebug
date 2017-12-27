@@ -1188,7 +1188,9 @@ void InfoCommand(CommandSet & Data)
 		puts("  BIOS:   Bios information");
 		puts("  CMOS:   Contents of the CMOS");
 		puts("  CPUID:  CPUID information");
+		puts("  GDT:    Global Discriptor Table");
 		puts("  HW:     Hardware Tree");
+		puts("  IDT:    Interrupt Discriptor Table");
 		puts("  IOAPIC: I/O APIC Information");
 		puts("  MB:     Multiboot Data");
 		puts("  MEM:    Memory Map");

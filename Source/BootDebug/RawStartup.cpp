@@ -50,6 +50,8 @@ void PrintContext(volatile InterruptContext * Context)
 
 }
 
+void v86ModeTrap(volatile InterruptContext * Context, uintptr_t * Data);
+
 void SystemTrap(volatile InterruptContext * Context, uintptr_t * Data)
 {
 	if(Context->InterruptNumber == 0x0d)
@@ -68,6 +70,8 @@ void SystemTrap(volatile InterruptContext * Context, uintptr_t * Data)
 		}
 		else if(Context->Origin.EFlags & EFlags::Virtual8086Mode)
 		{	
+			v86ModeTrap(Context, Data);
+			
 			// Check for a simple segement overflow and return
 			if(Context->Origin.Return.Address == 0x10000)
 				return;
@@ -711,18 +715,29 @@ void __stdcall ThreadStart(uint32_t Current)
 	ASM_STI;
 	m_InterruptControler.ClearIRQ(0);
 
-	ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(Current);
+	if(Current != 0)
+	{
+		ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(Current);
 	
-	uint16_t OldFS;
-	ASM_ReadReg(fs, OldFS);
-	CoreComplexObj::GetComplex()->GDTTable.UpdateMemoryEntry(OldFS, reinterpret_cast<uint32_t>(CurrentThread), sizeof(ThreadInformation), DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
-	ASM_WriteReg(fs, OldFS);
-	ThreadPtr Call = reinterpret_cast<ThreadPtr>(CurrentThread->StartingPoint);
+		uint16_t OldFS;
+		ASM_ReadReg(fs, OldFS);
+		CoreComplexObj::GetComplex()->GDTTable.UpdateMemoryEntry(OldFS, reinterpret_cast<uint32_t>(CurrentThread), sizeof(ThreadInformation), DescriptiorData::Present | DescriptiorData::Operand32Bit | DescriptiorData::NonSystemFlag, DescriptiorData::DataReadWrite, 3);
+		ASM_WriteReg(fs, OldFS);
+		ThreadPtr Call = reinterpret_cast<ThreadPtr>(CurrentThread->StartingPoint);
 
-	Call(CurrentThread, CurrentThread->StartingData);
-	
+		CurrentThread->State = ThreadState::Running;
+		Call(CurrentThread, CurrentThread->StartingData);
+
+		CurrentThread->State = ThreadState::Completed;
+
+		CurrentThread->TimeSliceCount = CurrentThread->TimeSliceAllocation;
+	}
+
 	while(true)
+	{
+		ASM_HLT;
 		printf("!");
+	}
 }
 
 extern MulitBoot::Header MB1Header;
@@ -990,7 +1005,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	// Step 2: Set our IDT
 	KernalPrintf(" Setting up IDT...\n");
-	CoreComplex->IDTTable.Initilize(CoreComplex->CodeSegment0, CoreComplex->DataSegment0, CoreComplex->CoreSegment);
+	CoreComplex->IDTTable.Initilize(CoreComplex->CodeSegment0, CoreComplex->DataSegment0, CoreComplex->CoreSegment, CoreComplex->ThreadSegment);
 
 	// Set up the handlers for System errors
 	for(int x = 0; x < 0x20; x++)
@@ -1093,8 +1108,10 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	ThreadListHead->Suspended = false;
 	
-	int StackSize = ThreadListHead->StackLimit / 4;
-	ThreadListHead->SavedESP = reinterpret_cast<uint32_t>(&(ThreadListHead->Stack[StackSize]));
+	//int StackSize = ThreadListHead->StackLimit / 4;
+
+	//ThreadListHead->SavedESP = reinterpret_cast<uint32_t>(&(ThreadListHead->Stack[StackSize]));
+	ThreadListHead->SavedESP = reinterpret_cast<uint32_t>(ThreadListHead) + sizeof(ThreadInformation) + ThreadListHead->StackLimit;
 	Stack::Push(ThreadListHead->SavedESP, reinterpret_cast<uint32_t>(ThreadStart)); // Return point
 	Stack::Push(ThreadListHead->SavedESP, reinterpret_cast<uint32_t>(ThreadRoot)); // IP
 	Stack::Push(ThreadListHead->SavedESP, 0); // The old BP

@@ -24,7 +24,7 @@ struct ThreadInformation : ListNodeBase<ThreadInformation>
 {
 	ListEntry Prev;
 	ListEntry Next;
-
+	
 	uintptr_t *	RealAddress;
 	uint32_t ThreadID;
 	ThreadState State;
@@ -40,9 +40,6 @@ struct ThreadInformation : ListNodeBase<ThreadInformation>
 	uintptr_t * StartingData;
 
 	std::atomic_bool Suspended;
-
-	// Bottom of the stack.
-	uint32_t Stack[1];
 };
 
 class Thread

@@ -476,6 +476,7 @@ ThreadLoop:
 	push eax
 	call edx
 
+	mov eax, 0
 	jmp ThreadLoop
 	
 ThreadRoot ENDP

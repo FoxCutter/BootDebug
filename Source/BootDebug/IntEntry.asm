@@ -6,9 +6,10 @@
 
 IntData			WORD 00h
 GlobalData		WORD 00h
+ThreadData		WORD 00h
 IntCallback		DWORD 00000000
 
-public C IntData, IntCallback, GlobalData
+public C IntData, IntCallback, GlobalData, ThreadData
 
 ; IntCallback needs to be a pointer to a function with this def:
 ; extern "C" void HandleInterrupt(InterruptContext * Context)
@@ -30,6 +31,10 @@ Common_Interrupt PROC
 	mov ax, cs:GlobalData
 	mov gs, ax
 	
+	; And the thread data segment
+	mov ax, cs:ThreadData
+	mov fs, ax
+
 	; Put the pointer in the context on the stack
 	mov eax, esp
 	push eax

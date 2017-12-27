@@ -150,6 +150,7 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Thread.cpp" />
     <ClCompile Include="Utility.cpp" />
+    <ClCompile Include="v86Mode.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ACPI.h" />

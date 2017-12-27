@@ -273,7 +273,7 @@ bool PCI::EnumerateBus(uint8_t Bus, HardwareTree * Root)
 
 			HardwareTree * Node = CoreComplexObj::GetComplex()->HardwareComplex.Add(ID, Name, Root);
 			Node->BusID = Bus;
-			Node->DeviceAddress = CurrentDevice << 16 | CurrentFunction;			
+			Node->DeviceAddress = Bus << 24 | CurrentDevice << 16 | CurrentFunction << 8;			
 
 			Val = ReadRegister(CurrentDeviceID, 0x0C);			
 			Val = (Val & 0x00FF0000) >> 16;

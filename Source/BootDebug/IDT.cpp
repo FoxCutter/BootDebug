@@ -8,6 +8,7 @@ extern "C"
 {
 	extern uint16_t IntData;
 	extern uint16_t GlobalData;
+	extern uint16_t ThreadData;
 	extern uint32_t IntCallback;
 	extern uint32_t IntTable[];
 
@@ -37,15 +38,17 @@ IDTManager::IDTManager()
 }
 
 
-void IDTManager::Initilize(uint16_t CodeSelector, uint16_t DataSelector, uint16_t GlobalSelector)
+void IDTManager::Initilize(uint16_t CodeSelector, uint16_t DataSelector, uint16_t GlobalSelector, uint16_t ThreadSelector)
 {
 	DescriptorTable::Initilize(256, true);
 
 	m_CodeSelector = CodeSelector;
 	m_DataSelector = DataSelector;
 	m_GlobalSelector = GlobalSelector;
+	m_ThreadSelector = ThreadSelector;
 
 	GlobalData = GlobalSelector;
+	ThreadData = ThreadSelector;
 	IntData = DataSelector;
 	IntCallback = (uint32_t)HandleInterrupt;
 	

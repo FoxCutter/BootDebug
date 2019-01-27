@@ -4,6 +4,61 @@
 
 ; This file implements our basic Int handlers.
 
+Basic_Interrupt_Start:
+	pushad
+	
+	push gs
+	push fs
+	push ds
+	push es
+	
+MoveIntData:
+	mov ax, 0000h
+	mov ds, ax
+	mov es, ax
+	
+	; Make sure we have the global data segment
+MoveGlobalData:
+	mov ax, 0000h
+	mov gs, ax
+	
+	; Put the pointer in the context on the stack
+	mov eax, esp
+	push eax
+	
+CallIntFunction:
+	call near ptr $
+	
+	; Clean up the call
+	add esp, 4
+
+	pop es
+	pop ds
+	pop fs
+	pop gs
+	
+	popad
+	
+RemoveErrorCode:
+	iretd
+
+	; Remove the Error Code
+	add esp, 4
+	iretd
+
+Basic_Interrupt_End:
+
+public C Basic_Interrupt_Start, Basic_Interrupt_Len, Basic_Interrupt_CS, Basic_Interrupt_GS, Basic_Interrupt_Call, Basic_Interrupt_Error
+
+ALIGN 4
+Basic_Interrupt_Len		DWORD Basic_Interrupt_End - Basic_Interrupt_Start
+Basic_Interrupt_CS		DWORD MoveIntData - Basic_Interrupt_Start + 2
+Basic_Interrupt_GS		DWORD MoveGlobalData - Basic_Interrupt_Start + 2
+Basic_Interrupt_Call	DWORD CallIntFunction - Basic_Interrupt_Start + 1
+Basic_Interrupt_Error	DWORD RemoveErrorCode - Basic_Interrupt_Start
+
+
+
 IntData			WORD 00h
 GlobalData		WORD 00h
 ThreadData		WORD 00h

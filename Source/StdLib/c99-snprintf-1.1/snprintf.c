@@ -180,8 +180,8 @@
 // Keeps Visual Studio from complaining about using the vprintf functions
 #define _CRT_SECURE_NO_WARNINGS 1
 
-#define vsnprintf rpl_vsnprintf
-#define snprintf rpl_snprintf
+//#define vsnprintf rpl_vsnprintf
+//#define snprintf rpl_snprintf
 #define vasprintf rpl_vasprintf
 #define asprintf rpl_asprintf
 

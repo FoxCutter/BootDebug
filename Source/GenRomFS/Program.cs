@@ -43,7 +43,8 @@ namespace GenRomFS
         public string Name = "";
         public string FullPath = "";
 
-        public int FilePos = 0;
+        public int Padding = 0; // Padding to write before this block
+        public int FilePos = 0; // The calculated location of where it should be in the file
 
         public FileData Link;
         public List<FileData> Files = new List<FileData>();
@@ -247,6 +248,7 @@ namespace GenRomFS
             Root.Type = FileType.Root;
             Root.Name = VolumeName;
             Root.FilePos = 0;
+            Root.Padding = 0;
             Root.DataLength = Root.HeaderLength;
 
             {
@@ -295,8 +297,8 @@ namespace GenRomFS
                     WriteFileHeader(OutputFile, Root, Root.HeaderLength);
                     WriteData(OutputFile, Root);
 
-                    //while (OutputFile.BaseStream.Length % 1024 != 0)
-                    //    OutputFile.Write(0);
+                    while (OutputFile.BaseStream.Length % 1024 != 0)
+                        OutputFile.Write((byte)0);
 
                     int Value = 0;
 
@@ -332,8 +334,6 @@ namespace GenRomFS
 
                 Console.Write("{0:X}: {1} ({2}", Entry.FilePos, Entry.Name, Entry.Type.ToString());
 
-                //Console.Write("{2:X}: {0} ({1}) -> {3:X}", Entry.Name, Entry.Type.ToString(), Entry.FilePos, x + 1 < Current.Files.Count ? Current.Files[x + 1].FilePos : 0);
-
                 if (Entry.Type == FileType.HardLink || Entry.Type == FileType.RootDot || Entry.Type == FileType.DotFile)
                 {
                     Console.WriteLine(" => {0:X}) -> {1:X}", Entry.Link.Type == FileType.Root ? Entry.Link.Files[0].FilePos : Entry.Link.FilePos, Next);
@@ -366,17 +366,24 @@ namespace GenRomFS
 
             foreach (FileData Entry in Parent.Files)
             {
-                Entry.FilePos = Offset + Length;
-
-                if (Entry.Type == FileType.RootDot)
+                if (Entry.Type != FileType.RegularFile && Entry.Type != FileType.SymbolicLink)
                 {
-                    // The file header isn't padded, so the first entry will always be right after it, no matter what the alignment is,
-                    // Because of that Offset may not be aligned
-                    Length = AlignData(Entry.HeaderLength) - Offset;
+                    // If we don't have any data, don't worry about alignment
+                    Entry.Padding = 0;
+                    Entry.FilePos = AlignParagraph(Offset + Length);
+                    Entry.Padding += (Entry.FilePos - (Offset + Length));
+
+                    Length += Entry.HeaderLength + Entry.Padding;
                 }
                 else
                 {
-                    Length += AlignData(Entry.HeaderLength + Entry.DataLength);
+                    Entry.FilePos = AlignData(Offset + Length) - Entry.HeaderLength;
+                    while (Entry.FilePos < (Offset + Length))
+                        Entry.FilePos += Align;
+
+                    Entry.Padding += (Entry.FilePos - (Offset + Length));
+
+                    Length += Entry.HeaderLength + Entry.DataLength + Entry.Padding;
                 }
 
                 if (Entry.Type == FileType.Directory)
@@ -391,6 +398,14 @@ namespace GenRomFS
         }
 
 
+        public int AlignParagraph(int Size)
+        {
+            if (Size % 16 == 0)
+                return Size;
+
+            return Size + 16 - (Size % 16);
+        }
+
         public int AlignData(int Size)
         {
             if (Size % Align == 0)
@@ -401,6 +416,12 @@ namespace GenRomFS
 
         void WriteFileBlock(BinaryWriter OutputFile, FileData Current, int Next)
         {
+            if (Current.Padding != 0)
+            {
+                for (int x = 0; x < Current.Padding; x++)
+                    OutputFile.Write((byte)0);
+            }
+
             // Write the header
             WriteFileHeader(OutputFile, Current, Next);
 
@@ -412,19 +433,6 @@ namespace GenRomFS
                     OutputFile.Write(Input.ReadBytes(Current.DataLength));
                 }
             }
-
-            // Pad it out to be aligned
-            if ((OutputFile.BaseStream.Position % Align) != 0)
-            {
-                long Count = Align - (OutputFile.BaseStream.Position % Align);
-                while (Count != 0)
-                {
-                    OutputFile.Write((byte)0);
-
-                    Count--;
-                }
-            }
-
         }
 
         void WriteData(BinaryWriter OutputFile, FileData Base)
@@ -458,7 +466,7 @@ namespace GenRomFS
             {
                 OutputFile.Write(SwapEndian(MagicA));
                 OutputFile.Write(SwapEndian(MagicB));
-                OutputFile.Write(SwapEndian(Header.DataLength));
+                OutputFile.Write(SwapEndian(AlignParagraph(Header.DataLength)));
                 OutputFile.Write(SwapEndian(0));
                 OutputFile.Write(Header.Name.ToArray());
             }

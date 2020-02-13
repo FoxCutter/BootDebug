@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace GenRomFS
 {
@@ -18,7 +19,7 @@ namespace GenRomFS
         BlockDevice = 4,
         CharDevice = 5,
         Socket = 6,
-        Fifi = 7,
+        Fifo = 7,
         Executable = 8,
 
         Root = 1024,
@@ -28,15 +29,8 @@ namespace GenRomFS
 
     class FileData
     {
-        public static int ToParagraph(int Size)
-        {
-            if (Size % 16 == 0)
-                return Size;
-
-            return Size + 16 - (Size % 16);
-        }
-
         public FileType Type = FileType.RegularFile;
+        public bool Executable;
 
         public int DataLength;
 
@@ -47,10 +41,21 @@ namespace GenRomFS
         public int FilePos = 0; // The calculated location of where it should be in the file
 
         public FileData Link;
+        public int DevNum;
         public List<FileData> Files = new List<FileData>();
 
-        public int HeaderLength { get { return 16 + ToParagraph(Name.Length + 1); } }
+        public int HeaderLength { get { return 16 + Program.AlignParagraph(Name.Length + 1); } }
 
+        public FileData this [string Name]
+        {
+            get
+            {
+                if (String.IsNullOrWhiteSpace(Name))
+                    return this;
+
+                return Files.FirstOrDefault(e => e.Name == Name);
+            }
+        }
     }
 
     class Program
@@ -76,16 +81,16 @@ namespace GenRomFS
             Console.WriteLine("  -d Directory       Build the file system from the Directory");
             Console.WriteLine("  -v VolumeName      The name of the Volume (Default 'ROMFS'");
             Console.WriteLine("  -a Align           Align files to Byte Boundry (Default 16)");
-            //Console.WriteLine("  -f File            Stores the provided in file in the root directory of the file system");
-            //Console.WriteLine("  -f @FileList       FileList is new line list of files to store in the root of the file System");
-            //Console.WriteLine("  -F Path File       Stores the provided in file under Path the file system");
-            //Console.WriteLine("  -F Path @FileList  FileList is new line list of files to store under Path of the file System");
-            Console.WriteLine("  -V                 Verobuse Output");
+            Console.WriteLine("  -f File            Stores the provided in file in the root directory of the file system");
+            Console.WriteLine("  -p Path File       Stores the provided in file under Path in the file system");
+            Console.WriteLine("  -f FileList        FileList is new line list of files to store in the root of the file System");
+            Console.WriteLine("  -P PathFileList    PathFileList is new line list paths and files to store in the file system (Path<NL>File<NL>)");
+            Console.WriteLine("  -V                 Verbose Output");
         }
 
         bool Verbose = false;
         int Align = 16;
-        string VolumeName = "ROMFS";
+        string VolumeName = "";
         string InputFolder = "";
         string OutputFileName = "";
         List<Tuple<string, string>> InputList = new List<Tuple<string, string>>();
@@ -124,7 +129,11 @@ namespace GenRomFS
                         }
                         else
                         {
-                            VolumeName = args[x + 1].Substring(0, Math.Min(args[x + 1].Length, 15));
+                            VolumeName = args[x + 1];
+
+                            if (VolumeName.Length > 15)
+                                VolumeName = VolumeName.Substring(0, 15);
+
                             x++;
                         }
                         break;
@@ -172,9 +181,36 @@ namespace GenRomFS
                         break;
 
                     case "-F":
+                        if (x + 1 == args.Length)
+                        {
+                            Console.WriteLine("  -F: Value missing");
+                            return false;
+                        }
+                        else
+                        {
+                            if (!File.Exists(args[x + 1]))
+                            {
+                                Console.WriteLine("  -F: Input file missing {0}", args[x + 1]);
+                                return false;
+
+                            }
+
+                            var FileList = File.ReadAllLines(args[x + 1]).Where(e => !String.IsNullOrWhiteSpace(e)).ToList();
+
+                            foreach (string File in FileList)
+                            {
+                                if(!String.IsNullOrWhiteSpace(File))
+                                    InputList.Add(Tuple.Create("\\", File));
+                            }
+
+                            x++;
+                        }
+                        break;
+
+                    case "-p":
                         if (x + 2 == args.Length)
                         {
-                            Console.WriteLine("  -f: Value missing");
+                            Console.WriteLine("  -p Value missing");
                             return false;
                         }
                         else
@@ -183,6 +219,41 @@ namespace GenRomFS
                             x += 2;
                         }
                         break;
+
+                    case "-P":
+                        if (x + 1 == args.Length)
+                        {
+                            Console.WriteLine("  -P: Value missing");
+                            return false;
+                        }
+                        else
+                        {
+                            if (!File.Exists(args[x + 1]))
+                            {
+                                Console.WriteLine("  -P: Input file missing {0}", args[x + 1]);
+                                return false;
+                            }
+
+                            var FileList = File.ReadAllLines(args[x + 1]).Where(e => !String.IsNullOrWhiteSpace(e)).ToList();
+
+                            for(int y = 0; y < FileList.Count; y += 2)
+                            {
+                                if (String.IsNullOrWhiteSpace(FileList[y]))
+                                    continue;
+
+                                if (y + 1 >= FileList.Count)
+                                {
+                                    Console.WriteLine("  -P: Directory without matching file in {0}", args[x + 1]);
+                                    return false;
+                                }
+
+                                InputList.Add(Tuple.Create(FileList[y], FileList[y + 1]));
+                            }
+
+                            x++;
+                        }
+                        break;
+
 
                     case "-h":
                     case "-?":
@@ -223,21 +294,25 @@ namespace GenRomFS
                 Console.WriteLine("ERROR: Output file missing");
                 return;
             }
+            
+            if(VolumeName == "")
+            {
+                VolumeName = string.Format("ROMFS {0:X8}", (int)(DateTime.Now.ToBinary() >> 20));
+
+                if (VolumeName.Length > 15)
+                    VolumeName = VolumeName.Substring(0, 15);
+            }
 
             if(InputFolder != "")
                 Console.WriteLine("Source: {0}", InputFolder);
+
             Console.WriteLine("Output: {0}", OutputFileName);
             Console.WriteLine("Volume Name: {0}", VolumeName);
 
 
             if(Verbose)
             {
-                Console.WriteLine("Alignment {0}", Align);
-
-                foreach(var Entry in InputList)
-                {
-                    Console.WriteLine("{1} in {0}", Entry.Item1, Entry.Item2);
-                }
+                Console.WriteLine("Alignment: {0}", Align);
             }
 
 
@@ -275,8 +350,37 @@ namespace GenRomFS
             if (InputFolder != "")
                 ProcessDirectory(InputFolder, Root);
 
+            //Process individal files
+            foreach (var Entry in InputList)
+            {
+                if (Verbose)
+                    Console.WriteLine("Storing: {1} in {0}", Entry.Item1, Entry.Item2);
 
-            // Process individal files
+                // Find Directory
+                string[] Paths = Entry.Item1.Split(Path.DirectorySeparatorChar);
+
+                FileData Node = Root;
+
+                foreach (string Element in Paths)
+                {
+                    FileData NewEntry = Node[Element];
+
+                    if (NewEntry == null)
+                    {
+                        NewEntry = CreateDirectory(Element, Node);
+                    }
+
+
+                    if(NewEntry.Type == FileType.HardLink || NewEntry.Type == FileType.DotFile || NewEntry.Type == FileType.RootDot)
+                        Node = NewEntry.Link;
+                    else
+                        Node = NewEntry;
+
+                    
+                }
+
+                ProcessFile(Path.GetFullPath(Entry.Item2), Node);
+            }
 
             // Sort and Align all the entries
             Root.DataLength += SortAndAlignDirecotry(Root, Root.DataLength);
@@ -333,6 +437,8 @@ namespace GenRomFS
                     Console.Write(' ');
 
                 Console.Write("{0:X}: {1} ({2}", Entry.FilePos, Entry.Name, Entry.Type.ToString());
+                if (Entry.Executable)
+                    Console.Write(" Executable");
 
                 if (Entry.Type == FileType.HardLink || Entry.Type == FileType.RootDot || Entry.Type == FileType.DotFile)
                 {
@@ -340,11 +446,14 @@ namespace GenRomFS
                 }
                 else
                 {
-                    Console.WriteLine("): {0} -> {1:X}", Entry.DataLength, Next);
-
                     if (Entry.Type == FileType.Directory)
                     {
+                        Console.WriteLine(" => {0:X}) -> {1:X}", Entry.Link.FilePos, Next);
                         DumpData(Entry, Depth + 1);
+                    }
+                    else
+                    {
+                        Console.WriteLine("): {0} -> {1:X}", Entry.DataLength, Next);
                     }
                 }
 
@@ -398,7 +507,7 @@ namespace GenRomFS
         }
 
 
-        public int AlignParagraph(int Size)
+        public static int AlignParagraph(int Size)
         {
             if (Size % 16 == 0)
                 return Size;
@@ -460,7 +569,7 @@ namespace GenRomFS
         void WriteFileHeader(BinaryWriter OutputFile, FileData Header, int Next)
         {
             if (Header.FilePos != (int)OutputFile.BaseStream.Position)
-                Console.Write("!");
+                Console.Write("Sync Error, Expected {0} recived {1}", Header.FilePos, OutputFile.BaseStream.Position);
 
             if (Header.Type == FileType.Root)
             {
@@ -469,6 +578,7 @@ namespace GenRomFS
                 OutputFile.Write(SwapEndian(AlignParagraph(Header.DataLength)));
                 OutputFile.Write(SwapEndian(0));
                 OutputFile.Write(Header.Name.ToArray());
+                OutputFile.Write((byte)0);
             }
             else
             {
@@ -485,9 +595,16 @@ namespace GenRomFS
                 else
                     Next = Next | (int)Header.Type;
 
+                if (Header.Executable)
+                    Next |= (int)FileType.Executable;
+
                 Value += Next;
 
-                if (Header.Link == null)
+                if (Header.Type == FileType.BlockDevice || Header.Type == FileType.CharDevice || Header.Type == FileType.Fifo)
+                {
+                    Link = Header.DevNum;
+                }
+                else if (Header.Link == null)
                 {
                     Link = 0;
                 }
@@ -546,6 +663,12 @@ namespace GenRomFS
             FileInfo Info = new FileInfo(FileName);
             FileData NewEntry = new FileData();
 
+            if(!Info.Exists)
+            {
+                Console.WriteLine("File dosn't exist: {0}", Info.FullName);
+                return;
+            }
+
             if (Info.Attributes.HasFlag(FileAttributes.ReparsePoint))
             {
                 if (Verbose)
@@ -555,6 +678,9 @@ namespace GenRomFS
             }
             else if (Info.Attributes.HasFlag(FileAttributes.Offline))
             {
+                if (Verbose)
+                    Console.WriteLine("Saving zero legth offline file {0}", Info.FullName);
+
                 NewEntry.Name = Info.Name;
                 NewEntry.Type = FileType.RegularFile;
                 NewEntry.DataLength = 0;
@@ -564,8 +690,7 @@ namespace GenRomFS
                 // Can't handle super long files
                 if (Info.Length > 0x80000000)
                 {
-                    if (Verbose)
-                        Console.WriteLine("Skipping large file {0}", Info.FullName);
+                    Console.WriteLine("Skipping large file {0}", Info.FullName);
 
                     return;
                 }
@@ -574,9 +699,89 @@ namespace GenRomFS
                 NewEntry.Type = FileType.RegularFile;
                 NewEntry.DataLength = (int)Info.Length;  // Math.Min((int)Info.Length, Align/2); 
                 NewEntry.FullPath = Info.FullName;
+
+                if (Info.Name[0] == '@' && Info.Length == 0)
+                {
+                    // special file @name,[cpub],major,minor
+                    Match NameMatch = Regex.Match(Info.Name, @"^@([\w\d_+-]*),(\w),(\d*),(\d*)$", RegexOptions.IgnoreCase);
+                    if (NameMatch.Groups.Count == 5)
+                    {
+                        NewEntry.Name = NameMatch.Groups[1].Value;
+                        short Major, Minor;
+
+                        if (!short.TryParse(NameMatch.Groups[3].Value, out Major))
+                        {
+                            Console.WriteLine("Invalid speical device {0}", Info.FullName);
+                            return;
+                        }
+
+                        if (!short.TryParse(NameMatch.Groups[4].Value, out Minor))
+                        {
+                            Console.WriteLine("Invalid speical device {0}", Info.FullName);
+                            return;
+                        }
+
+                        NewEntry.DevNum = (Major << 16) + Minor;
+                        switch (NameMatch.Groups[2].Value[0])
+                        {
+                            case 'c':
+                            case 'u':
+                                NewEntry.Type = FileType.CharDevice;
+                                break;
+
+                            case 'b':
+                                NewEntry.Type = FileType.BlockDevice;
+                                break;
+
+                            case 'p':
+                                NewEntry.Type = FileType.Fifo;
+                                break;
+
+                            default:
+                                Console.WriteLine("Invalid speical device type {0} in {1}", NameMatch.Groups[2].Value[0], Info.FullName);
+
+                                return;
+                        }
+                    }
+
+                }
             }
 
+            string ext = Path.GetExtension(Info.Name).ToLower();
+
+            if (ext == ".exe" || ext == ".com" || ext == ".bat" || ext == ".cmd")
+                NewEntry.Executable = true;
+
             Parent.Files.Add(NewEntry);
+        }
+
+        FileData CreateDirectory(string DirectoryName, FileData Parent)
+        {
+            FileData NewEntry = new FileData();
+            NewEntry.Type = FileType.Directory;
+            NewEntry.Name = DirectoryName;
+            Parent.Files.Add(NewEntry);
+
+            {
+                FileData Entry = new FileData();
+                Entry.Name = ".";
+                Entry.Type = FileType.DotFile;
+                Entry.Link = NewEntry;  // Link to the entry for the new directory
+
+                NewEntry.Files.Add(Entry);
+                NewEntry.Link = Entry; // Link to the first file in the directory 
+            }
+
+            {
+                FileData Entry = new FileData();
+                Entry.Name = "..";
+                Entry.Type = FileType.DotFile;
+                Entry.Link = Parent;      // Link to the entry of the parent Direcotry
+
+                NewEntry.Files.Add(Entry);
+            }
+
+            return NewEntry;
         }
 
         void ProcessDirectory(string DirectoryName, FileData Parent)
@@ -589,32 +794,9 @@ namespace GenRomFS
                 if (Info.Attributes.HasFlag(FileAttributes.System) || Info.Attributes.HasFlag(FileAttributes.Hidden))
                     continue;
 
-                FileData NewEntry = new FileData();
                 if (Info.Attributes.HasFlag(FileAttributes.Directory))
                 {
-                    NewEntry.Type = FileType.Directory;
-                    NewEntry.Name = Info.Name;
-                    Parent.Files.Add(NewEntry);
-
-                    {
-                        FileData Entry = new FileData();
-                        Entry.Name = ".";
-                        Entry.Type = FileType.DotFile;
-                        Entry.Link = NewEntry;  // Link to the entry for the new directory
-
-                        NewEntry.Files.Add(Entry);
-                        NewEntry.Link = Entry; // Link to the first file in the directory 
-                    }
-
-                    {
-                        FileData Entry = new FileData();
-                        Entry.Name = "..";
-                        Entry.Type = FileType.DotFile;
-                        Entry.Link = Parent;      // Link to the entry of the parent Direcotry
-
-                        NewEntry.Files.Add(Entry);
-                    }
-
+                    FileData NewEntry = CreateDirectory(Info.Name, Parent);
                     ProcessDirectory(FileName, NewEntry);
                 }
                 else

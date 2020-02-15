@@ -10,6 +10,164 @@ namespace HeaderSet
 {
     class Program
     {
+        static bool UpdateMultiboot1(BinaryReader InputFile, uint Load_Address, uint Offset = 0, uint Load_End_Address = 0, uint BSS_End_Address = 0)
+        {
+            // Okay, lets find the headers.
+            byte[] Data = new byte[8192];
+
+            // Starting with the Multiboot v1 header
+            InputFile.BaseStream.Position = 0;
+            InputFile.Read(Data, 0, 8192);
+
+            byte[] Header = new byte[4];
+            byte[] Value = new byte[4] { 0x02, 0xB0, 0xAD, 0x1B };
+
+            uint Header_Address = Load_Address;
+
+            for (uint x = 0; x < Data.Length; x += 4)
+            {
+                Array.Copy(Data, x, Header, 0, 4);
+
+                if (Header.SequenceEqual(Value))
+                {
+                    Console.WriteLine("Found MultiBoot Header at 0x{0}", x.ToString("X08"));
+
+                    uint Base_Address = Load_Address - Offset;
+                    Load_End_Address += Offset;
+                    BSS_End_Address += Offset;
+                    Header_Address -= Offset;
+
+                    Header_Address += x;
+                    InputFile.BaseStream.Position = x;
+                    InputFile.ReadUInt32();  // Magic
+                    uint Flags = InputFile.ReadUInt32();  // Flags
+                    uint Chceksum = InputFile.ReadUInt32();  // Checksum
+
+                    Console.WriteLine("Offset Information ");
+                    Console.WriteLine("   Offset to Image:        0x{0}", Offset.ToString("X08"));
+                    Console.WriteLine("   File Load Address:      0x{0}", Base_Address.ToString("X08"));
+                    Console.WriteLine("   Image Base Address:     0x{0}", Load_Address.ToString("X08"));
+                    Console.WriteLine("   Header Load Address:    0x{0}", Header_Address.ToString("X08"));
+                    Console.WriteLine("   Load End Address:       0x{0}", Load_End_Address.ToString("X08"));
+                    Console.WriteLine("   BSS End Address:        0x{0}", BSS_End_Address.ToString("X08"));
+                    Console.WriteLine();
+
+
+                    if ((Flags & 0x00010000) != 0x00010000)
+                    {
+                        Console.WriteLine(" Address fields aren't in the header");
+                        continue;
+                    }
+
+                    // This is all we care about
+                    using (BinaryWriter WriteData = new BinaryWriter(InputFile.BaseStream, Encoding.Default, true))
+                    {
+                        WriteData.BaseStream.Position = InputFile.BaseStream.Position;
+                        WriteData.Write(Header_Address);
+                        WriteData.Write(Load_Address);
+                        WriteData.Write(Load_End_Address);
+                        WriteData.Write(BSS_End_Address);
+                    }
+
+                    return true;
+                }
+
+                //if(Data[x])
+
+                //0x1BADB002
+            }
+
+            return false;
+        }
+
+        static bool UpdateMultiboot2(BinaryReader InputFile, uint Load_Address, uint Offset = 0, uint Load_End_Address = 0, uint BSS_End_Address = 0)
+        {
+            byte[] Data = Data = new byte[32768];
+
+            // Starting with the Multiboot v2 header
+            InputFile.BaseStream.Position = 0;
+            InputFile.Read(Data, 0, 32768);
+
+            byte[] Header = new byte[4];
+            byte[] Value = new byte[4] { 0xD6, 0x50, 0x52, 0xE8 };
+
+            uint Header_Address = Load_Address;
+
+            for (uint x = 0; x < Data.Length; x += 8)
+            {
+                Array.Copy(Data, x, Header, 0, 4);
+
+                if (Header.SequenceEqual(Value))
+                {
+                    Console.WriteLine("Found MultiBoot2 Header at 0x{0}", x.ToString("X08"));
+
+                    uint Base_Address = Load_Address - Offset;
+                    Load_End_Address += Offset;
+                    BSS_End_Address += Offset;
+                    Header_Address -= Offset;
+
+                    Header_Address += x;
+                    InputFile.BaseStream.Position = x;
+                    InputFile.ReadUInt32();  // Magic
+                    InputFile.ReadUInt32();  // Arch
+                    uint Leng = InputFile.ReadUInt32();  // Header Length
+                    uint Checksum = InputFile.ReadUInt32();  // Checksum
+
+                    Console.WriteLine("Offset Information ");
+                    Console.WriteLine("   Offset to Image:        0x{0}", Offset.ToString("X08"));
+                    Console.WriteLine("   File Load Address:      0x{0}", Base_Address.ToString("X08"));
+                    Console.WriteLine("   Image Base Address:     0x{0}", Load_Address.ToString("X08"));
+                    Console.WriteLine("   Header Load Address:    0x{0}", Header_Address.ToString("X08"));
+                    Console.WriteLine("   Load End Address:       0x{0}", Load_End_Address.ToString("X08"));
+                    Console.WriteLine("   BSS End Address:        0x{0}", BSS_End_Address.ToString("X08"));
+                    Console.WriteLine();
+
+
+                    // Read in the tags
+                    while (true)
+                    {
+                        if (InputFile.BaseStream.Position > InputFile.BaseStream.Length)
+                        {
+                            Console.WriteLine("ERROR: MulitBoot2 Header is Invalid");
+                            break;
+                        }
+
+                        while (InputFile.BaseStream.Position % 8 != 0)
+                            InputFile.BaseStream.Position++;
+
+                        long TagBase = InputFile.BaseStream.Position;
+
+                        ushort Type = InputFile.ReadUInt16();    // Type
+                        InputFile.ReadUInt16();                  // Flags
+                        uint Size = InputFile.ReadUInt32();      // Size
+
+                        if (Type == 2)
+                        {
+                            // This is the one we care about.
+                            using (BinaryWriter WriteData = new BinaryWriter(InputFile.BaseStream, Encoding.Default, true))
+                            {
+                                WriteData.BaseStream.Position = InputFile.BaseStream.Position;
+                                WriteData.Write(Header_Address);
+                                WriteData.Write(Load_Address);
+                                WriteData.Write(Load_End_Address);
+                                WriteData.Write(BSS_End_Address);
+                            }
+
+                            return true;
+                        }
+                        else if (Type == 0)
+                            break;
+
+                        InputFile.BaseStream.Position = TagBase + Size;
+                    }
+
+                    break;
+                }
+            }
+            
+            return false;
+        }
+
         static int Main(string[] args)
         {
             if (args.Length == 0 || !File.Exists(args[0]))
@@ -23,29 +181,32 @@ namespace HeaderSet
 
                 return -1;
             }
-            
+
             using (BinaryReader FileData = new BinaryReader(File.Open(args[0], FileMode.Open, FileAccess.ReadWrite)))
             {
                 PEUtils.PEFile WildFile = new PEUtils.PEFile();
                 if (!WildFile.ReadFile(FileData))
                 {
-                    Console.WriteLine("ERROR: Invalid PE file.");
-                    return -1;
+                    Console.WriteLine("Input not a PE file, searching to see if it's a container.");
+
+                    if (!WildFile.SearchFile(FileData))
+                    {
+                        Console.WriteLine("ERROR: Invalid PE file.");
+                        return -1;
+                    }
+
+                    Console.WriteLine("PE file found at offset {0:X8}", WildFile.Offset);
+                    Console.WriteLine();
                 }
-                
-                // We need to sanity check a few things here
-                //if (WildFile._OptionalHeader.ImageBase != 0x100000)
-                //{
-                //    Console.WriteLine("ERROR: PE file doesn't start at the right base.");
-                //    return -1;
-                //}
+
+
 
                 if (WildFile._OptionalHeader.FileAlignment != WildFile._OptionalHeader.SectionAlignment)
                 {
                     Console.WriteLine("ERROR: File Alignment and Section Alignment do not match.");
                     return -1;
                 }
-                
+
                 // First off, lets work out the header values.
                 uint Load_Address = 0;
                 uint Load_End_Address = 0;
@@ -73,6 +234,9 @@ namespace HeaderSet
                 if (BSS_End_Address < Load_End_Address)
                     BSS_End_Address = Load_End_Address;
 
+                Load_End_Address = (uint)FileData.BaseStream.Length;
+                BSS_End_Address = (uint)FileData.BaseStream.Length;
+
                 // Readjust everything to the image base
                 Load_Address += WildFile._OptionalHeader.ImageBase;
                 Load_End_Address += WildFile._OptionalHeader.ImageBase;
@@ -80,124 +244,16 @@ namespace HeaderSet
 
                 uint Header_Address = WildFile._OptionalHeader.ImageBase;
 
-                Console.WriteLine("Offset Information ");
-                Console.WriteLine("   Header Address:         0x{0}", Header_Address.ToString("X08"));
-                Console.WriteLine("   Load Address:           0x{0}", Load_Address.ToString("X08"));
-                Console.WriteLine("   Load End Address:       0x{0}", Load_End_Address.ToString("X08"));
-                Console.WriteLine("   BSS End Address:        0x{0}", BSS_End_Address.ToString("X08"));
+                //Console.WriteLine("Offset Information ");
+                //Console.WriteLine("   Header Address:         0x{0}", Header_Address.ToString("X08"));
+                //Console.WriteLine("   Load Address:           0x{0}", Load_Address.ToString("X08"));
+                //Console.WriteLine("   Load End Address:       0x{0}", Load_End_Address.ToString("X08"));
+                //Console.WriteLine("   BSS End Address:        0x{0}", BSS_End_Address.ToString("X08"));
 
-                Console.WriteLine();
-                
-                // Okay, lets find the headers.
-                byte[] Data = new byte[8192];
+                //Console.WriteLine();
 
-                // Starting with the Multiboot v1 header
-                FileData.BaseStream.Position = 0;
-                FileData.Read(Data, 0, 8192);
-
-                byte[] Header = new byte[4];
-                byte[] Value = new byte[4] { 0x02, 0xB0, 0xAD, 0x1B };
-
-                for (uint x = 0; x < Data.Length; x += 4)
-                {
-                    Array.Copy(Data, x, Header, 0, 4);
-
-                    if (Header.SequenceEqual(Value))
-                    {
-                        Console.WriteLine("Found MultiBoot Header at  0x{0}", x.ToString("X08"));
-                        
-                        Header_Address = WildFile._OptionalHeader.ImageBase + x;
-                        FileData.BaseStream.Position = x;
-                        FileData.ReadUInt32();  // Magic
-                        uint Flags = FileData.ReadUInt32();  // Flags
-                        uint Chceksum = FileData.ReadUInt32();  // Checksum
-
-                        if ((Flags & 0x00010000) != 0x00010000)
-                        {
-                            Console.WriteLine(" Address fields aren't in the header");
-                            continue;
-                        }
-
-                        // This is all we care about
-                        using (BinaryWriter WriteData = new BinaryWriter(FileData.BaseStream, Encoding.Default, true))
-                        {
-                            WriteData.BaseStream.Position = FileData.BaseStream.Position;
-                            WriteData.Write(Header_Address);
-                            WriteData.Write(Load_Address);
-                            WriteData.Write(Load_End_Address);
-                            WriteData.Write(BSS_End_Address);
-                        }                    
-                    }
-                    
-                    //if(Data[x])
-                    
-                    //0x1BADB002
-                }
-
-                Data = new byte[32768];
-
-                // Starting with the Multiboot v2 header
-                FileData.BaseStream.Position = 0;
-                FileData.Read(Data, 0, 32768);
-
-                Value = new byte[4] { 0xD6, 0x50, 0x52, 0xE8 };
-
-                for (uint x = 0; x < Data.Length; x += 8)
-                {
-                    Array.Copy(Data, x, Header, 0, 4);
-
-                    if (Header.SequenceEqual(Value))
-                    {
-                        Console.WriteLine("Found MultiBoot2 Header at 0x{0}", x.ToString("X08"));
-
-                        Header_Address = WildFile._OptionalHeader.ImageBase + x;
-
-                        FileData.BaseStream.Position = x;
-                        FileData.ReadUInt32();  // Magic
-                        FileData.ReadUInt32();  // Arch
-                        uint Leng = FileData.ReadUInt32();  // Header Length
-                        uint Checksum = FileData.ReadUInt32();  // Checksum
-
-                        // Read in the tags
-                        while (true)
-                        {
-                            if (FileData.BaseStream.Position > FileData.BaseStream.Length)
-                            {
-                                Console.WriteLine("ERROR: MulitBoot2 Header is Invalid");
-                                break;
-                            }
-                            
-                            while (FileData.BaseStream.Position % 8 != 0)
-                                FileData.BaseStream.Position++;
-
-                            long TagBase = FileData.BaseStream.Position;
-
-                            ushort Type = FileData.ReadUInt16();    // Type
-                            FileData.ReadUInt16();                  // Flags
-                            uint Size = FileData.ReadUInt32();      // Size
-
-                            if (Type == 2)
-                            {
-                                // This is the one we care about.
-                                using (BinaryWriter WriteData = new BinaryWriter(FileData.BaseStream, Encoding.Default, true))
-                                {
-                                    WriteData.BaseStream.Position = FileData.BaseStream.Position;
-                                    WriteData.Write(Header_Address);
-                                    WriteData.Write(Load_Address);
-                                    WriteData.Write(Load_End_Address);
-                                    WriteData.Write(BSS_End_Address);
-                                }
-                            }
-                            else if (Type == 0)
-                                break;
-
-                            FileData.BaseStream.Position = TagBase + Size;
-                        }
-                        
-                        break;
-                    }
-                }
-
+                UpdateMultiboot1(FileData, WildFile._OptionalHeader.ImageBase, WildFile.Offset, Load_End_Address, BSS_End_Address);
+                UpdateMultiboot2(FileData, WildFile._OptionalHeader.ImageBase, WildFile.Offset, Load_End_Address, BSS_End_Address);
             }
 
             return 0;

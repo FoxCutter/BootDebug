@@ -16,6 +16,8 @@ namespace PEUtils
     public class PEFile
     {
         public Error LastError { get; set; }
+
+        public uint Offset { get; private set; }
         
         public IMAGE_DOS_HEADER _DOSHeader;
         public IMAGE_NT_HEADERS _NTHeader;
@@ -27,17 +29,50 @@ namespace PEUtils
         public PEFile()
         {
             LastError = Error.None;
+            Offset = 0;
 
             _DataDirectory = new List<IMAGE_DATA_DIRECTORY>();
             _SectionHeaders = new List<IMAGE_SECTION_HEADER>();
+        }
+
+        public bool SearchFile(BinaryReader FileData)
+        {
+            try
+            {
+                // Seek to the start of the stream.
+                FileData.BaseStream.Position = 0;
+
+                while (FileData.BaseStream.Position < FileData.BaseStream.Length)
+                {
+                    // Start checking every word to see if it's the MZ header
+                    long Last = FileData.BaseStream.Position;
+                    ushort Magic = FileData.ReadUInt16();
+                    if(Magic == 0x5A4D)
+                    {
+                        FileData.BaseStream.Position = Last;
+
+                        // If it is, try to read the file.
+                        if (ReadFile(FileData))
+                            return true;
+
+                        FileData.BaseStream.Position = Last + 2;
+                    }                   
+                }
+            }
+            catch
+            {
+                // If we get any sort of read error the file isn't valid.
+                return false;
+            }
+
+            return true;
         }
 
         public bool ReadFile(BinaryReader FileData)
         {
             try
             {
-                // Seek to the start of the stream.
-                FileData.BaseStream.Position = 0;
+                Offset = (uint)FileData.BaseStream.Position;
 
                 // We'll start with the DOS file header
                 _DOSHeader = FileData.ReadObject<IMAGE_DOS_HEADER>();
@@ -52,7 +87,7 @@ namespace PEUtils
                 // It's mostly academic anyways.
 
                 // Jump to the NT Header
-                FileData.BaseStream.Position = (long)_DOSHeader.e_lfanew;
+                FileData.BaseStream.Position = (long)Offset + _DOSHeader.e_lfanew;
 
                 // Load up the PE signature and Header information
                 _NTHeader = FileData.ReadObject<IMAGE_NT_HEADERS>();

@@ -7,7 +7,7 @@ typedef void (*InterruptCallbackPtr)(InterruptContext * Context, uintptr_t * Dat
 
 typedef struct acpi_table_madt ACPI_TABLE_MADT;
 
-enum class ACPIOffsets;
+enum class APICOffsets;
 
 // Priority level for the interupts, using the APIC fixed int rules (High number has higher priority)
 // If it's in Mixed or PIC mode these don't matter AT ALL.
@@ -62,9 +62,9 @@ class InterruptControler
 
 	IDTManager *m_IDTManager;
 
-	uint32_t GetAPICRegister(ACPIOffsets Reg);
-	void SetAPICRegister(ACPIOffsets Reg, uint32_t Value);
-	void PrintAPICIntStatus(ACPIOffsets StartIndex);
+	uint32_t GetAPICRegister(APICOffsets Reg);
+	void SetAPICRegister(APICOffsets Reg, uint32_t Value);
+	void PrintAPICIntStatus(APICOffsets StartIndex);
 
 	uint32_t GetIOAPICRegister(int Reg);
 	void SetIOAPICRegister(int Reg, uint32_t Value);

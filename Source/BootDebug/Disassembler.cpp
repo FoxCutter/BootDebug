@@ -367,7 +367,7 @@ void PrintModRM(uint32_t ModData, int32_t Displacement, uint32_t PointerSize, ui
 			
 			else
 			{
-				PrintReg(ConvertReg(RM, AdSize), PointerSize);
+				PrintReg(ConvertReg(RM, PointerSize), PointerSize);
 
 				if(Mod == 1)
 					DisplacmentSize = 8;
@@ -386,7 +386,7 @@ void PrintModRM(uint32_t ModData, int32_t Displacement, uint32_t PointerSize, ui
 				if(Mod != 3)
 					printf("%s", ModRM16[RM]);
 				else
-					PrintReg(ConvertReg(RM, AdSize), PointerSize);
+					PrintReg(ConvertReg(RM, PointerSize), PointerSize);
 
 				if(Mod == 1)
 					DisplacmentSize = 8;

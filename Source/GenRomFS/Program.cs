@@ -85,6 +85,7 @@ namespace GenRomFS
             Console.WriteLine("  -p Path File       Stores the provided in file under Path in the file system");
             Console.WriteLine("  -f FileList        FileList is new line list of files to store in the root of the file System");
             Console.WriteLine("  -P PathFileList    PathFileList is new line list paths and files to store in the file system (Path<NL>File<NL>)");
+            Console.WriteLine("  -t File            The provided file will be placed first at the start of the root directory in the file system");
             Console.WriteLine("  -V                 Verbose Output");
         }
 
@@ -94,6 +95,7 @@ namespace GenRomFS
         string InputFolder = "";
         string OutputFileName = "";
         List<Tuple<string, string>> InputList = new List<Tuple<string, string>>();
+        string TopMostFile = "";
 
         bool ParseCommandLine(string[] args)
         {
@@ -254,6 +256,19 @@ namespace GenRomFS
                         }
                         break;
 
+                    case "-t":
+                        if (x + 1 == args.Length)
+                        {
+                            Console.WriteLine("  -f: Value missing");
+                            return false;
+                        }
+                        else
+                        {
+                            InputList.Add(Tuple.Create("\\", args[x + 1]));
+                            TopMostFile = args[x + 1];
+                            x++;
+                        }
+                        break;
 
                     case "-h":
                     case "-?":
@@ -383,8 +398,7 @@ namespace GenRomFS
             }
 
             // Sort and Align all the entries
-            Root.DataLength += SortAndAlignDirecotry(Root, Root.DataLength);
-
+            Root.DataLength += SortAndAlignDirecotry(Root, Root.DataLength, true);
 
             if (Verbose)
             {
@@ -461,12 +475,33 @@ namespace GenRomFS
 
         }
 
-        int SortAndAlignDirecotry(FileData Parent, int Offset)
+        int SortAndAlignDirecotry(FileData Parent, int Offset, bool Root = false)
         {
-            var Files = Parent.Files.Where(e => e.Type != FileType.DotFile && e.Type != FileType.RootDot).OrderBy(e => e.Name);
+            var Files = Parent.Files.Where(e => e.Type != FileType.DotFile && e.Type != FileType.RootDot).OrderBy(e => e.Name).ToList();
 
             // Pull out . and .. to make sure they will always be at the start.
             Parent.Files = Parent.Files.Where(e => e.Type == FileType.DotFile || e.Type == FileType.RootDot).OrderBy(e => e.Name).ToList();
+
+            if (Root == true && TopMostFile != "")
+            {
+                if (Verbose)
+                {
+                    Console.WriteLine("Putting {0} at the top of the root directory.", TopMostFile);
+                }
+
+                FileData TopMost = Files.Where(e => e.Type == FileType.RegularFile && e.Name == TopMostFile).FirstOrDefault();
+
+                if (TopMost == null)
+                {
+                    Console.WriteLine("Topmost file missing in root folder: {0}", TopMostFile);
+                }
+                else
+                {
+                    Files.Remove(TopMost);
+                    Files.Insert(0, TopMost);
+                }
+            }
+
 
             // The add the sorted results
             Parent.Files.AddRange(Files);

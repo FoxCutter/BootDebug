@@ -27,13 +27,19 @@ void PrintGenAddress(ACPI_GENERIC_ADDRESS &Address)
 			break;
 
 		case 1:
-			KernalPrintf("I/O: %08llX, Bit: %02X Width: %02X", Address.Address, Address.BitOffset, Address.BitWidth);
+			KernalPrintf("I/O: %08llX", Address.Address);
 			break;
 
 		case 2:
 			KernalPrintf("PCI: 00:%02X:%02X %02X", ((Address.Address & 0xffff00000000) >> 32), ((Address.Address & 0x0000ffff0000) >> 16), (Address.Address & 0x00000000ffff));
 			break;
+
+		default:
+			KernalPrintf("(%d): %08llX", Address.SpaceId, Address.Address);
+			break;
 	}
+
+	KernalPrintf(" BitOffset: %02X BitWidth: %02X, AccessWidth: %02X", Address.BitOffset, Address.BitWidth, Address.AccessWidth * 8);
 }
 
 ACPI::ACPI(void)
@@ -263,7 +269,7 @@ ACPI_STATUS WalkCallback (ACPI_HANDLE Object, UINT32 NestingLevel, void *Context
 		{
 			KernalPrintf(" CID:");//%s", Info->CompatibleIdList.Ids);
 			for(unsigned x = 0; x < Info->CompatibleIdList.Count; x++)
-				KernalPrintf(" %s", Info->CompatibleIdList.Ids[x].String);
+				KernalPrintf(" [%s]", Info->CompatibleIdList.Ids[x].String);
 		}
 
 		if(Info->Valid & ACPI_VALID_ADR)
@@ -280,24 +286,24 @@ ACPI_STATUS WalkCallback (ACPI_HANDLE Object, UINT32 NestingLevel, void *Context
 			KernalPrintf(" STA: ");
 
 			if(Info->CurrentStatus & ACPI_STA_DEVICE_FUNCTIONING)
-				KernalPrintf("F");	// Device is Functioning Correctly
+				KernalPrintf("Fn");	// Device is Functioning Correctly
 			else
-				KernalPrintf("-");
+				KernalPrintf("--");
 
 			if(Info->CurrentStatus & ACPI_STA_DEVICE_UI)
-				KernalPrintf("V");	// Device should be Visable in the UI
+				KernalPrintf("Vs");	// Device should be Visable in the UI
 			else
-				KernalPrintf("-");
+				KernalPrintf("--");
 
 			if(Info->CurrentStatus & ACPI_STA_DEVICE_ENABLED)
-				KernalPrintf("E");	// Device is Enabled and decoding
+				KernalPrintf("En");	// Device is Enabled and decoding
 			else
-				KernalPrintf("-");
+				KernalPrintf("--");
 
 			if(Info->CurrentStatus & ACPI_STA_DEVICE_PRESENT)
-				KernalPrintf("P");	// Device is Present
+				KernalPrintf("Pr");	// Device is Present
 			else
-				KernalPrintf("-");
+				KernalPrintf("--");
 		}
 		
 		KernalPrintf("\n");
@@ -322,6 +328,15 @@ ACPI_STATUS WalkCallback (ACPI_HANDLE Object, UINT32 NestingLevel, void *Context
 		{
 			AcpiWalkResourceBuffer(&Path, WalkResourceCallback, nullptr);
 		}
+
+		//Status = AcpiGetPossibleResources(Object, &Path);
+
+		//if (Status == AE_OK)
+		//{
+		//	AcpiWalkResourceBuffer(&Path, WalkResourceCallback, nullptr);
+		//}
+
+
 	}
 
 	
@@ -671,13 +686,13 @@ void ACPI::Dump(char *Options)
 	{
 		bool Res = false;
 		AcpiGetDevices(NULL, WalkCallback, &Res, nullptr);
-		//AcpiWalkNamespace(0, ACPI_ROOT_OBJECT, UINT32_MAX, WalkCallback, nullptr, &Res, nullptr);
+		//AcpiWalkNamespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT, UINT32_MAX, WalkCallback, nullptr, &Res, nullptr);
 	}
 	else if(_stricmp("RES", Options) == 0)
 	{
 		bool Res = true;
-		AcpiGetDevices(NULL, WalkCallback, &Res, nullptr);
-		//AcpiWalkNamespace(0, ACPI_ROOT_OBJECT, UINT32_MAX, WalkCallback, nullptr, &Res, nullptr);
+		//AcpiGetDevices(NULL, WalkCallback, &Res, nullptr);
+		AcpiWalkNamespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT, UINT32_MAX, WalkCallback, nullptr, &Res, nullptr);
 	}
 	else if(_stricmp("FACP", Options) == 0)
 	{
@@ -706,6 +721,7 @@ void ACPI::Dump(char *Options)
 		}		
 		printf("\n");
 		printf(" FACS: %08X, DSDT: %08X\n", AcpiGbl_FADT.Facs, AcpiGbl_FADT.Dsdt);
+		printf(" XFACS: %016llX, XDSDT: %016llX\n", AcpiGbl_FADT.XFacs, AcpiGbl_FADT.XDsdt);
 		printf(" SCI Int: %04X, Port: %08X, ACPI Enable: %02X, ACPI Disable: %02X\n", AcpiGbl_FADT.SciInterrupt, AcpiGbl_FADT.SmiCommand, AcpiGbl_FADT.AcpiEnable, AcpiGbl_FADT.AcpiDisable); 
 		printf(" PM1 Event Block   %08X/%08X, Length: %02x\n", AcpiGbl_FADT.Pm1aEventBlock, AcpiGbl_FADT.Pm1bEventBlock, AcpiGbl_FADT.Pm1EventLength);
 		printf(" PM1 Control Block %08X/%08X, Length: %02x\n", AcpiGbl_FADT.Pm1aControlBlock, AcpiGbl_FADT.Pm1bControlBlock, AcpiGbl_FADT.Pm1ControlLength);
@@ -727,6 +743,16 @@ void ACPI::Dump(char *Options)
 			printf(", Reset Value: %02X\n", AcpiGbl_FADT.ResetValue);
 		}
 
+		printf(" PH1a Event "); PrintGenAddress(AcpiGbl_FADT.XPm1aEventBlock); printf("\n");
+		printf(" PM1b Event "); PrintGenAddress(AcpiGbl_FADT.XPm1bEventBlock); printf("\n");
+		printf(" PM1a Control "); PrintGenAddress(AcpiGbl_FADT.XPm1aControlBlock); printf("\n");
+		printf(" PM1b Control "); PrintGenAddress(AcpiGbl_FADT.XPm1bControlBlock); printf("\n");
+		printf(" PM2 Control"); PrintGenAddress(AcpiGbl_FADT.XPm2ControlBlock); printf("\n");
+		printf(" PMTimer "); PrintGenAddress(AcpiGbl_FADT.XPmTimerBlock); printf("\n");
+		printf(" GPE0 "); PrintGenAddress(AcpiGbl_FADT.XGpe0Block); printf("\n");
+		printf(" GPE1 "); PrintGenAddress(AcpiGbl_FADT.XGpe1Block); printf("\n");
+		printf(" Sleep Control "); PrintGenAddress(AcpiGbl_FADT.SleepControl); printf("\n");
+		printf(" Sleep Status "); PrintGenAddress(AcpiGbl_FADT.SleepStatus); printf("\n");
 	}
 	else if(_stricmp(ACPI_SIG_MADT, Options) == 0)
 	{

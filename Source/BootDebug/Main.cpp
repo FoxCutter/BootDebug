@@ -20,11 +20,161 @@
 
 #include "Disassembler.h"
 
+#include "PEData.h"
+
 MMU * MMUManager = nullptr;
 OpenHCI * USBManager = nullptr;
 
 extern InterruptControler m_InterruptControler;
 
+char * ControlRegisterFlags[] =
+{
+	// CR0
+	"PE-Protected Mode",
+	"MP-Monitor Coprocessor",
+	"EM-FPU Emulation",
+	"TS-Task Switched",
+	"ET-Extenstion Type",
+	"NE-Numeric Error",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"WP-Write Protect",
+	"",
+	"AM-Alignment Mask",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"NW-Not Write-Through",
+	"CD-Cache Disable",
+	"PG-Paging",
+
+	// CR4
+	"VME-Virtual-8086 Mode Extensions",
+	"PVI-Protected-Mode Virtual Interrupts",
+	"TSD-Time Stamp Disable",
+	"DE-Debugging Extensions",
+	"PSE-Page Size Extensions",
+	"PAE-Physical Address Extension",
+	"MCE-Machine-Check Enable",
+	"PGE-Page Global",
+	"PCE-Performance-Monitoring Counter",
+	"OSFXSR-FXSAVE and FXRSTOR instructions",
+	"OSXMMEXCPT-SIMD Floating-Point Exceptions",
+	"UMIP-User-Mode Instruction Prevention",
+	"",
+	"",
+	"VMXE-VMX-Enable",
+	"SMXE-SMX-Enable",
+	"FSGSBASE-FSGSBASE-Enable",
+	"PCIDE-PCID Enable",
+	"OSXSAVE-XSAVE and Processor Extended States",
+	"",
+	"SMEP-SMEP Enable",
+	"SMAP-SMAP Enable",
+	"PKE-Protection-Key-Enable",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+
+
+	// XCR0
+	"x87 FPU/MMX",
+	"SSE",
+	"AVX",
+	"BNDREG",
+	"BNDCSR",
+	"Opmask",
+	"ZMM_Hi256",
+	"Hi16_ZMM",
+	"",
+	"PXRU",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+};
+
+
+char * CPUIDFlagsGroup[] =
+{
+	"01:EDX",
+	"01:ECX",
+	"07:EDX",
+	"07:ECX",
+	"80000001:EDX",
+	"80000001:ECX",
+};
 
 char * CPUIDFlags[] = 
 {
@@ -99,17 +249,17 @@ char * CPUIDFlags[] =
 	// Structured Extended Feature - EBX
 	"FS and GS Base",
 	"Time Stamp Counter Adjust MSR Supported",
-	"Intel SGX",
+	"Software Guard Extensions",
 	"BMI1",
 	"Hardware Lock Elision",
 	"AVX2",
-	"FDP_EXCPTN_ONLY",
+	"x87 FPU Data Pointer updated only on x87 exceptions",
 	"Supervisor-Mode Execution Prevention",
 	"BMI2",
 	"Enhanced REP MOVSB/STOSB",
 	"INVPCID",
 	"Restricted Transactional Memory",
-	"Platform Quality of Service Monitoring",
+	"Resource Director Technology Monitoring",
 	"Deprecates FPU CS and FPU DS (64-Bit)",
 	"Memory Protection Extensions",
 	"Platform Quality of Service Enforcement",
@@ -133,9 +283,9 @@ char * CPUIDFlags[] =
 	// Structured Extended Feature - ECX
 	"PREFETCHWT1",
 	"",
-	"UMIP",
-	"PKU",
-	"OSPKE",
+	"User-mode instruction prevention",
+	"Protection keys for user-mode pages",
+	"CR4.PKE Set",
 	"",
 	"",
 	"",
@@ -153,7 +303,7 @@ char * CPUIDFlags[] =
 	"MAWAU 3",
 	"MAWAU 4",
 	"MAWAU 5",
-	"RDPID",
+	"Read Processor ID",
 	"",
 	"",
 	"",
@@ -161,7 +311,7 @@ char * CPUIDFlags[] =
 	"",
 	"",
 	"",
-	"SGX_LC",
+	"SGX Launch Configuration",
 	"",
 
 	// Extended Features - EDX
@@ -329,7 +479,6 @@ char * TrimString(char *String)
 	return String;
 }
 
-
 bool ParseData(char *InputData, void *Data, uint32_t &DataLength, uint32_t DataSize)
 {
 	bool Pass = true;
@@ -481,7 +630,7 @@ void ObjectCommand(CommandSet & Data);
 void DisassembleCommand(CommandSet & Data);
 
 CommandEntry Commands[] = {
-	{'D',	 2,		&DumpCommand,		"Dump Memory           D[Size] [Address] [Length]"},	
+	{'D',	 3,		&DumpCommand,		"Dump Memory           D[Size] [Address] [Length]"},	
 	{'E',	 2,		&EnterCommand,		"Enter Data            E[Size] Address Data"},	
 	{'S',	 2,		&SearchCommand,		"Search Memory         S[Size] Address Length Data"},	
 	{'I',	 2,		&PortCommand,		"Read from a Port      I[Size] Port"},	
@@ -493,6 +642,346 @@ CommandEntry Commands[] = {
 	{'U',	 3,		&DisassembleCommand,"Disassemble           U[16] [Address] [Length]"},					
 	{0,		 0,		nullptr,			""},	
 };
+
+
+char * PEDirectoryName[] =
+{
+	"Export",
+	"Import",
+	"Resource",
+	"Exception",
+	"Certificate",
+	"Base Relocation",
+	"Debug",
+	"Architecture",
+	"Global Pointer",
+	"TLS",
+	"Load Config",
+	"Bound Import",
+	"Import Address Table",
+	"Delay Load Descriptions",
+	"CLR Runtime",
+	"Reserved"
+};
+
+char * PESubsystemNames[] =
+{
+	"Unknown",
+	"Native/None",
+	"Windows GUI",
+	"Windows CUI",
+	"",
+	"OS2 CUI",
+	"",
+	"Posix CUI",
+	"Native Windows",
+	"Windows CE GUI",
+	"EFI Application",
+	"EFI Boot Service Driver",
+	"EFI Runtime Driver",
+	"EFI ROM",
+	"XBOX",
+	"",
+	"Windows Boot Application",
+};
+
+uint32_t FixedDAatn[10];
+
+void DumpPEData(void *BaseAddress)
+{
+	intptr_t Address = (intptr_t)BaseAddress;
+
+	for(int x = 0; x < 10; x++)
+		FixedDAatn[x] = (uint32_t)BaseAddress;
+
+	printf("\00307PE File Base: %0.8X\n", Address);
+	PEFile::IMAGE_DOS_HEADER * DOSHeader = reinterpret_cast<PEFile::IMAGE_DOS_HEADER *>(Address);
+	if (DOSHeader->e_magic != 0x5A4D)
+	{
+		printf("  DOS Header Missing.\n");
+		return;
+	}
+
+	Address += DOSHeader->e_lfanew;
+
+	PEFile::IMAGE_NT_HEADERS * NTHeader = reinterpret_cast<PEFile::IMAGE_NT_HEADERS *>(Address);
+	Address += sizeof(PEFile::IMAGE_NT_HEADERS);
+
+	if (NTHeader->Signature != 0x00004550)
+	{
+		printf("  NT Header Missing.\n");
+		return;
+	}
+
+	printf("  Machine: %0.4X\n", NTHeader->FileHeader.Machine);
+	printf("  Characteristics: %0.4X ", NTHeader->FileHeader.Characteristics);
+	if (NTHeader->FileHeader.Characteristics & PEFile::S32BIT_MACHINE)
+		printf("32-BIT ");
+
+	if (NTHeader->FileHeader.Characteristics & PEFile::EXECUTABLE_IMAGE)
+		printf("EXE ");
+
+	if (NTHeader->FileHeader.Characteristics & PEFile::DLL)
+		printf("DLL ");
+
+	if (NTHeader->FileHeader.Characteristics & PEFile::SYSTEM)
+		printf("SYSTEM ");
+
+	if (NTHeader->FileHeader.Characteristics & PEFile::RELOCS_STRIPPED)
+		printf("FIXED");
+
+	printf("\n");
+	printf("  Time Date Stamp: %0.8X\n", NTHeader->FileHeader.TimeDateStamp);
+	//printf("  Symbol Table: %0.8X (%u)\n", NTHeader->FileHeader.PointerToSymbolTable, NTHeader->FileHeader.NumberOfSymbols);
+	//printf("  Size of Optional Header: %0.8X\n", NTHeader->FileHeader.SizeOfOptionalHeader);
+
+
+	// And read in the optional header
+	PEFile::IMAGE_OPTIONAL_HEADER32 * OptionalHeader = reinterpret_cast<PEFile::IMAGE_OPTIONAL_HEADER32 *>(Address);
+	Address += sizeof(PEFile::IMAGE_OPTIONAL_HEADER32);
+
+	if (OptionalHeader->Magic != PEFile::OptionSignature::NT_32Bit)
+	{
+		// We only work with 32 bit headers at the moment
+		printf("  Non 32-Bit PE file.\n");
+		return;
+	}
+
+	printf("  Linker Version: %u.%u\n", OptionalHeader->MajorLinkerVersion, OptionalHeader->MinorLinkerVersion);
+	printf("  Image Version: %u.%u\n", OptionalHeader->MajorImageVersion, OptionalHeader->MinorImageVersion);
+	printf("  OS Version: %u.%u\n", OptionalHeader->MajorOperatingSystemVersion, OptionalHeader->MinorOperatingSystemVersion);
+	printf("  Subsystem: %s (%u), Version: %u.%u\n", PESubsystemNames[(int)OptionalHeader->Subsystem], OptionalHeader->Subsystem, OptionalHeader->MajorSubsystemVersion, OptionalHeader->MinorSubsystemVersion);
+	printf("  Win32 Version: %0.8X\n", OptionalHeader->Win32VersionValue);
+
+	printf("  Size of Code: %0.8X, Data: %0.8X, BSS: %0.8X\n", OptionalHeader->SizeOfCode, OptionalHeader->SizeOfInitializedData, OptionalHeader->SizeOfUninitializedData);
+	printf("  Image Base: %0.8X, Code: %0.8X, Data: %0.8X\n", OptionalHeader->ImageBase, OptionalHeader->BaseOfCode, OptionalHeader->BaseOfData);
+	printf("  Section Alignment: %0.8X, File Alignment: %0.8X\n", OptionalHeader->SectionAlignment, OptionalHeader->FileAlignment);
+	printf("  Size of Image: %0.8X, Headers: %0.8X\n", OptionalHeader->SizeOfImage, OptionalHeader->SizeOfHeaders);
+	printf("  Stack Reserverd: %0.8X, Stack Commit: %0.8X\n", OptionalHeader->SizeOfStackReserve, OptionalHeader->SizeOfStackCommit);
+	printf("  Heap Reserverd: %0.8X, Heap Commit: %0.8X\n", OptionalHeader->SizeOfHeapReserve, OptionalHeader->SizeOfHeapCommit);
+
+	printf("  DLL Characteristics: %0.8X ", OptionalHeader->DllCharacteristics);
+	if (OptionalHeader->DllCharacteristics && PEFile::DYNAMIC_BASE)
+		printf("Relocatable ");
+	printf("\n");
+
+	printf("  RAV Count: %u\n", OptionalHeader->NumberOfRvaAndSizes);
+
+	PEFile::IMAGE_DATA_DIRECTORY * DataDirectory = reinterpret_cast<PEFile::IMAGE_DATA_DIRECTORY *>(Address);
+	Address += sizeof(PEFile::IMAGE_DATA_DIRECTORY) * OptionalHeader->NumberOfRvaAndSizes;
+
+
+	for (int x = 0; x < OptionalHeader->NumberOfRvaAndSizes; x++)
+	{
+		if(DataDirectory[x].VirtualAddress != 0)
+			printf("    [%s] %.2u: Virtual Address: %0.8X, Size: %0.8X\n", PEDirectoryName[x], x, DataDirectory[x].VirtualAddress, DataDirectory[x].Size);
+	}
+
+	printf("  Section Count: %0.4X\n", NTHeader->FileHeader.NumberOfSections);
+
+	PEFile::IMAGE_SECTION_HEADER * RelocSection = nullptr;
+
+	for (int x = 0; x < NTHeader->FileHeader.NumberOfSections; x++)
+	{
+		PEFile::IMAGE_SECTION_HEADER * SectionHeader = reinterpret_cast<PEFile::IMAGE_SECTION_HEADER *>(Address);
+		Address += sizeof(PEFile::IMAGE_SECTION_HEADER);
+
+		if (strncmp(".reloc", SectionHeader->Name, 5) == 0)
+			RelocSection = SectionHeader;
+
+		printf("   [%.8s] (%0.8X) ", SectionHeader->Name, SectionHeader->Characteristics);
+		if (SectionHeader->Characteristics & PEFile::CNT_CODE)
+			printf("CODE ");
+
+		if (SectionHeader->Characteristics & PEFile::CNT_INITIALIZED_DATA)
+			printf("DATA ");
+
+		if (SectionHeader->Characteristics & PEFile::CNT_UNINITIALIZED_DATA)
+			printf("BSS ");
+
+		if (SectionHeader->Characteristics & PEFile::MEM_DISCARDABLE)
+			printf("DISCARDABLE ");
+
+		if (SectionHeader->Characteristics & PEFile::MEM_SHARED)
+			printf("S");
+
+		if (SectionHeader->Characteristics & PEFile::MEM_EXECUTE)
+			printf("E");
+
+		if (SectionHeader->Characteristics & PEFile::MEM_READ)
+			printf("R");
+
+		if (SectionHeader->Characteristics & PEFile::MEM_WRITE)
+			printf("W");
+
+		printf("\n");
+		printf("    Virtual Address: %0.8X, Size %0.8X\n", SectionHeader->VirtualAddress, SectionHeader->VirtualSize);
+		printf("    Raw Address:     %0.8X, Size %0.8X\n", SectionHeader->PointerToRawData, SectionHeader->SizeOfRawData);
+	}
+
+
+	if (false && DataDirectory[(int)PEFile::DirectoryEntry::Export].VirtualAddress != 0)
+	{
+		printf("  Exports:\n");
+
+		Address = (intptr_t)BaseAddress + DataDirectory[(int)PEFile::DirectoryEntry::Export].VirtualAddress;
+		PEFile::IMAGE_EXPORT_DIRECTORY *ExportData = reinterpret_cast<PEFile::IMAGE_EXPORT_DIRECTORY *>(Address);
+
+		Address = (intptr_t)BaseAddress + ExportData->AddressTable;
+		int32_t * AddressTable = reinterpret_cast<int32_t *>(Address);
+
+		Address = (intptr_t)BaseAddress + ExportData->NameTable;
+		int32_t * NameTable = reinterpret_cast<int32_t *>(Address);
+
+		Address = (intptr_t)BaseAddress + ExportData->OrdinalTable;
+		int16_t * OrdinalTable = reinterpret_cast<int16_t *>(Address);
+
+		printf("   %s\n", ExportData->Name + (intptr_t)BaseAddress);
+
+		for (int x = 0; x < ExportData->NumberOfAddress; x++)
+		{
+			if (AddressTable[x] != 0)
+			{
+				printf("   [%u] ", x + ExportData->OrdinalBase);
+
+				// Find the name index.
+				int index = -1;
+				for (int y = 0; y < ExportData->NumberOfNames; y++)
+				{
+					if (OrdinalTable[y] == x)
+					{
+						index = y;
+						break;
+					}
+				}
+
+				if (index == -1) 
+				{
+					printf("#%u ", x + ExportData->OrdinalBase);
+				}
+				else
+				{
+					printf("%s ", NameTable[index] + (intptr_t)BaseAddress);
+				}
+
+				if (AddressTable[x] >= DataDirectory[(int)PEFile::DirectoryEntry::Export].VirtualAddress)
+				{
+					printf("=> %s ", AddressTable[x] + (intptr_t)BaseAddress);
+				}
+				else
+				{
+					printf("(%0.8X) ", AddressTable[x] + (intptr_t)BaseAddress);
+				}
+
+				printf("\n");
+			}
+		}
+	}
+
+	if (false && DataDirectory[(int)PEFile::DirectoryEntry::Import].VirtualAddress != 0)
+	{
+		Address = (intptr_t)BaseAddress + DataDirectory[(int)PEFile::DirectoryEntry::Import].VirtualAddress;
+
+		PEFile::IMAGE_IMPORT_ENTRY *ImportData = reinterpret_cast<PEFile::IMAGE_IMPORT_ENTRY *>(Address);
+
+		int Pos = 0;
+
+		printf("  Imports:\n");
+
+		while (ImportData[Pos].LookupTable != 0)
+		{
+			printf("   %s:\n", ImportData[Pos].Name + (intptr_t)BaseAddress);
+
+			Address = (intptr_t)BaseAddress + ImportData[Pos].LookupTable;
+
+			int32_t * LookupTable = reinterpret_cast<int32_t *>(Address);
+
+			int Pos2 = 0;
+
+			while (LookupTable[Pos2] != 0)
+			{
+				if (LookupTable[Pos2] & 0x80000000)
+				{
+					printf("    Ordinal: %u\n", LookupTable[Pos2] & 0x0000FFFF);
+				}
+				else
+				{ 
+					Address = (intptr_t)BaseAddress + LookupTable[Pos2];
+					PEFile::IMAGE_HINT_NAME_TABLE * NameData = reinterpret_cast<PEFile::IMAGE_HINT_NAME_TABLE *>(Address);
+					printf("    %s, Hint: %0.4X, IAT: %0.8X\n", &NameData->Name, NameData->Hint, ImportData[Pos].ImportAddressTable + (Pos2 * 4) + (intptr_t)BaseAddress);
+				}
+
+				Pos2++;
+			}
+
+			Pos++;
+		}
+
+	}
+
+
+	if (false && RelocSection != nullptr)
+	{
+		KernalSetPauseFullScreen(false);
+		Address = (intptr_t)BaseAddress + RelocSection->PointerToRawData;
+
+		printf("  Relocations:\n");
+
+
+		while (Address < ((intptr_t)BaseAddress + RelocSection->PointerToRawData) + RelocSection->VirtualSize)
+		{
+
+			PEFile::IMAGE_BASE_RELOCATION * BaseRelocation = reinterpret_cast<PEFile::IMAGE_BASE_RELOCATION *>(Address);
+
+			unsigned int Base = (unsigned int)BaseAddress + BaseRelocation->PageVirtualAddress;
+			unsigned int Count = (BaseRelocation->SizeOfBlock - 8) / 2;
+
+			//printf("   %0.8X: Relocation Page: %0.8X, Size: %0.8X, Count: %u\n", Address, BaseRelocation->PageVirtualAddress, BaseRelocation->SizeOfBlock, Count);
+
+			for (int x = 0; x < Count; x++)
+			{
+				printf("   %0.4X ", Base + BaseRelocation->TypeOffset[x].Offset, BaseRelocation->TypeOffset[x].Type);
+
+				switch (BaseRelocation->TypeOffset[x].Type)
+				{
+					case (int)PEFile::IMAGE_REL_BASED::ABSOLUTE:
+						printf("Absolute");
+						break;
+
+					case (int)PEFile::IMAGE_REL_BASED::HIGHADJ:
+					case (int)PEFile::IMAGE_REL_BASED::HIGH:
+						printf("HIGH Word");
+						break;
+
+					case (int)PEFile::IMAGE_REL_BASED::LOW:
+						printf("LOW Word");
+						break;
+
+					case (int)PEFile::IMAGE_REL_BASED::HIGHLOW:
+						printf("32-Bit Address");
+						break;
+
+					case (int)PEFile::IMAGE_REL_BASED::DIR64:
+						printf("64-Bit Address");
+						break;
+
+					default:
+						printf("%u", BaseRelocation->TypeOffset[x].Type);
+						break;
+				}
+				
+				printf("\n");
+			}
+		
+			Address += BaseRelocation->SizeOfBlock;
+
+			if (BaseRelocation->SizeOfBlock == 0)
+				break;
+		}
+
+		KernalSetPauseFullScreen(true);
+	}
+}
 
 void DumpCommand(CommandSet & Data)
 {
@@ -522,6 +1011,18 @@ void DumpCommand(CommandSet & Data)
 		case 'S':
 			DumpSize = 0;
 			Length = 128;
+			break;
+
+		case 'P':
+			if (toupper(Data.ArgData[0][2]) == 'E')
+			{
+				DumpSize = -1;
+			}
+			else
+			{
+				printf(" Unknown Option [%c]\n", Data.ArgData[0][1]);
+				return;
+			}
 			break;
 
 		default:
@@ -564,6 +1065,10 @@ void DumpCommand(CommandSet & Data)
 
 		}
 		printf("\00307\n");
+	}
+	else if (DumpSize == -1)
+	{
+		DumpPEData((void *)Address);
 	}
 	else 
 	{
@@ -1099,8 +1604,13 @@ void RegisterCommand(CommandSet & Data)
 
 			case '4':
 				Register = 4;
+				break;					
+
+			case 'x':
+			case 'X':
+				Register = 0xFF;
 				break;
-							
+
 			default:
 				printf(" Invalid Control Register [%s]\n", Data.ArgData[1]);
 				return;
@@ -1168,6 +1678,46 @@ void RegisterCommand(CommandSet & Data)
 					Value = ReadCR4();
 					printf(" %08X\n", Value);
 				}
+				break;
+
+			case 0xFF:
+				Value = ReadCR0();
+				uint32_t Mask = 1;
+
+				for (int x = 0; x < 32; x++)
+				{
+					if (Value & Mask)
+						printf("  [CR0.%-2d] %s\n", x, ControlRegisterFlags[x]);
+
+					Mask = Mask << 1;
+				}
+
+				Value = ReadCR4();
+				Mask = 1;
+
+				for (int x = 0; x < 32; x++)
+				{
+					if (Value & Mask)
+						printf("  [CR4.%-2d] %s\n", x, ControlRegisterFlags[32 + x]);
+
+					Mask = Mask << 1;
+				}
+
+				if ((Value & CPUFlags::OSXSAVEEnabled) != CPUFlags::OSXSAVEEnabled)
+					break;
+
+				uint64_t Value2 = ReadXCR0();
+				uint64_t Mask2 = 1;
+
+				for (int x = 0; x < 64; x++)
+				{
+					if (Value2 & Mask2)
+						printf("  [XCR0.%-2d] %s\n", x, ControlRegisterFlags[64 + x]);
+
+					Mask2 = Mask2 << 1;
+				}
+
+
 				break;
 		}
 	}
@@ -1345,18 +1895,57 @@ void InfoCommand(CommandSet & Data)
 	}
 	else if(_stricmp("BIOS", Data.ArgData[1]) == 0)
 	{
+		if (Data.ArgCount == 3)
+		{
+			if (_stricmp("INT", Data.ArgData[2]) == 0 || _stricmp("IVT", Data.ArgData[2]) == 0)
+			{
+				uint32_t *IVT = reinterpret_cast<uint32_t *>(0);
+
+				for (int x = 0; x < 255; x++)
+				{
+					if (IVT[x] != 0)
+					{
+						printf(" %02X %04X:%04X\n", x, IVT[x] >> 16, IVT[x] & 0xFFFF);
+					}
+				}
+
+				return;
+			}
+		}
+	
 		printf(" Legacy BIOS Vectors\n");
 		printf("  %08X: BIOS Data Area\n", 0x400); 
 		printf("  %08X: Extended BIOS Data Area\n", (*reinterpret_cast<uint16_t *>(0x40E)) << 4); 
 						
 		{
 			uint32_t *IVT = reinterpret_cast<uint32_t *>(0);
-			printf("  %08X: Video Parameter Table\n", FPTR_TO_32(IVT[0x1D])); 
-			printf("  %08X: Video Graphics Character Table\n", FPTR_TO_32(IVT[0x1F]));
-			printf("  %08X: EGA Video Graphics Character Table\n", FPTR_TO_32(IVT[0x43]));
-			printf("  %08X: Diskette Parameter Table\n", FPTR_TO_32(IVT[0x1E]));
-			printf("  %08X: Fixed Disk Parameter Table 1\n", FPTR_TO_32(IVT[0x41]));
-			printf("  %08X: Fixed Disk Parameter Table 2\n", FPTR_TO_32(IVT[0x46]));
+
+			// The majority of time, if one of these IVT based tables are unused, they will point to
+			// an IRET (0xCF), so if that's what at the address, we'll just skip it.
+			uint8_t * Address = 0;
+			Address = reinterpret_cast<uint8_t *>(FPTR_TO_32(IVT[0x1D]));
+			if(Address[0] != 0xCF)
+				printf("  %08X: Video Parameter Table\n", Address);
+	
+			Address = reinterpret_cast<uint8_t *>(FPTR_TO_32(IVT[0x1F]));
+			if (Address[0] != 0xCF)
+				printf("  %08X: Video Graphics Character Table\n", Address);
+
+			Address = reinterpret_cast<uint8_t *>(FPTR_TO_32(IVT[0x43]));
+			if (Address[0] != 0xCF)
+				printf("  %08X: EGA Video Graphics Character Table\n", Address);
+
+			Address = reinterpret_cast<uint8_t *>(FPTR_TO_32(IVT[0x1E]));
+			if (Address[0] != 0xCF)
+				printf("  %08X: Diskette Parameter Table\n", Address);
+
+			Address = reinterpret_cast<uint8_t *>(FPTR_TO_32(IVT[0x41]));
+			if (Address[0] != 0xCF)
+				printf("  %08X: Fixed Disk Parameter Table 1\n", Address);
+
+			Address = reinterpret_cast<uint8_t *>(FPTR_TO_32(IVT[0x46]));
+			if (Address[0] != 0xCF)
+				printf("  %08X: Fixed Disk Parameter Table 2\n", Address);
 		}
 
 		printf("\n");
@@ -1377,6 +1966,9 @@ void InfoCommand(CommandSet & Data)
 					// This should point to the PCIR data
 					if(strncmp(ExpansionAddress, "PCIR", 4) == 0)
 						printf("    PCIR: %08X - PCI Data Structure\n", ExpansionAddress);
+					else
+						printf("    ????: %08X - Unkown Data Structure\n", ExpansionAddress);
+
 				}
 								
 				ExpansionAddress = reinterpret_cast<char *>(TableAddress);
@@ -1389,6 +1981,8 @@ void InfoCommand(CommandSet & Data)
 						printf("    $PnP: %08X - PnP Expansion Header\n", ExpansionAddress);
 					else if(strncmp(ExpansionAddress, "$VBT", 4) == 0)
 						printf("    $VBT: %08X - Video BIOS Table\n", ExpansionAddress);
+					else
+						printf("    ????: %08X - Unkown Expansion Header\n", ExpansionAddress);
 				}
 
 				uint32_t PMID = SeachMemory(TableAddress, (Data[1] & 0xFF) * 512, "PMID", 4);
@@ -1647,7 +2241,7 @@ void InfoCommand(CommandSet & Data)
 					Mask = 0x00000001;
 
 				if(Features[x / 32] & Mask)
-					printf("  [%2d] %s\n", x % 32, CPUIDFlags[x]);
+					printf("  [%s.%-2d] %s\n", CPUIDFlagsGroup[x / 32], x % 32, CPUIDFlags[x]);
 
 				Mask = Mask << 1;
 			}

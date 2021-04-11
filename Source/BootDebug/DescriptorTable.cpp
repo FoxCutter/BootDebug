@@ -198,7 +198,9 @@ void DescriptorTable::Dump()
 	for(int x = 0; x < m_NextFreeSlot; x++)
 	{
 		KernalPrintf(" %04X", x * 8);
-			PrintSelector(&m_Table[x]);
+		PrintSelector(&m_Table[x]);
+		KernalPrintf("\n");
+
 	}
 }
 
@@ -386,7 +388,5 @@ void DescriptorTable::PrintSelector(DescriptiorData::TableEntry *Entry)
 	}
 	
 	if(!CallGate)
-		KernalPrintf(" AVL=%X", Entry->Avaliable);
-	
-	KernalPrintf("\n");
+		KernalPrintf(" AVL=%X", Entry->Avaliable);	
 }

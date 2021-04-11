@@ -31,55 +31,50 @@ namespace PEFile
 
     enum ImageFileCharacteristics : uint16_t
     {
-        RELOCS_STRIPPED             = 0x0001,  // Relocation info stripped from file.
-        EXECUTABLE_IMAGE            = 0x0002,  // File is executable  (i.e. no unresolved externel references).
-        LINE_NUMS_STRIPPED          = 0x0004,  // Line nunbers stripped from file.
-        LOCAL_SYMS_STRIPPED         = 0x0008,  // Local symbols stripped from file.
-        AGGRESIVE_WS_TRIM           = 0x0010,  // Agressively trim working set
+        RELOCS_STRIPPED             = 0x0001,  // Image Only: Relocation info stripped from file.
+        EXECUTABLE_IMAGE            = 0x0002,  // Image Only: File is executable 
+        LINE_NUMS_STRIPPED          = 0x0004,  // COFF Line nunbers stripped from file (depricated).
+        LOCAL_SYMS_STRIPPED         = 0x0008,  // COFF Local symbols stripped from file (deprecated).
+        AGGRESIVE_WS_TRIM           = 0x0010,  // Agressively trim working set (deprecated)
         LARGE_ADDRESS_AWARE         = 0x0020,  // App can handle >2gb addresses
-        BYTES_REVERSED_LO           = 0x0080,  // Bytes of machine word are reversed.
+        BYTES_REVERSED_LO           = 0x0080,  // Little Endian (deprecated)
         S32BIT_MACHINE              = 0x0100,  // 32 bit word machine.
-        DEBUG_STRIPPED              = 0x0200,  // Debugging info stripped from file in .DBG file
+        DEBUG_STRIPPED              = 0x0200,  // Debugging info stripped from file
         REMOVABLE_RUN_FROM_SWAP     = 0x0400,  // If Image is on removable media, copy and run from the swap file.
-        NET_RUN_FROM_SWAP           = 0x0800,  // If Image is on Net, copy and run from the swap file.
+        NET_RUN_FROM_SWAP           = 0x0800,  // If Image is on Network, copy and run from the swap file.
         SYSTEM                      = 0x1000,  // System File.
         DLL                         = 0x2000,  // File is a DLL.
-        UP_SYSTEM_ONLY              = 0x4000,  // File should only be run on a UP machine
-        BYTES_REVERSED_HI           = 0x8000,  // Bytes of machine word are reversed.
+        UP_SYSTEM_ONLY              = 0x4000,  // File should only be run on a Uniprocessor machine
+        BYTES_REVERSED_HI           = 0x8000,  // Big endian (deprecated)
     };
 
     enum class ImageFileMachine : uint16_t
     {
         UNKNOWN     = 0,
-        I386        = 0x014c,       // Intel 386.
-        R3000       = 0x0162,       // MIPS little-endian, 0x160 big-endian
-        R4000       = 0x0166,       // MIPS little-endian
-        R10000      = 0x0168,       // MIPS little-endian
-        WCEMIPSV2   = 0x0169,       // MIPS little-endian WCE v2
-        ALPHA       = 0x0184,       // Alpha_AXP
-        SH3         = 0x01a2,       // SH3 little-endian
-        SH3DSP      = 0x01a3,       
-        SH3E        = 0x01a4,       // SH3E little-endian
-        SH4         = 0x01a6,       // SH4 little-endian
-        SH5         = 0x01a8,       // SH5
+		AM33		= 0x01d3,		// Matsushita AM33
+        AMD64       = 0x8664,       // x64
         ARM         = 0x01c0,       // ARM Little-Endian
-        THUMB       = 0x01c2,       // ARM Thumb/Thumb-2 Little-Endian
-        ARMNT       = 0x01c4,       // ARM Thumb-2 Little-Endian
-        AM33        = 0x01d3,       
-        POWERPC     = 0x01F0,       // IBM PowerPC Little-Endian
-        POWERPCFP   = 0x01f1,       
-        IA64        = 0x0200,       // Intel 64
-        MIPS16      = 0x0266,       // MIPS
-        ALPHA64     = 0x0284,       // ALPHA64
-        MIPSFPU     = 0x0366,       // MIPS
-        MIPSFPU16   = 0x0466,       // MIPS
-        AXP64       = ALPHA64,
-        TRICORE     = 0x0520,       // Infineon
-        CEF         = 0x0CEF,       
+        ARMNT       = 0x01c4,       // ARMv7 (or higher) Thumb mode only
+		ARM64		= 0xaa64,		// ARMv8 in 64-bit mode
         EBC         = 0x0EBC,       // EFI Byte Code
-        AMD64       = 0x8664,       // AMD64 (K8)
-        M32R        = 0x9041,       // M32R little-endian
-        CEE         = 0xC0EE,   
+		I386        = 0x014c,       // Intel 386 or later
+        IA64        = 0x0200,       // Intel Itanium 
+		M32R		= 0x9041,		// Mitsubishi M32R little endian
+        MIPS16      = 0x0266,       // MIPS16
+        MIPSFPU     = 0x0366,       // MIPS with FPU
+        MIPSFPU16   = 0x0466,       // MIPS16 with FPU
+        POWERPC     = 0x01F0,       // IBM PowerPC Little-Endian
+        POWERPCFP   = 0x01f1,       // IBM PowerPC with floating point support
+        R4000       = 0x0166,       // MIPS little-endian
+		RISCV32		= 0x5032,		// RISC-V 32-bit address space 
+		RISCV64		= 0x5064,		// RISC-V 64-bit address space 
+		RISCV128	= 0x5128,		// RISC-V 128-bit address space 
+        SH3         = 0x01a2,       // Hitachi SH3 little-endian
+        SH3DSP      = 0x01a3,       // Hitachi SH3 DSP
+        SH4         = 0x01a6,       // Hitachi SH4 little-endian
+        SH5         = 0x01a8,       // Hitachi SH5
+        THUMB       = 0x01c2,       // ARM Thumb/Thumb-2 Little-Endian
+        WCEMIPSV2   = 0x0169,       // MIPS little-endian WCE v2
     };
 
     struct IMAGE_FILE_HEADER
@@ -91,12 +86,6 @@ namespace PEFile
         uint32_t NumberOfSymbols;
         uint16_t SizeOfOptionalHeader;
         ImageFileCharacteristics Characteristics;
-    };
-
-    struct IMAGE_DATA_DIRECTORY
-    {
-       uint32_t VirtualAddress;
-       uint32_t Size;
     };
 
     enum class OptionSignature : uint16_t
@@ -116,12 +105,12 @@ namespace PEFile
         POSIX_CUI                   = 7,    // image runs in the Posix character subsystem.
         NATIVE_WINDOWS              = 8,    // image is a native Win9x driver.
         WINDOWS_CE_GUI              = 9,    // Image runs in the Windows CE subsystem.
-        EFI_APPLICATION             = 10,   //
-        EFI_BOOT_SERVICE_DRIVER     = 11,   //
-        EFI_RUNTIME_DRIVER          = 12,   //
-        EFI_ROM                     = 13,
-        XBOX                        = 14,
-        WINDOWS_BOOT_APPLICATION    = 16,
+        EFI_APPLICATION             = 10,   // An Extensible Firmware Interface (EFI) application 
+        EFI_BOOT_SERVICE_DRIVER     = 11,   // An EFI driver with boot services
+        EFI_RUNTIME_DRIVER          = 12,   // An EFI driver with run-time services 
+        EFI_ROM                     = 13,	// An EFI ROM image
+        XBOX                        = 14,	// XBOX 
+        WINDOWS_BOOT_APPLICATION    = 16,	// Windows boot application. 
     };
 
     enum DllCharacteristics : uint16_t
@@ -131,16 +120,16 @@ namespace PEFile
         //THREAD_INIT           = 0x0004,   // Reserved.
         //THREAD_TERM           = 0x0008,   // Reserved.
         HIGH_ENTROPY_VA         = 0x0020,   // Image can handle a high entropy 64-bit virtual address space.
-        DYNAMIC_BASE            = 0x0040,   // DLL can move.
-        FORCE_INTEGRITY         = 0x0080,   // Code Integrity Image
+        DYNAMIC_BASE            = 0x0040,   // DLL can be relocated at load time. 
+        FORCE_INTEGRITY         = 0x0080,   // Code Integrity checks are enforced. 
         NX_COMPAT               = 0x0100,   // Image is NX compatible
         NO_ISOLATION            = 0x0200,   // Image understands isolation and doesn't want it
         NO_SEH                  = 0x0400,   // Image does not use SEH.  No SE handler may reside in this image
         NO_BIND                 = 0x0800,   // Do not bind this image.
         APPCONTAINER            = 0x1000,   // Image should execute in an AppContainer
         WDM_DRIVER              = 0x2000,   // Driver uses WDM model
-        //                      = 0x4000,   // Reserved.
-        TERMINAL_SERVER_AWARE   = 0x8000,
+		GUARD_CF				= 0x4000,   // Image supports Control Flow Guard. 
+        TERMINAL_SERVER_AWARE   = 0x8000,	// Terminal Server aware. 
     };
     
 	struct IMAGE_OPTIONAL_HEADER32
@@ -226,9 +215,6 @@ namespace PEFile
         uint64_t SizeOfHeapCommit;
         uint32_t LoaderFlags;
         uint32_t NumberOfRvaAndSizes;
-
-		IMAGE_DATA_DIRECTORY DataDirectory[1];
-
     };
 
     struct IMAGE_NT_HEADERS 
@@ -237,61 +223,54 @@ namespace PEFile
         IMAGE_FILE_HEADER FileHeader;
     };
 
-    enum class DirectoryEntry
+	struct IMAGE_DATA_DIRECTORY
+	{
+		uint32_t VirtualAddress;
+		uint32_t Size;
+	};
+
+	enum class DirectoryEntry
     {
-        Export                  = 0,        // Export Directory
-        Import                  = 1,        // Import Directory
-        Resource                = 2,        // Resource Directory
-        Exception               = 3,        // Exception Directory
-        Security                = 4,        // Security Directory
+        Export                  = 0,        // Export Table
+        Import                  = 1,        // Import Table
+        Resource                = 2,        // Resource Table
+        Exception               = 3,        // Exception Table
+        Certificate             = 4,        // Certificate Table
         BaseRelocation          = 5,        // Base Relocation Table
-        Debug                   = 6,        // Debug Directory
-        //Copyright             = 7,        // (X86 usage)
-        Architecture            = 7,        // Architecture Specific Data
-        GlobalPointer           = 8,        // RVA of GP
+        Debug                   = 6,        // Debug Table
+        Architecture            = 7,        // Architecture Specific Data (Reserverd)
+        GlobalPointer           = 8,        // The RVA of the value to be stored in the global pointer register
         TLS                     = 9,        // TLS Directory
-        LoadConfig              = 10,       // Load Configuration Directory
-        BoundImport             = 11,       // Bound Import Directory in headers
+        LoadConfig              = 10,       // Load Configuration Table
+        BoundImport             = 11,       // Bound Import Table
         ImportAddressTable      = 12,       // Import Address Table
         DelayLoadDescriptors    = 13,       // Delay Load Import Descriptors
-        ComDescriptors          = 14,       // COM Runtime descriptor
+        CLRRuntime				= 14,       // CLR Runtime descriptor
         Reserved                = 15
     };
     
     enum SectionCharacteristics : uint32_t
     {
-        //TYPE_REG                  = 0x00000000,   // Reserved.
-        //TYPE_DSECT                = 0x00000001,   // Reserved.
-        //TYPE_NOLOAD               = 0x00000002,   // Reserved.
-        //TYPE_GROUP                = 0x00000004,   // Reserved.
-        TYPE_NO_PAD                 = 0x00000008,   // Reserved.
-        //TYPE_COPY                 = 0x00000010,   // Reserved.
+        TYPE_NO_PAD                 = 0x00000008,   // The section should not be padded to the next boundary. (obsolete)
 
         CNT_CODE                    = 0x00000020,   // Section contains code.
         CNT_INITIALIZED_DATA        = 0x00000040,   // Section contains initialized data.
         CNT_UNINITIALIZED_DATA      = 0x00000080,   // Section contains uninitialized data.
 
-        NK_OTHER                    = 0x00000100,   // Reserved.
-        NK_INFO                     = 0x00000200,   // Section contains comments or some other type of information.
-        //TYPE_OVER                 = 0x00000400,   // Reserved.
-        LNK_REMOVE                  = 0x00000800,   // Section contents will not become part of image.
-        LNK_COMDAT                  = 0x00001000,   // Section contents comdat.
-        //                          = 0x00002000,   // Reserved.
-        //MEM_PROTECTED             = 0x00004000,   // Obsolete
-        NO_DEFER_SPEC_EXC           = 0x00004000,   // Reset speculative exceptions handling bits in the TLB entries for this section.
+        NK_OTHER                    = 0x00000100,   // Reserved
+        NK_INFO                     = 0x00000200,   // Objects Only: Section contains comments or some other type of information.
+        LNK_REMOVE                  = 0x00000800,   // Objects Only: Section contents will not become part of image.
+        LNK_COMDAT                  = 0x00001000,   // Objects Only: Section contents comdat.
         GPREL                       = 0x00008000,   // Section content can be accessed relative to GP
-        MEM_FARDATA                 = 0x00008000,   
-        //MEM_SYSHEAP               = 0x00010000,   // Obsolete
-        MEM_PURGEABLE               = 0x00020000,   
-        MEM_16BIT                   = 0x00020000,
-        MEM_LOCKED                  = 0x00040000,
-        MEM_PRELOAD                 = 0x00080000,
+        MEM_16BIT                   = 0x00020000,	// Reserved
+        MEM_LOCKED                  = 0x00040000,	// Reserved
+        MEM_PRELOAD                 = 0x00080000,	// Reserved
 
         ALIGN_1BYTES                = 0x00100000,   //
         ALIGN_2BYTES                = 0x00200000,   //
         ALIGN_4BYTES                = 0x00300000,   //
         ALIGN_8BYTES                = 0x00400000,   //
-        ALIGN_16BYTES               = 0x00500000,   // Default alignment if no others are specified.
+        ALIGN_16BYTES               = 0x00500000,   // Objects Only: Default alignment if no others are specified.
         ALIGN_32BYTES               = 0x00600000,   //
         ALIGN_64BYTES               = 0x00700000,   //
         ALIGN_128BYTES              = 0x00800000,   //
@@ -301,7 +280,6 @@ namespace PEFile
         ALIGN_2048BYTES             = 0x00C00000,   //
         ALIGN_4096BYTES             = 0x00D00000,   //
         ALIGN_8192BYTES             = 0x00E00000,   //
-        //                          = 0x00F00000,   // Obsolete
         ALIGN_MASK                  = 0x00F00000,
 
         LNK_NRELOC_OVFL             = 0x01000000,   // Section contains extended relocations.
@@ -324,56 +302,82 @@ namespace PEFile
         uint32_t VirtualAddress;
         uint32_t SizeOfRawData;
         uint32_t PointerToRawData;
-        uint32_t PointerToRelocations;
-        uint32_t PointerToLinenumbers;
-        uint16_t NumberOfRelocations;
-        uint16_t NumberOfLinenumbers;
+        uint32_t PointerToRelocations;		// Zero for Image Files
+        uint32_t PointerToLinenumbers;		// Zero for Image Files
+        uint16_t NumberOfRelocations;		// Zero for Image Files
+        uint16_t NumberOfLinenumbers;		// Zero for Image Files
         SectionCharacteristics Characteristics;
 	};
 
+
+	struct IMAGE_DELAY_LOAD_DIRECTORY
+	{
+		uint32_t Attributs;						// Zero
+		uint32_t Name;							// RVA of DLL Name
+		uint32_t ModuleHandle;					// RVA of Module Handle
+		uint32_t DelayImportAddressTable;		// RVA of delay-load import address table
+		uint32_t DelayImportNameTable;			// RVA of delay-load name table
+		uint32_t BoundDelayImportAddressTable;	// RVA of bound delay-load import address table
+		uint32_t BoundDelayImportNameTable;		// RVA of bound delay-load name table
+		uint32_t TimeStamp;						// Timestamp of bound DLL 
+	};
+
+
 	struct IMAGE_EXPORT_DIRECTORY 
 	{
-		uint32_t Characteristics;
-		uint32_t TimeDateStamp;
-		uint16_t MajorVersion;
+		uint32_t ExportFlags;		// Reserved
+		uint32_t TimeDateStamp;		// Timestamp the export was created
+		uint16_t MajorVersion;		
 		uint16_t MinorVersion;
-		uint32_t Name;
-		uint32_t Base;
-		uint32_t NumberOfFunctions;
-		uint32_t NumberOfNames;
-		uint32_t AddressOfFunctions;
-		uint32_t AddressOfNames;
-		uint32_t AddressOfNameOrdinal;
+		uint32_t Name;				// RVA of dll name
+		uint32_t OrdinalBase;		// Starting Ordnial of exports
+		uint32_t NumberOfAddress;	// Number of extries in Address table
+		uint32_t NumberOfNames;		// Number of extries in Name/Ordinal tables
+		uint32_t AddressTable;		// RVA of export address table
+		uint32_t NameTable;			// RVA of export name table
+		uint32_t OrdinalTable;		// RVA of Ordinal table
 	};
 
-	struct IMAGE_IMPORT_DESCRIPTOR 
+
+	/*
+	union IMAGE_EXPORT_ADDRESS_TABLE
 	{
-		union 
-		{
-			uint32_t   Characteristics;            // 0 for terminating null import descriptor
-			uint32_t   OriginalFirstThunk;         // RVA to original unbound IAT (PIMAGE_THUNK_DATA)
-		};
-		uint32_t   TimeDateStamp;                  // 0 if not bound,
-		uint32_t   ForwarderChain;                 // -1 if no forwarders
-		uint32_t   Name;
-		uint32_t   FirstThunk;                     // RVA to IAT (if bound this IAT has actual addresses)
+		uint32_t Export;			// RVA of exported Symbol
+		uint32_t Forwarder;			// RVA to string located in the area pointed to by the export direcotry 
 	};
 
-	struct IMAGE_THUNK_DATA 
+	struct IMAGE_EXPORT_NAME_TABLE
 	{
-		union 
-		{
-			uint32_t ForwarderString;      // PBYTE 
-			uint32_t Function;             // PDWORD
-			uint32_t Ordinal;
-			uint32_t AddressOfData;        // PIMAGE_IMPORT_BY_NAME
-		};
+		uint32_t Name;				// RVA of function name string
 	};
 
-	struct IMAGE_IMPORT_BY_NAME 
+	struct IMAGE_EXPORT_ORDINAL_TABLE
 	{
-		uint16_t	Hint;
-		char	    Name[1];
+		uint16_t OldinalIndex;		// Index into the Address table, Pos + OrdinalBase in the Ordinal
+	};
+	*/
+
+
+	struct IMAGE_IMPORT_ENTRY
+	{
+		uint32_t   LookupTable;				// RVA of the Import Lookup Table
+		uint32_t   TimeDateStamp;           // Time/Date stamp of bound DLL
+		uint32_t   ForwarderChain;          // Index to first forwarder reference
+		uint32_t   Name;					// Name of the DLL
+		uint32_t   ImportAddressTable;		// RVA to IAT (if bound this IAT has actual addresses)
+	};
+
+
+	union IMAGE_IMPORT_LOOKUP_TABLE
+	{
+		uint32_t  NameTable;		// RVA of a hint/name table entry
+		uint32_t  OrdinalNumber;	// 16-bit Ordinal if high bit is set
+	};
+
+	struct IMAGE_HINT_NAME_TABLE
+	{
+		uint16_t	Hint;			// Index into the export name table of the linked DLL
+		char	    Name[1];		// Name to import
 	};
 
 	struct IMAGE_BASE_RELOCATION 
@@ -409,6 +413,48 @@ namespace PEFile
 		// A 64-bit address
 		DIR64		= 10,
 	};
+
+	enum class DebugType : uint32_t
+	{
+		IMAGE_DEBUG_TYPE_UNKNOWN = 0,					// Unknown
+		IMAGE_DEBUG_TYPE_COFF = 1,						// COFF debug information
+		IMAGE_DEBUG_TYPE_CODEVIEW = 2,					// Codeview debug infomation (PDB)
+		IMAGE_DEBUG_TYPE_FPO = 3,						// Frame pointer ommission data
+		IMAGE_DEBUG_TYPE_MISC = 4,						// The location of DBG file. 
+		IMAGE_DEBUG_TYPE_EXCEPTION = 5,					// A copy of .pdata section. 
+		IMAGE_DEBUG_TYPE_FIXUP = 6,						// Reserverd
+		IMAGE_DEBUG_TYPE_OMAP_TO_SRC = 7,				// The mapping from an RVA in image to an RVA in source image. 
+		IMAGE_DEBUG_TYPE_OMAP_FROM_SRC = 8,				// The mapping from an RVA in source image to an RVA in image. 
+		IMAGE_DEBUG_TYPE_BORLAND = 9,					// Borland
+		IMAGE_DEBUG_TYPE_RESERVED10 = 10,				// Reserved
+		IMAGE_DEBUG_TYPE_CLSID = 11,					// Reserved 
+		IMAGE_DEBUG_TYPE_REPRO = 16,					// PE determinism or reproducibility. 
+		IMAGE_DEBUG_TYPE_EX_DLLCHARACTERISTICS = 20,	// Extended DLL characteristics bits.
+	};
+
+	struct DEBUG_DIRECOTRY_ENTRY
+	{
+		uint32_t Characteristics;		// Reserved
+		uint32_t DateTimeStamp;			// Date and Time the debug data was created
+		uint16_t MajorVersion;			// Verion of Debug Data format
+		uint16_t MinorVersion;			// Verion of Debug Data format
+		DebugType Type;
+		uint32_t SizeOfData;			// Size of the debug data
+		uint32_t AddressOfRawData;		// RVA of the debug data
+		uint32_t PointerToRawData;		// File Pointer to debug data
+
+	};
+
+	struct TLS_DIRECTORY
+	{
+		uint32_t RawDataStart;			// The starting address of the TLS template. 
+		uint32_t RawDataEnd;			// The address of the last byte of the TLS, except for the zero fill.
+		uint32_t AddressOfIndex;		// The location to receive the TLS index,
+		uint32_t AddressOfCallbacks;	// The pointer to an array of TLS callback functions
+		uint32_t SizeOfZeroFill;		// The size in bytes of the template, beyond the initialized data
+		uint32_t Characteristics;		// The four bits [23:20] describe alignment info. Possible values are those defined as IMAGE_SCN_ALIGN_*
+	};
+
 }
 
 #pragma pack(pop)

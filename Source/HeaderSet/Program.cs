@@ -16,7 +16,7 @@ namespace HeaderSet
             byte[] Data = new byte[8192];
 
             // Starting with the Multiboot v1 header
-            InputFile.BaseStream.Position = 0;
+            long Base = InputFile.BaseStream.Position;
             InputFile.Read(Data, 0, 8192);
 
             byte[] Header = new byte[4];
@@ -38,7 +38,7 @@ namespace HeaderSet
                     Header_Address -= Offset;
 
                     Header_Address += x;
-                    InputFile.BaseStream.Position = x;
+                    InputFile.BaseStream.Position = Base + x;
                     InputFile.ReadUInt32();  // Magic
                     uint Flags = InputFile.ReadUInt32();  // Flags
                     uint Chceksum = InputFile.ReadUInt32();  // Checksum
@@ -85,7 +85,7 @@ namespace HeaderSet
             byte[] Data = Data = new byte[32768];
 
             // Starting with the Multiboot v2 header
-            InputFile.BaseStream.Position = 0;
+            long Base = InputFile.BaseStream.Position;
             InputFile.Read(Data, 0, 32768);
 
             byte[] Header = new byte[4];
@@ -107,7 +107,7 @@ namespace HeaderSet
                     Header_Address -= Offset;
 
                     Header_Address += x;
-                    InputFile.BaseStream.Position = x;
+                    InputFile.BaseStream.Position = Base + x;
                     InputFile.ReadUInt32();  // Magic
                     InputFile.ReadUInt32();  // Arch
                     uint Leng = InputFile.ReadUInt32();  // Header Length
@@ -182,6 +182,8 @@ namespace HeaderSet
                 return -1;
             }
 
+            bool ExtractFile = false;
+
             using (BinaryReader FileData = new BinaryReader(File.Open(args[0], FileMode.Open, FileAccess.ReadWrite)))
             {
                 PEUtils.PEFile WildFile = new PEUtils.PEFile();
@@ -198,7 +200,6 @@ namespace HeaderSet
                     Console.WriteLine("PE file found at offset {0:X8}", WildFile.Offset);
                     Console.WriteLine();
                 }
-
 
 
                 if (WildFile._OptionalHeader.FileAlignment != WildFile._OptionalHeader.SectionAlignment)
@@ -234,8 +235,11 @@ namespace HeaderSet
                 if (BSS_End_Address < Load_End_Address)
                     BSS_End_Address = Load_End_Address;
 
-                Load_End_Address = (uint)FileData.BaseStream.Length;
-                BSS_End_Address = (uint)FileData.BaseStream.Length;
+                if (!ExtractFile)
+                {
+                    Load_End_Address = (uint)FileData.BaseStream.Length;
+                    BSS_End_Address = (uint)FileData.BaseStream.Length;
+                }
 
                 // Readjust everything to the image base
                 Load_Address += WildFile._OptionalHeader.ImageBase;
@@ -252,8 +256,10 @@ namespace HeaderSet
 
                 //Console.WriteLine();
 
-                UpdateMultiboot1(FileData, WildFile._OptionalHeader.ImageBase, WildFile.Offset, Load_End_Address, BSS_End_Address);
-                UpdateMultiboot2(FileData, WildFile._OptionalHeader.ImageBase, WildFile.Offset, Load_End_Address, BSS_End_Address);
+                FileData.BaseStream.Position = WildFile.Offset;
+                UpdateMultiboot1(FileData, WildFile._OptionalHeader.ImageBase, ExtractFile ? 0 : WildFile.Offset, Load_End_Address, BSS_End_Address);
+                FileData.BaseStream.Position = WildFile.Offset;
+                UpdateMultiboot2(FileData, WildFile._OptionalHeader.ImageBase, ExtractFile ? 0 : WildFile.Offset, Load_End_Address, BSS_End_Address);
             }
 
             return 0;

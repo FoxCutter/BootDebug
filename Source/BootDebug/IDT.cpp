@@ -141,6 +141,9 @@ void IDTManager::Dump()
 			KernalPrintf(" %02X", x);
 
 			PrintSelector(GetEntry(x));
+
+			KernalPrintf(" PTR=%08X", InterruptCallback[x].InterruptCallback);
+			KernalPrintf("\n");
 		}
 	}
 }

@@ -36,6 +36,7 @@ void LDTManager::Dump()
 	for(int x = 0; x < m_NextFreeSlot; x++)
 	{
 		KernalPrintf(" %04X", (x * 8) | 0x04);
-			PrintSelector(&m_Table[x]);
+		PrintSelector(&m_Table[x]);
+		KernalPrintf("\n");
 	}
 }

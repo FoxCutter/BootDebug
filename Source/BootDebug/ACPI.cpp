@@ -76,6 +76,14 @@ ACPI_STATUS WalkResourceCallback (ACPI_RESOURCE *Resource, void *Context)
 			}
 			break;
 
+		case ACPI_RESOURCE_TYPE_EXTENDED_IRQ:
+			KernalPrintf("ExIRQ:");
+			for (int x = 0; x < Resource->Data.ExtendedIrq.InterruptCount; x++)
+			{
+				KernalPrintf(" %02X", Resource->Data.ExtendedIrq.Interrupts[x]);
+			}
+			break;
+
 		case ACPI_RESOURCE_TYPE_DMA:
 			KernalPrintf("DMA:");
 			for(int x = 0; x < Resource->Data.Dma.ChannelCount; x++)
@@ -134,6 +142,10 @@ ACPI_STATUS WalkResourceCallback (ACPI_RESOURCE *Resource, void *Context)
 			KernalPrintf("ADD64: ");
 			break;
 
+		case ACPI_RESOURCE_TYPE_SERIAL_BUS:
+			KernalPrintf("Seral Bus: ");
+			break;
+		
 		default:
 			KernalPrintf("%02X? ", Resource->Type);
 			break;
@@ -240,9 +252,16 @@ void PrintType(ACPI_OBJECT_TYPE Type)
 	};
 }
 
+struct CallBackRules
+{
+	bool Resources;
+	bool Filter = false;
+	char *Name;
+};
+
 ACPI_STATUS WalkCallback (ACPI_HANDLE Object, UINT32 NestingLevel, void *Context, void **ReturnValue)
 {
-	bool Res = *reinterpret_cast<bool *>(Context);
+	CallBackRules Res = *reinterpret_cast<CallBackRules *>(Context);
 	
 	//if(Info->Type != ACPI_TYPE_DEVICE && Info->Type != ACPI_TYPE_PROCESSOR && Info->Type != ACPI_TYPE_LOCAL_SCOPE)
 	//	return(AE_CTRL_DEPTH);
@@ -250,12 +269,39 @@ ACPI_STATUS WalkCallback (ACPI_HANDLE Object, UINT32 NestingLevel, void *Context
 	//if((Info->Valid & ACPI_VALID_STA) && (Info->CurrentStatus & ACPI_STA_DEVICE_PRESENT) == 0 && (Info->CurrentStatus & ACPI_STA_DEVICE_FUNCTIONING) == 0)
 	//	return(AE_CTRL_DEPTH);
 
+	ACPI_DEVICE_INFO *Info;
+	AcpiGetObjectInfo(Object, &Info);
 
-	if(Res == false)
+	if (Res.Filter)
 	{
-		ACPI_DEVICE_INFO *Info;
-		AcpiGetObjectInfo(Object, &Info);
+		bool valid = false;
 
+		if (Info->Valid & ACPI_VALID_HID)
+		{
+			if (_strnicmp(Res.Name, Info->HardwareId.String, strlen(Res.Name)) == 0)
+			{
+				valid = true;
+			}
+
+			if (Info->Valid & ACPI_VALID_CID)
+			{
+				for (unsigned x = 0; x < Info->CompatibleIdList.Count; x++)
+				{
+					if (_strnicmp(Res.Name, Info->CompatibleIdList.Ids[x].String, strlen(Res.Name)) == 0)
+					{
+						valid = true;
+					}
+				}
+			}
+		}
+
+		if (!valid)
+			return AE_OK;
+	}
+
+
+	if(Res.Resources == false)
+	{
 		for(uint32_t x = 0; x < NestingLevel; x++)
 			KernalPrintf(" ");
 
@@ -319,6 +365,17 @@ ACPI_STATUS WalkCallback (ACPI_HANDLE Object, UINT32 NestingLevel, void *Context
 
 		AcpiGetName(Object, ACPI_FULL_PATHNAME_NO_TRAILING, &Path);
 		KernalPrintf("%s\n", Buffer);
+
+		if (Info->Valid & ACPI_VALID_HID)
+			KernalPrintf(" HID: %s", Info->HardwareId.String);
+
+		if (Info->Valid & ACPI_VALID_CID)
+		{
+			KernalPrintf(" CID:");//%s", Info->CompatibleIdList.Ids);
+			for (unsigned x = 0; x < Info->CompatibleIdList.Count; x++)
+				KernalPrintf(" [%s]", Info->CompatibleIdList.Ids[x].String);
+		}
+		KernalPrintf("\n");
 
 		Path.Length = 1024;
 
@@ -618,7 +675,7 @@ ACPI_STATUS IRQCallback (ACPI_HANDLE Object, UINT32 NestingLevel, void *Context,
 	return AE_OK;
 }
 
-void ACPI::Dump(char *Options)
+void ACPI::Dump(char *Options, char *Filter)
 {
 	if(!m_Loaded)
 		return;
@@ -646,7 +703,13 @@ void ACPI::Dump(char *Options)
 	}
 	else if(_stricmp("DSDT", Options) == 0)
 	{
-		bool Res = false;
+		CallBackRules Res;
+		Res.Resources = false;
+		if (Filter != nullptr)
+		{
+			Res.Filter = true;
+			Res.Name = Filter;
+		}
 		AcpiWalkNamespace(0, ACPI_ROOT_OBJECT, UINT32_MAX, WalkCallback, nullptr, &Res, nullptr);
 	}
 	else if(_stricmp("PRT", Options) == 0 || _stricmp("APRT", Options) == 0)
@@ -684,13 +747,25 @@ void ACPI::Dump(char *Options)
 	}
 	else if(_stricmp("DEV", Options) == 0)
 	{
-		bool Res = false;
+		CallBackRules Res;
+		Res.Resources = false;
+		if (Filter != nullptr)
+		{
+			Res.Filter = true;
+			Res.Name = Filter;
+		}
 		AcpiGetDevices(NULL, WalkCallback, &Res, nullptr);
 		//AcpiWalkNamespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT, UINT32_MAX, WalkCallback, nullptr, &Res, nullptr);
 	}
 	else if(_stricmp("RES", Options) == 0)
 	{
-		bool Res = true;
+		CallBackRules Res;
+		Res.Resources = true;
+		if (Filter != nullptr)
+		{
+			Res.Filter = true;
+			Res.Name = Filter;
+		}
 		//AcpiGetDevices(NULL, WalkCallback, &Res, nullptr);
 		AcpiWalkNamespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT, UINT32_MAX, WalkCallback, nullptr, &Res, nullptr);
 	}
@@ -740,7 +815,7 @@ void ACPI::Dump(char *Options)
 		{
 			printf(" Reset Reg ");
 			PrintGenAddress(AcpiGbl_FADT.ResetRegister);
-			printf(", Reset Value: %02X\n", AcpiGbl_FADT.ResetValue);
+			printf("\n  Reset Value: %02X\n", AcpiGbl_FADT.ResetValue);
 		}
 
 		printf(" PH1a Event "); PrintGenAddress(AcpiGbl_FADT.XPm1aEventBlock); printf("\n");

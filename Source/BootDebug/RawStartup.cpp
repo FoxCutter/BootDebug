@@ -650,6 +650,53 @@ void KeyboardInterrupt(InterruptContext * OldContext, uintptr_t * Data)
 	}
 }
 
+void SetupPS2Keyboard()
+{
+	// Disable everything
+	OutPortb(0x64, 0xAD); // Primary
+	OutPortb(0x64, 0xA7); // Secondary
+	
+	// Clear anything pending
+	unsigned char Temp = InPortb(0x64);
+	if ((Temp & 0x01) == 0x01)
+		InPortb(0x60);
+
+	// Get the configuration byte
+	OutPortb(0x64, 0x20);
+
+	while ((InPortb(0x64) & 0x01) == 0)
+		;
+
+	unsigned char config = InPortb(0x60);
+	//KernalPrintf(" KB config: %02X ", config);
+
+	// Self Test
+	OutPortb(0x64, 0xAA);
+	
+	// Wait until we have a result
+	while ((InPortb(0x64) & 0x01) == 0)
+		;
+
+	Temp = InPortb(0x60);
+	//KernalPrintf(" KB Code: %02X\n", Temp);
+
+	// Turn on Primary Interrupt 
+	config |= 0x01;
+	// Disable Secondary Interrupt 
+	config &= ~0x02;
+	
+	// Disable Translation
+	//config &= ~0x40;
+
+	OutPortb(0x64, 0x60);
+	OutPortb(0x60, config);
+
+	// Enable
+	OutPortb(0x64, 0xAE); // Primary
+
+	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
+}
+
 ThreadInformation *ThreadListHead;
 
 void IdleThread(ThreadInformation *Thread,  uintptr_t * Data)
@@ -1020,6 +1067,39 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	CurrentTerminal = &TextTerm;
 
+	Registers CPUIDRegisters;
+	ReadCPUID(1, 0, &CPUIDRegisters);
+
+	// Turn on SEE
+	uint32_t CR0 = ReadCR0();
+	uint32_t CR4 = ReadCR4();
+
+	// Make sure the FPU is in the correct state
+	CR0 &= ~CPUFlags::FPUEmulation;
+	CR0 |= CPUFlags::MonitorCoprocessor;
+
+	if ((CPUIDRegisters.EDX & CPUFlags::FXSaveRestore) == CPUFlags::FXSaveRestore)
+	{
+		CR4 |= CPUFlags::OSFXSR;
+		CR4 |= CPUFlags::OSXMMEXCPT; // A Lie, as we really don't handle exceptions
+	}	
+	
+	if ((CPUIDRegisters.ECX & CPUFlags::XSAVE) == CPUFlags::XSAVE)
+	{
+		CR4 |= CPUFlags::OSXSAVEEnabled;
+	}
+	
+	WriteCR0(CR0);
+	WriteCR4(CR4);
+
+	if ((CPUIDRegisters.ECX & CPUFlags::XSAVE) == CPUFlags::XSAVE)
+	{
+		uint64_t XCR0 = ReadXCR0();
+		XCR0 |= CPUFlags::X87FPUState | CPUFlags::SSEState | CPUFlags::AVXState;
+
+		WriteXCR0(XCR0);
+	}
+
 
 	// Map the Core Complex pages 1:1 into virtual memory
 	// Okay, this doesn't do anything like that yet, but still...
@@ -1075,8 +1155,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	m_InterruptControler.Initialize(&CoreComplex->IDTTable, reinterpret_cast<ACPI_TABLE_MADT *>(CoreComplex->ACPIComplex.GetTable("APIC")));
 
-	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
-
+	SetupPS2Keyboard();
+		
 	//KernalPrintf(" '%f'\n", fcos);
 
 	CoreComplex->HardwareComplex.Add("KB", "PS/2 Keyboard");	

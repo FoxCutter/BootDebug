@@ -23,7 +23,7 @@ public:
 	ACPI_TABLE_HEADER *GetTable(char *Table, uint16_t Index = 0);
 	bool SetAPICMode(uint32_t Mode = 1);
 
-	void Dump(char *Options);
+	void Dump(char *Options, char *Filter);
 
 	void Reset();
 };

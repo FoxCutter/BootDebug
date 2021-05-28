@@ -170,8 +170,9 @@ char * CPUIDFlagsGroup[] =
 {
 	"01:EDX",
 	"01:ECX",
-	"07:EDX",
+	"07:EBX",
 	"07:ECX",
+	"07:EDX",
 	"80000001:EDX",
 	"80000001:ECX",
 };
@@ -263,57 +264,91 @@ char * CPUIDFlags[] =
 	"Deprecates FPU CS and FPU DS (64-Bit)",
 	"Memory Protection Extensions",
 	"Platform Quality of Service Enforcement",
-	"",
-	"",
+	"AVX512F",
+	"AVX512DQ",
 	"RDSEED",
 	"ADX",
 	"SMAP",
-	"",
+	"AVX512_IFMA",
 	"",
 	"CLFLUSHOPT",
 	"CLWB",
 	"Intel Processor Trace",
-	"",
-	"",
-	"",
+	"AVX512PF",
+	"AVX512ER",
+	"AVX512CD",
 	"SHA Extensions",
-	"",
-	"",
+	"AVX512BW",
+	"AVX512VL",
 
 	// Structured Extended Feature - ECX
 	"PREFETCHWT1",
-	"",
+	"AVX512_VBMI",
 	"User-mode instruction prevention",
 	"Protection keys for user-mode pages",
 	"CR4.PKE Set",
+	"WAITPKG",
+	"AVX512_VBMI2",
+	"Supports CET shadow stack features",
+	"GFNI",
+	"VAES",
+	"VPCLMULQDQ",
+	"AVX512_VNNI",
+	"AVX512_BITALG",
+	"TME_EN",
+	"AVX512_VPOPCNTDQ",
 	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
-	"",
+	"57-bit linear addresses and five-level paging",
 	"MAWAU 1",
 	"MAWAU 2",
 	"MAWAU 3",
 	"MAWAU 4",
 	"MAWAU 5",
 	"Read Processor ID",
+	"Key Locker",
 	"",
+	"CLDEMOTE",
 	"",
-	"",
-	"",
-	"",
-	"",
+	"MOVDIRI",
+	"MOVDIR64B",
 	"",
 	"SGX Launch Configuration",
-	"",
+	"Protection keys for supervisor-mode pages",
 
+	// Structured Extended Feature - EDX
+	"",
+	"",
+	"AVX512_4VNNIW",
+	"AVX512_4FMAPS",
+	"Fast Short REP MOV",
+	"",
+	"",
+	"",
+	"AVX512_VP2INTERSECT",
+	"",
+	"MD_CLEAR",
+	"",
+	"",
+	"",
+	"",
+	"Hybrid",
+	"",
+	"",
+	"PCONFIG",
+	"",
+	"CET_IBT",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"Indirect branch restricted speculation",
+	"Single thread indirect branch predictors",
+	"L1D_FLUSH",
+	"IA32_ARCH_CAPABILITIES MSR",
+	"IA32_CORE_CAPABILITIES MSR",
+	"Speculative Store Bypass Disable",
+		
 	// Extended Features - EDX
 	"",
 	"",
@@ -1485,7 +1520,7 @@ void RegisterCommand(CommandSet & Data)
 	if(Data.ArgCount < 2)
 	{
 		puts("Register Missing");
-		puts(" Valid: MSR, CR0, CR2, CR3, CR4");
+		puts(" Valid: MSR, CR0, CR2, CR3, CR4, XCR0, CRX, FPU, SSE, AVX");
 		return;
 	}
 
@@ -1816,10 +1851,13 @@ void InfoCommand(CommandSet & Data)
 	}
 	else if(_stricmp("ACPI", Data.ArgData[1]) == 0)
 	{
-		if(Data.ArgCount == 2)	
-			CoreComplexObj::GetComplex()->ACPIComplex.Dump(nullptr);
+		if(Data.ArgCount == 2)
+			CoreComplexObj::GetComplex()->ACPIComplex.Dump(nullptr, nullptr);
+		else if (Data.ArgCount == 3)
+			CoreComplexObj::GetComplex()->ACPIComplex.Dump(Data.ArgData[2], nullptr);
 		else
-			CoreComplexObj::GetComplex()->ACPIComplex.Dump(Data.ArgData[2]);
+			CoreComplexObj::GetComplex()->ACPIComplex.Dump(Data.ArgData[2], Data.ArgData[3]);
+
 	}
 	else if(_stricmp("USB", Data.ArgData[1]) == 0)
 	{
@@ -2161,8 +2199,8 @@ void InfoCommand(CommandSet & Data)
 			printf(" Leaf Count:            %X\n", LeafCount);
 			printf(" Extended Leaf Count:   %X\n", ExtendedLeafCount);
 
-			uint32_t Features[6];
-			Features[0] = Features[1] = Features[2] = Features[3] = Features[4] = Features[5] = 0;
+			uint32_t Features[7];
+			Features[0] = Features[1] = Features[2] = Features[3] = Features[4] = Features[5] = Features[6] = 0;
 
 			ReadCPUID(1, 0, &Res);
 			uint8_t Model = (Res.EAX & 0xF0) >> 4;
@@ -2196,8 +2234,10 @@ void InfoCommand(CommandSet & Data)
 				////////123456789012345678901234
 				printf(" Structured Features 1: %08X\n", Res.EBX);
 				printf(" Structured Features 2: %08X\n", Res.ECX);
+				printf(" Structured Features 3: %08X\n", Res.EDX);
 				Features[2] = Res.EBX;
 				Features[3] = Res.ECX;
+				Features[4] = Res.EDX;
 
 			}
 
@@ -2208,8 +2248,8 @@ void InfoCommand(CommandSet & Data)
 				printf(" ExFeatures 1 (EDX):    %08X\n", Res.EDX);
 				printf(" ExFeatures 2 (ECX):    %08X\n", Res.ECX);
 
-				Features[4] = (Res.EDX & 0xFE7C0C00); // AMD duplicates a number of feature flags, so makes them out
-				Features[5] = Res.ECX;
+				Features[5] = (Res.EDX & 0xFE7C0C00); // AMD duplicates a number of feature flags, so makes them out
+				Features[6] = Res.ECX;
 
 				if(ExtendedLeafCount >= 0x80000008)
 				{
@@ -2235,7 +2275,7 @@ void InfoCommand(CommandSet & Data)
 			}
 							
 			uint32_t Mask = 0;
-			for(int x = 0; x < 32 * 6; x++)
+			for(int x = 0; x < 32 * 7; x++)
 			{
 				if(Mask == 0)
 					Mask = 0x00000001;
@@ -2333,16 +2373,30 @@ void main(int argc, char *argv[])
 	CommandData.CurrentAddress = 0x100000;
 	CommandData.LastAddress = 0x100000;
 
-	while(true)
+	CommandData.ArgCount = argc - 1;
+	for (int x = 1; x < argc; x++)
+	{
+		CommandData.ArgData[x - 1] = argv[x];
+		KernalSetPauseFullScreen(false);
+	}
+
+
+	while (true)
 	{
 		printf("\00307%08X> ", CommandData.CurrentAddress);
-		gets_s(InputBuffer, 0x100);
+		if (CommandData.ArgCount == 0)
+		{
+			gets_s(InputBuffer, 0x100);
 
-		char * Input = TrimString(InputBuffer);		
-		CommandData.ArgCount = _ConvertCommandLineToArgcArgv(Input, CommandData.ArgData, 31, true);
+			char * Input = TrimString(InputBuffer);
+			CommandData.ArgCount = _ConvertCommandLineToArgcArgv(Input, CommandData.ArgData, 31, true);
+		}
 
-		if(CommandData.ArgCount == 0 || CommandData.ArgData[0][0] == 0)
+		if (CommandData.ArgCount == 0 || CommandData.ArgData[0][0] == 0)
+		{
+			CommandData.ArgCount = 0;
 			continue;
+		}
 
 		//for(int x = 0; x < CommandData.ArgCount; x++)
 		//{
@@ -2378,5 +2432,8 @@ void main(int argc, char *argv[])
 			if(!Matched)
 				printf("Unknown Command [%s]\n", CommandData.ArgData[0]);
 		}
+
+		CommandData.ArgCount = 0;
+		KernalSetPauseFullScreen(true);
 	};
 }

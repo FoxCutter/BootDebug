@@ -703,7 +703,7 @@ const ASMTableEntry TwoByteOpCodes[256] =
 	{"BTS",		ParseModRM,				0,	2,	{ParamModRM, ParamReg}},
 	{"SHRD",	ParseModRMPlusByte,		0,	3,	{ParamModRM, ParamReg, ParamImmediate}},
 	{"SHRD",	ParseModRM,				0,	3,	{ParamModRM, ParamReg, RegCL}},
-	{"\x0F",	ParseInvalid,			0,	0,	{}},
+	{"\x0F",	ParseModRM,				0,	0,	{}},
 	{"IMUL",	ParseModRM,				0,	2,	{ParamReg, ParamModRM}},
 
 	// B0
@@ -938,6 +938,14 @@ const ASMTableEntry OpcodeGroups[][8] =
 
 	// Group 15
 	{
+		{"FXSAVE",		ParseModRM,			0,	1,	{ParamModRM}},
+		{"FXRSTOR",		ParseModRM,			0,	1,	{ParamModRM}},
+		{"LDMXCRS",		ParseModRM,			0,	1,	{ParamModRM}},
+		{"STMXCRS",		ParseModRM,			0,	1,	{ParamModRM}},
+		{"XSAVE",		ParseModRM,			0,	1,	{ParamModRM}},
+		{"XRSTOR",		ParseModRM,			0,	1,	{ParamModRM}},
+		{"XSAVEOPT",	ParseModRM,			0,	1,	{ParamModRM}},
+		{"CLFLUSH",		ParseModRM,			0,	1,	{ParamModRM}},
 	},
 
 	// Group 16

@@ -1,6 +1,7 @@
 #include <string.h>
 #include "RawTerminal.h"
 #include "LowLevel.h"
+#include "KernalLib.h"
 
 char FetchKeyboardBuffer();
 
@@ -159,7 +160,7 @@ int RawTerminal::Write(const char *szData, int cbLength)
 				if(szData[x] != '\n' && szData[x] != '\t')
 				{
 					// Write the character
-					m_ScreenBuffer[CurrentPos] = (m_CurrentColor | szData[x]);
+					m_ScreenBuffer[CurrentPos] = (m_CurrentColor | (unsigned char)szData[x]);
 
 					CurrentPos ++;
 					m_CurrentCol ++;

@@ -20,7 +20,7 @@ void DescriptorTable::Initilize(uint16_t EntryCount, bool Fill)
 	if(m_Table == nullptr)
 	{
 		uint32_t TableLength = EntryCount * sizeof(DescriptiorData::TableEntry);
-		void * Base = KernalPageAllocate(TableLength, KernalPageFlags::Fixed);
+		void * Base = KernalPageAllocate(TableLength, KernalPageFlags::Fixed, "Descriptor Table");
 	
 		if(Base == nullptr)
 			KernalPanic(KernalCode::MemoryError, "Unable to allocated fixed memory for a Descriptor Table\n");

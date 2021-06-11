@@ -1515,6 +1515,13 @@ void MemoryCommand(CommandSet & Data)
 	MMUManager->PrintAddressInformation(Start);
 }
 
+void PrintAVX()
+{
+	uint32_t Value = 0;
+	__asm VSTMXCSR[Value];
+	printf(" MXCSR: %08X\n", Value);
+}
+
 void RegisterCommand(CommandSet & Data)
 {
 	if(Data.ArgCount < 2)
@@ -1764,7 +1771,7 @@ void RegisterCommand(CommandSet & Data)
 
 void InfoCommand(CommandSet & Data)
 {
-	if(Data.ArgCount < 2)
+	if (Data.ArgCount < 2)
 	{
 		puts("Information Type Missing");
 		puts(" Valid Types");
@@ -1788,65 +1795,75 @@ void InfoCommand(CommandSet & Data)
 
 		return;
 	}
-	if(_stricmp("XX", Data.ArgData[1]) == 0)
+	if (_stricmp("XX", Data.ArgData[1]) == 0)
 	{
 		OutPortb(0x64, 0x60);
 		OutPortb(0x60, 0x05);
-		
+
 		OutPortb(0x60, 0xF0);
 		OutPortb(0x60, 0x02);
 
 	}
-	else if(_stricmp("MMU", Data.ArgData[1]) == 0)
+	else if (_stricmp("MMU", Data.ArgData[1]) == 0)
 	{
 		MMUManager->Dump();
 	}
-	else if(_stricmp("APIC", Data.ArgData[1]) == 0)
+	else if (_stricmp("APIC", Data.ArgData[1]) == 0)
 	{
 		m_InterruptControler.DumpAPIC();
 	}
-	else if(_stricmp("PIC", Data.ArgData[1]) == 0)
+	else if (_stricmp("PIC", Data.ArgData[1]) == 0)
 	{
 		m_InterruptControler.DumpPIC();
 	}
-	else if(_stricmp("IDT", Data.ArgData[1]) == 0)
+	else if (_stricmp("IDT", Data.ArgData[1]) == 0)
 	{
 		CoreComplexObj::GetComplex()->IDTTable.Dump();
 	}
-	else if(_stricmp("GDT", Data.ArgData[1]) == 0)
+	else if (_stricmp("GDT", Data.ArgData[1]) == 0)
 	{
 		CoreComplexObj::GetComplex()->GDTTable.Dump();
 	}
-	else if(_stricmp("MEM", Data.ArgData[1]) == 0)
+	else if (_stricmp("MEM", Data.ArgData[1]) == 0)
 	{
 		CoreComplexObj::GetComplex()->PageMap.Dump();
 	}
-	else if(_stricmp("IOAPIC", Data.ArgData[1]) == 0)
+	else if (_stricmp("IOAPIC", Data.ArgData[1]) == 0)
 	{
-		m_InterruptControler.DumpIOAPIC();						
+		m_InterruptControler.DumpIOAPIC();
 	}
-	else if(_stricmp("TI", Data.ArgData[1]) == 0)
+	else if (_stricmp("TI", Data.ArgData[1]) == 0)
 	{
 		ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(ReadFS(8));
-						
-		if(CurrentThread == nullptr)
+
+		if (CurrentThread == nullptr)
 			return;
 
-		ASM_CLI;					
+		ASM_CLI;
 
 		printf("Thread Information\n");
 		printf(" Current Thread: %08X\n", CurrentThread->ThreadID);
 
 		CurrentThread = CoreComplexObj::GetComplex()->ThreadComplex;
-		while(CurrentThread != nullptr)
+		while (CurrentThread != nullptr)
 		{
 			printf(" Thread ID %08X, Ticks %16llX\n", CurrentThread->ThreadID, CurrentThread->TickCount);
 
 			CurrentThread = CurrentThread->Next;
 		}
 
-
 		ASM_STI;
+
+	}
+	else if (_stricmp("TIME", Data.ArgData[1]) == 0)
+	{
+		ASM_CLI;
+
+		uint64_t TimePassed = CoreComplexObj::GetComplex()->TimePassed;	
+		
+		ASM_STI;
+
+		printf("Time Passed: %llu ms\n", TimePassed >> 4);
 
 	}
 	else if(_stricmp("ACPI", Data.ArgData[1]) == 0)
@@ -1857,7 +1874,6 @@ void InfoCommand(CommandSet & Data)
 			CoreComplexObj::GetComplex()->ACPIComplex.Dump(Data.ArgData[2], nullptr);
 		else
 			CoreComplexObj::GetComplex()->ACPIComplex.Dump(Data.ArgData[2], Data.ArgData[3]);
-
 	}
 	else if(_stricmp("USB", Data.ArgData[1]) == 0)
 	{
@@ -2085,7 +2101,7 @@ void InfoCommand(CommandSet & Data)
 		if(TableAddress != UINT32_MAX)
 			printf("   %08X: \"_SYSID_\" - System ID\n", TableAddress);
 
-		TableAddress = SearchBIOS("_UUID_", 7, 0x10);
+		TableAddress = SearchBIOS("_UUID_", 6, 0x10);
 		if(TableAddress != UINT32_MAX)
 			printf("   %08X: \"_UUID_\" - Universal Unique ID\n", TableAddress);
 

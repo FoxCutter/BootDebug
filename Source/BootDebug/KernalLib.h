@@ -32,7 +32,7 @@ enum class KernalPageFlags
 };
 
 // Allocates Memory pages in the Kernal Space
-void * KernalPageAllocate(uint32_t Size, KernalPageFlags Flags);
+void * KernalPageAllocate(uint32_t Size, KernalPageFlags Flags, char *Name);
 
 //char * KernalGetInput(char * Buffer, uint32_t Size);
 //char KernalGetInput();

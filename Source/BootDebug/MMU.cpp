@@ -89,14 +89,14 @@ MMU::MMU(void)
 	}
 
 
-	PDPTE = reinterpret_cast<PageDirectoryPointerEntry *>(KernalPageAllocate(sizeof(PageDirectoryPointerEntry) * 4, KernalPageFlags::Fixed));
+	PDPTE = reinterpret_cast<PageDirectoryPointerEntry *>(KernalPageAllocate(sizeof(PageDirectoryPointerEntry) * 4, KernalPageFlags::Fixed, "PageDirectoryPointerEntry"));
 	//KernalPrintf("PDPTE: %08X\n", PDPTE);
 
-	PDE = reinterpret_cast<LargePageDirectoryEntry *>(KernalPageAllocate(sizeof(LargePageDirectoryEntry) * 2048, KernalPageFlags::Fixed));
+	PDE = reinterpret_cast<LargePageDirectoryEntry *>(KernalPageAllocate(sizeof(LargePageDirectoryEntry) * 2048, KernalPageFlags::Fixed, "LargePageDirectoryEntry"));
 	//KernalPrintf("PDPTE: %08X\n", PDPTE);
 	//KernalPrintf("PDE: %08X\n", PDE);
 
-	PTE = reinterpret_cast<PageTableEntry *>(KernalPageAllocate(sizeof(PageTableEntry) * 512, KernalPageFlags::Fixed));
+	PTE = reinterpret_cast<PageTableEntry *>(KernalPageAllocate(sizeof(PageTableEntry) * 512, KernalPageFlags::Fixed, "PageTableEntry"));
 	//KernalPrintf("PDPTE: %08X\n", PDPTE);
 	//KernalPrintf("PDE: %08X\n", PDE);
 	//KernalPrintf("PTE: %08X\n", PTE);

@@ -51,6 +51,8 @@ struct CoreComplexObj
 
 	ACPI ACPIComplex;
 
+	uint64_t TimePassed;
+
 	static CoreComplexObj *GetComplex()
 	{
 		return reinterpret_cast<CoreComplexObj *>(ReadGS(0));

@@ -26,6 +26,8 @@
 #include "Thread.h"
 #include "MemoryMap.h"
 
+#include "PS2Keyboard.h"
+
 #include "CoreComplex.h"
 #include "KernalLib.h"
 
@@ -281,234 +283,15 @@ void SystemReset()
 
 }
 
-// Displayable characters will map to their ANSII key codes, none display characters that dosn't have a matching ANSII code will get codes with the high bit set.
-enum KeyCodes : uint8_t
-{
-	KeyCode_Blank = 0x00,
-
-	KeyCode_Backspace	= 0x08,
-	KeyCode_Tab,
-	KeyCode_Enter,
-	KeyCode_Escape		= 0x1B,
-
-	KeyCode_Space		= ' ',	// 0x20
-	KeyCode_0			= '0',	// 0x30
-	KeyCode_a			= 'a',	// 0x41
-	KeyCode_A			= 'A',	// 0x61
-	KeyCode_Delete		= 0x7F,
-
-	KeyCode_Extended	= 0x80, // Extended codes
-
-	// Movement
-	KeyCode_Insert		= KeyCode_Extended,
-	KeyCode_End,
-	KeyCode_Down,
-	KeyCode_PageDown,
-	KeyCode_Left,
-	KeyCode_Right,
-	KeyCode_Home,
-	KeyCode_Up,
-	KeyCode_PageUp,
-
-	// F keys
-	KeyCode_F0					= 0x90,
-	KeyCode_F1,
-	KeyCode_F2,
-	KeyCode_F3,
-	KeyCode_F4,
-	KeyCode_F5,
-	KeyCode_F6,
-	KeyCode_F7,
-	KeyCode_F8,
-	KeyCode_F9,
-	KeyCode_F10,
-	KeyCode_F11,
-	KeyCode_F12,
-	KeyCode_F13,
-	KeyCode_F14,
-	KeyCode_F15,
-	
-	// Modifiers (LSB = Right)
-	KeyCode_LeftShift			= 0xA0,
-	KeyCode_RightShift,
-	KeyCode_LeftCtrl			= 0xA2,
-	KeyCode_RightCtrl,
-	KeyCode_LeftAlt				= 0xA4,
-	KeyCode_RightAlt,
-	KeyCode_LeftGUI				= 0xA6,
-	KeyCode_RightGUI,
-	KeyCode_AltGr               = 0xA8,
-	
-	KeyCode_Keypad_0			= 0xB0,		// 0 / Insert
-	KeyCode_Keypad_1,						// 1 / End
-	KeyCode_Keypad_2,						// 2 / Down
-	KeyCode_Keypad_3,						// 3 / PageDown
-	KeyCode_Keypad_4,						// 4 / Left 
-	KeyCode_Keypad_5,						// 5 / Blank
-	KeyCode_Keypad_6,						// 6 / Right
-	KeyCode_Keypad_7,						// 7 / Home
-	KeyCode_Keypad_8,						// 8 / Up
-	KeyCode_Keypad_9,						// 9 / PageUp
-	KeyCode_Keypad_Period,
-	KeyCode_Keypad_Slash,
-	KeyCode_Keypad_Star,
-	KeyCode_Keypad_Dash,
-	KeyCode_Keypad_Plus,
-	KeyCode_Keypad_Enter,
-	
-	KeyCode_Keypad_Insert		= 0xC0,		// 0 / Insert
-	KeyCode_Keypad_End,						// 1 / End
-	KeyCode_Keypad_Down,					// 2 / Down
-	KeyCode_Keypad_PageDown,				// 3 / PageDown
-	KeyCode_Keypad_Left,					// 4 / Left 
-	KeyCode_Keypad_Shift_5,					// 5 / Blank
-	KeyCode_Keypad_Right,					// 6 / Right
-	KeyCode_Keypad_Home,					// 7 / Home
-	KeyCode_Keypad_Up,						// 8 / Up
-	KeyCode_Keypad_PageUp,					// 9 / PageUp
-	
-	KeyCode_CapsLock			= 0xD0,
-	KeyCode_NumberLock,
-	KeyCode_ScrollLock,
-	KeyCode_Apps,
-	KeyCode_Power,
-	KeyCode_Sleep,
-	KeyCode_Wake,
-	KeyCode_PrintScreen,
-	KeyCode_Pause,
-	KeyCode_Break,
-
-	KeyCode_SysRequest			= 0xFF
-
-};
-
-
-uint8_t kbdus2[] =
-{
-//	x0					x1						x2						x3						x4						x5					x6					x7						
-//	x8					x9						xA						xB						xC						xD					xE					xF
-	KeyCode_Blank,		KeyCode_F9,				KeyCode_Blank,			KeyCode_F5,				KeyCode_F3,				KeyCode_F1,			KeyCode_F2,			KeyCode_F12,		// 00	
-	KeyCode_Blank,		KeyCode_F10,			KeyCode_F8,				KeyCode_F6,				KeyCode_F4,				KeyCode_Tab,		'`',				KeyCode_Blank,		// 08
-	KeyCode_Blank,		KeyCode_LeftAlt,		KeyCode_LeftShift,		KeyCode_Blank,			KeyCode_LeftCtrl,		'q',				'1',				KeyCode_Blank,		// 10
-	KeyCode_Blank,		KeyCode_Blank,			'z',					's',					'a',					'w',				'2',				KeyCode_Blank,		// 18
-	KeyCode_Blank,		'c',					'x',					'd',					'e',					'4',				'3',				KeyCode_Blank,		// 20	
-	KeyCode_Blank,		KeyCode_Space,			'v',					'f',					't',					'r',				'5',				KeyCode_Blank,		// 28
-	KeyCode_Blank,		'n',					'b',					'h',					'g',					'y',				'6',				KeyCode_Blank,		// 30
-	KeyCode_Blank,		KeyCode_Blank,			'm',					'j',					'u',					'7',				'8',				KeyCode_Blank,		// 38
-	KeyCode_Blank,		',',					'k',					'i',					'o',					'0',				'9',				KeyCode_Blank,		// 40
-	KeyCode_Blank,		'.',					'/',					'l',					';',					'p',				'-',				KeyCode_Blank,		// 48
-	KeyCode_Blank,		KeyCode_Blank,			'\'',					KeyCode_Blank,			'[',					'=',				KeyCode_Blank,		KeyCode_Blank,		// 50
-	KeyCode_CapsLock,	KeyCode_RightShift,		KeyCode_Enter,			']',					KeyCode_Blank,			'\\',				KeyCode_Blank,		KeyCode_Blank,		// 58
-	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Backspace,	KeyCode_Blank,		// 60
-	KeyCode_Blank,		KeyCode_Keypad_1,		KeyCode_Blank,			KeyCode_Keypad_4,		KeyCode_Keypad_7,		KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 68
-	KeyCode_Keypad_0,	KeyCode_Keypad_Period,	KeyCode_Keypad_2,		KeyCode_Keypad_5,		KeyCode_Keypad_6,		KeyCode_Keypad_8,	KeyCode_Escape,		KeyCode_NumberLock,	// 70
-	KeyCode_F11,		KeyCode_Keypad_Plus,	KeyCode_Keypad_3,		KeyCode_Keypad_Dash,	KeyCode_Keypad_Star,	KeyCode_Keypad_9,	KeyCode_ScrollLock,	KeyCode_Blank,		// 78
-
-	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_F7,				KeyCode_SysRequest,		KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 80
-};
-
-uint8_t kbdus2Shift[] =
-{
-//	x0					x1						x2						x3						x4						x5					x6					x7						
-//	x8					x9						xA						xB						xC						xD					xE					xF
-	KeyCode_Blank,		KeyCode_F9,				KeyCode_Blank,			KeyCode_F5,				KeyCode_F3,				KeyCode_F1,			KeyCode_F2,			KeyCode_F12,		// 00	
-	KeyCode_Blank,		KeyCode_F10,			KeyCode_F8,				KeyCode_F6,				KeyCode_F4,				KeyCode_Tab,		'~',				KeyCode_Blank,		// 08
-	KeyCode_Blank,		KeyCode_LeftAlt,		KeyCode_LeftShift,		KeyCode_Blank,			KeyCode_LeftCtrl,		'Q',				'!',				KeyCode_Blank,		// 10
-	KeyCode_Blank,		KeyCode_Blank,			'Z',					'S',					'A',					'W',				'@',				KeyCode_Blank,		// 18
-	KeyCode_Blank,		'C',					'X',					'D',					'E',					'$',				'#',				KeyCode_Blank,		// 20	
-	KeyCode_Blank,		KeyCode_Space,			'V',					'F',					'T',					'R',				'%',				KeyCode_Blank,		// 28
-	KeyCode_Blank,		'N',					'B',					'H',					'G',					'Y',				'^',				KeyCode_Blank,		// 30
-	KeyCode_Blank,		KeyCode_Blank,			'M',					'J',					'U',					'&',				'*',				KeyCode_Blank,		// 38
-	KeyCode_Blank,		'<',					'K',					'I',					'O',					')',				'(',				KeyCode_Blank,		// 40
-	KeyCode_Blank,		'>',					'?',					'L',					':',					'P',				'_',				KeyCode_Blank,		// 48
-	KeyCode_Blank,		KeyCode_Blank,			'\"',					KeyCode_Blank,			'{',					'+',				KeyCode_Blank,		KeyCode_Blank,		// 50
-	KeyCode_CapsLock,	KeyCode_RightShift,		KeyCode_Enter,			'}',					KeyCode_Blank,			'\\',				KeyCode_Blank,		KeyCode_Blank,		// 58
-	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Backspace,	KeyCode_Blank,		// 60
-	KeyCode_Blank,		KeyCode_Keypad_1,		KeyCode_Blank,			KeyCode_Keypad_4,		KeyCode_Keypad_7,		KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 68
-	KeyCode_Keypad_0,	KeyCode_Keypad_Period,	KeyCode_Keypad_2,		KeyCode_Keypad_5,		KeyCode_Keypad_6,		KeyCode_Keypad_8,	KeyCode_Escape,		KeyCode_NumberLock,	// 70
-	KeyCode_F11,		KeyCode_Keypad_Plus,	KeyCode_Keypad_3,		KeyCode_Keypad_Dash,	KeyCode_Keypad_Star,	KeyCode_Keypad_9,	KeyCode_ScrollLock,	KeyCode_Blank,		// 78
-
-	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_F7,				KeyCode_SysRequest,		KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 80
-};
-
-uint8_t kbdus2E0[] =
-{
-//	x0						x1						x2						x3					x4						x5					x6					x7						
-//	x8						x9						xA						xB					xC						xD					xE					xF
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 00
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 08
-	KeyCode_Blank,			KeyCode_RightAlt,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_RightCtrl,		KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 10
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_LeftGUI,	// 18
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_RightGUI,	// 20
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Apps,		// 28
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Power,		// 30
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Sleep,		// 38
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 40
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Keypad_Slash,	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 48
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 50
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Keypad_Enter,	KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Wake,		KeyCode_Blank,		// 58
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 60
-	KeyCode_Blank,			KeyCode_End,			KeyCode_Blank,			KeyCode_Left,		KeyCode_Home,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 68
-	KeyCode_Insert,			KeyCode_Delete,			KeyCode_Down,			KeyCode_Blank,		KeyCode_Right,			KeyCode_Up,			KeyCode_Blank,		KeyCode_Blank,		// 70
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_PageDown,		KeyCode_Blank,		KeyCode_PrintScreen,	KeyCode_PageUp,		KeyCode_Break,		KeyCode_Blank,		// 78
-
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,		KeyCode_Blank,		// 80
-};
-
-
-uint8_t kbdus[128] =
-{
-//	x0		x1		x2		x3		x4		x5		x6		x7		x8		x9		xA		xB		xC		xD		xE		xF
-	0,		27,		'1',	'2',	'3',	'4',	'5',	'6',	'7',	'8',	'9',	'0',	'-',	'=',	'\b',	'\t',	// 0x
-	'q',	'w',	'e',	'r',	't',	'y',	'u',	'i',	'o',	'p',	'[',	']',	'\n',	0,		'a',	's',	// 1x
-	'd',	'f',	'g',	'h',	'j',	'k',	'l',	';',	'\'',	'`',	0,		'\\',	'z',	'x',	'c',	'v',	// 2x
-	'b',	'n',	'm',	',',	'.',	'/',	0,		'*',	0,		' ',	0,		0,		0,		0,		0,		0,		// 3x
-	0,		0,		0,		0,		0,		0,		0,		'7',	'8',	'9',	'-',	'4',	'5',	'6',	'+',	'1',	// 4x
-	'2',	'3',	'0',	'.',	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 5x
-	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 6x
-	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 7x
-};
-
-uint8_t kbdus_Shift[128] =
-{
-//	x0		x1		x2		x3		x4		x5		x6		x7		x8		x9		xA		xB		xC		xD		xE		xF
-	0,		27,		'!',	'@',	'#',	'$',	'%',	'^',	'&',	'*',	'(',	')',	'_',	'+',	'\b',	'\t',	// 0x
-	'Q',	'W',	'E',	'R',	'T',	'Y',	'U',	'I',	'O',	'P',	'{',	'}',	'\n',	0,		'A',	'S',	// 1x
-	'D',	'F',	'G',	'H',	'J',	'K',	'L',	':',	'\"',	'~',	0,		'|',	'Z',	'X',	'C',	'V',	// 2x
-	'B',	'N',	'M',	'<',	'>',	'?',	0,		'*',	0,		' ',	0,		0,		0,		0,		0,		0,		// 3x
-	0,		0,		0,		0,		0,		0,		0,		'7',	'8',	'9',	'-',	'4',	'5',	'6',	'+',	'1',	// 4x
-	'2',	'3',	'0',	'.',	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 5x
-	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 6x
-	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		0,		// 7x
-};
-
-
 InterruptControler m_InterruptControler;
 
-volatile char KBBuffer[32];
+volatile unsigned char KBBuffer[32];
 volatile uint8_t KBBufferFirst = 0;
 volatile uint8_t KBBufferLast = 0;
 
-uint16_t KeyState = 0;
 
-#define LeftShift	 0x01
-#define RightShift	 0x02
-#define Shift		 (LeftShift | RightShift)
-#define LeftCtrl	 0x04
-#define RightCtrl	 0x08
-#define Ctrl		 (LeftCtrl | RightCtrl)
-#define LeftAlt		 0x10
-#define RightAlt	 0x20
-#define Alt			 (LeftAlt | RightAlt)
-#define LeftGUI		 0x40
-#define RightGUI	 0x80
 
-#define NumLock		0x100
-#define	ScrollLock	0x200
-#define CapsLock	0x400
-#define EchoLock	0x800
-
-void InsertKeyboardBuffer(char Key)
+void InsertKeyboardBuffer(uint8_t /*KeyCode*/, uint16_t /*KeyState*/, unsigned char Key)
 {
 	if((KBBufferLast + 1) == KBBufferFirst || KBBufferFirst == 0 && (KBBufferLast + 1 == 32))
 	{
@@ -538,163 +321,6 @@ char FetchKeyboardBuffer()
 		KBBufferFirst = 0;
 
 	return value;
-}
-
-void KeyboardInterrupt(InterruptContext * OldContext, uintptr_t * Data)
-{
-	unsigned char Temp = InPortb(0x64);
-	if((Temp & 0x01) == 0)
-		return;
-	
-	unsigned char scancode = InPortb(0x60);		
-	unsigned char scancode2 = 0;
-	int Escape = 0;
-
-	if(KeyState & EchoLock)
-		KernalPrintf("[%02X", scancode);
-
-	if(scancode == 0xE0)
-	{
-		Escape = 1;
-		scancode = InPortb(0x60);
-
-		if(KeyState & EchoLock)
-			KernalPrintf(" %02X", scancode);
-	}
-	else if(scancode == 0xE1)
-	{
-		Escape = 2;
-		scancode = InPortb(0x60);
-		scancode2 = InPortb(0x60);
-
-		if(KeyState & EchoLock)
-			KernalPrintf(" %02X %02X", scancode, scancode2);
-	}
-
-	if(KeyState & EchoLock)
-		KernalPrintf("] ");
-
-	bool KeyUp = ((scancode & 0x80) == 0x80);
-	scancode = scancode & 0x7F;
-
-	if(KeyUp && scancode == 0x0E && (KeyState & LeftCtrl) && (KeyState & LeftAlt)) // CTRL-ALT-Backspace
-	{
-		KeyState ^= EchoLock;
-	}
-
-	if(!KeyUp && scancode == 0x53 && (KeyState & Ctrl) && (KeyState & Alt)) // CTRL-ALT-Delete
-	{
-		KernalSetPauseFullScreen(false);
-		KernalPrintf("\nRebooting...\n");
-		SystemReset();
-	}
-
-	if(scancode == 0x2A && Escape == 0) // LSHIFT
-	{
-		if(KeyUp)
-			KeyState &= ~LeftShift;
-			
-		else
-			KeyState |= LeftShift;
-	}
-	else if(scancode == 0x36 && Escape == 0) // RSHIFT
-	{
-		if(KeyUp)
-			KeyState &= ~RightShift;
-			
-		else
-			KeyState |= RightShift;
-	}
-	else if(scancode == 0x1D && Escape == 0) // LCTRL
-	{
-		if(KeyUp)
-			KeyState &= ~LeftCtrl;
-			
-		else
-			KeyState |= LeftCtrl;
-	}
-	else if(scancode == 0x1D && Escape == 1) // RCTRL
-	{
-		if(KeyUp)
-			KeyState &= ~RightCtrl;
-			
-		else
-			KeyState |= RightCtrl;
-	}
-
-	else if(scancode == 0x38 && Escape == 0) // LALT
-	{
-		if(KeyUp)
-			KeyState &= ~LeftAlt;
-			
-		else
-			KeyState |= LeftAlt;
-	}
-	else if(scancode == 0x38 && Escape == 1) // RALT
-	{
-		if(KeyUp)
-			KeyState &= ~RightAlt;
-			
-		else
-			KeyState |= RightAlt;
-	}
-	else if(!KeyUp && Escape == 0)
-	{
-		char Key = 0;	
-		if(KeyState & LeftShift || KeyState & RightShift)
-			Key = kbdus_Shift[scancode];
-		else
-			Key = kbdus[scancode];
-
-		InsertKeyboardBuffer(Key);
-	}
-}
-
-void SetupPS2Keyboard()
-{
-	// Disable everything
-	OutPortb(0x64, 0xAD); // Primary
-	OutPortb(0x64, 0xA7); // Secondary
-	
-	// Clear anything pending
-	unsigned char Temp = InPortb(0x64);
-	if ((Temp & 0x01) == 0x01)
-		InPortb(0x60);
-
-	// Get the configuration byte
-	OutPortb(0x64, 0x20);
-
-	while ((InPortb(0x64) & 0x01) == 0)
-		;
-
-	unsigned char config = InPortb(0x60);
-	//KernalPrintf(" KB config: %02X ", config);
-
-	// Self Test
-	OutPortb(0x64, 0xAA);
-	
-	// Wait until we have a result
-	while ((InPortb(0x64) & 0x01) == 0)
-		;
-
-	Temp = InPortb(0x60);
-	//KernalPrintf(" KB Code: %02X\n", Temp);
-
-	// Turn on Primary Interrupt 
-	config |= 0x01;
-	// Disable Secondary Interrupt 
-	config &= ~0x02;
-	
-	// Disable Translation
-	//config &= ~0x40;
-
-	OutPortb(0x64, 0x60);
-	OutPortb(0x60, config);
-
-	// Enable
-	OutPortb(0x64, 0xAE); // Primary
-
-	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
 }
 
 ThreadInformation *ThreadListHead;
@@ -730,6 +356,8 @@ void ClockInterrupt(volatile InterruptContext * OldContext, uintptr_t * Data)
 {
 	ThreadInformation *CurrentThread = reinterpret_cast<ThreadInformation *>(ReadFS(8));
 	
+	CoreComplexObj::GetComplex()->TimePassed += 0x18;
+
 	CurrentThread->TickCount++;
 	if(CurrentThread->TimeSliceCount >= CurrentThread->TimeSliceAllocation)
 	{
@@ -856,7 +484,10 @@ MemoryPageMap BuildMemoryPageMap(MultiBootInfo &MBReader)
 	// And make sure it starts on a page
 	if(HighReserved % 0x1000 != 0)
 		HighReserved -= HighReserved % 0x1000;
-
+	
+	// And give it two extra pages for the MemoryInformation Poll
+	HighReserved -= 0x2000;
+	 
 	// Step 1c: Create the map
 	MemoryPageMap TempMap(HighReserved, PageCount);
 	
@@ -867,27 +498,34 @@ MemoryPageMap BuildMemoryPageMap(MultiBootInfo &MBReader)
 
 	do {
 		MemoryType Type = ReservedMemory;
-		if(CurrentEntry.Type == 1)
+		char *TypeName = "Reserved";
+		if (CurrentEntry.Type == 1)
+		{
 			Type = FreeMemory;
+			TypeName = "RAM";
+		}
 
-		if(CurrentEntry.Type == 3)
+		if (CurrentEntry.Type == 3)
+		{
 			Type = AllocatedMemory;
+			TypeName = "Recoverable";
+		}
 
-		TempMap.SetAllocatedMemory(CurrentEntry.BaseAddress, CurrentEntry.Length, Type);
+		TempMap.SetAllocatedMemory(CurrentEntry.BaseAddress, CurrentEntry.Length, Type, TypeName);
 	} while(MBReader.GetNextMemoryEntry(CurrentEntry));
 
 	// Step 1e set all the know reserved and allocated data objects
-	TempMap.SetAllocatedMemory(0x0, 0x10000, ReservedMemory);
-	TempMap.SetAllocatedMemory(MB1Header.load_address, MB1Header.bss_end_address - MB1Header.load_address, AllocatedMemory);
-	TempMap.SetAllocatedMemory(reinterpret_cast<uint32_t>(MBReader.MBData), MBReader.HeaderLength, AllocatedMemory);
-	TempMap.SetAllocatedMemory(HighReserved, MemoryMapSize * 0x1000, AllocatedMemory);	
+	TempMap.SetAllocatedMemory(0x0, 0x10000, ReservedMemory, "0 Page");
+	TempMap.SetAllocatedMemory(MB1Header.load_address, MB1Header.bss_end_address - MB1Header.load_address, AllocatedMemory, "Kernal");
+	TempMap.SetAllocatedMemory(reinterpret_cast<uint32_t>(MBReader.MBData), MBReader.HeaderLength, AllocatedMemory, "MultiBoot");
+	TempMap.SetAllocatedMemory(HighReserved, (MemoryMapSize * 0x1000) + 0x1000, AllocatedMemory, "Memory Map");
 
 	{
 		ModuleEntry CurrentModule;
 		if(MBReader.GetFirstModuleEntry(CurrentModule))
 		{
 			do {
-				TempMap.SetAllocatedMemory(CurrentModule.ModStart, CurrentModule.ModEnd - CurrentModule.ModStart, AllocatedMemory);
+				TempMap.SetAllocatedMemory(CurrentModule.ModStart, CurrentModule.ModEnd - CurrentModule.ModStart, AllocatedMemory, "");
 			} while(MBReader.GetNextModuleEntry(CurrentModule));
 		}
 	}
@@ -899,7 +537,7 @@ CoreComplexObj *BuildCoreComplex(MemoryPageMap &MemoryMap)
 {
 	// Pick an Address for the Core Complex
 	uint64_t TempAddress = UINT64_MAX;
-	TempAddress = MemoryMap.AllocateRange(0x10000, 0x10000);
+	TempAddress = MemoryMap.AllocateRange(0x10000, 0x10000, "Core Complex");
 
 	if(TempAddress == UINT64_MAX)
 		KernalPanic(KernalCode::GeneralError, "Unable to allocated core complex");
@@ -907,6 +545,7 @@ CoreComplexObj *BuildCoreComplex(MemoryPageMap &MemoryMap)
 	CoreComplexObj *TempComplex = new(reinterpret_cast<void *>(TempAddress)) CoreComplexObj();
 	TempComplex->Self = TempComplex;
 	TempComplex->PageMap = MemoryMap;
+	TempComplex->TimePassed = 0;
 	KernalPrintf("  Core Complex: %08X\n", TempComplex);
 
 	return TempComplex;
@@ -915,7 +554,7 @@ CoreComplexObj *BuildCoreComplex(MemoryPageMap &MemoryMap)
 void BuildGDT(CoreComplexObj *CoreComplex)
 {	
 	uint64_t TempAddress = UINT64_MAX;
-	TempAddress = CoreComplex->PageMap.AllocateRange(0x10000, 4096);
+	TempAddress = CoreComplex->PageMap.AllocateRange(0x10000, 4096, "GDT");
 
 	CoreComplex->GDTTable.Initilize((uint32_t)TempAddress);
 
@@ -1023,6 +662,39 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	if(MBReader.FrameBuffer.Type != 0x02)
 		ASM_HLT;
 	
+	Registers CPUIDRegisters;
+	ReadCPUID(1, 0, &CPUIDRegisters);
+
+	// Turn on SEE
+	uint32_t CR0 = ReadCR0();
+	uint32_t CR4 = ReadCR4();
+
+	// Make sure the FPU is in the correct state
+	CR0 &= ~CPUFlags::FPUEmulation;
+	CR0 |= CPUFlags::MonitorCoprocessor;
+
+	if ((CPUIDRegisters.EDX & CPUFlags::FXSaveRestore) == CPUFlags::FXSaveRestore)
+	{
+		CR4 |= CPUFlags::OSFXSR;
+		CR4 |= CPUFlags::OSXMMEXCPT; // A Lie, as we really don't handle exceptions
+	}
+
+	if ((CPUIDRegisters.ECX & CPUFlags::XSAVE) == CPUFlags::XSAVE)
+	{
+		CR4 |= CPUFlags::OSXSAVEEnabled;
+	}
+
+	WriteCR0(CR0);
+	WriteCR4(CR4);
+
+	if ((CPUIDRegisters.ECX & CPUFlags::XSAVE) == CPUFlags::XSAVE)
+	{
+		uint64_t XCR0 = ReadXCR0();
+		XCR0 |= CPUFlags::X87FPUState | CPUFlags::SSEState | CPUFlags::AVXState;
+
+		WriteXCR0(XCR0);
+	}
+
 	// Set up a simple text terminal for the kernal to use
 	RawTerminal TextTerm(static_cast<uint32_t>(MBReader.FrameBuffer.Address), MBReader.FrameBuffer.Width, MBReader.FrameBuffer.Height, MBReader.FrameBuffer.Pitch);
 	TextTerm.SetPauseFullScreen(false);
@@ -1067,40 +739,6 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	CurrentTerminal = &TextTerm;
 
-	Registers CPUIDRegisters;
-	ReadCPUID(1, 0, &CPUIDRegisters);
-
-	// Turn on SEE
-	uint32_t CR0 = ReadCR0();
-	uint32_t CR4 = ReadCR4();
-
-	// Make sure the FPU is in the correct state
-	CR0 &= ~CPUFlags::FPUEmulation;
-	CR0 |= CPUFlags::MonitorCoprocessor;
-
-	if ((CPUIDRegisters.EDX & CPUFlags::FXSaveRestore) == CPUFlags::FXSaveRestore)
-	{
-		CR4 |= CPUFlags::OSFXSR;
-		CR4 |= CPUFlags::OSXMMEXCPT; // A Lie, as we really don't handle exceptions
-	}	
-	
-	if ((CPUIDRegisters.ECX & CPUFlags::XSAVE) == CPUFlags::XSAVE)
-	{
-		CR4 |= CPUFlags::OSXSAVEEnabled;
-	}
-	
-	WriteCR0(CR0);
-	WriteCR4(CR4);
-
-	if ((CPUIDRegisters.ECX & CPUFlags::XSAVE) == CPUFlags::XSAVE)
-	{
-		uint64_t XCR0 = ReadXCR0();
-		XCR0 |= CPUFlags::X87FPUState | CPUFlags::SSEState | CPUFlags::AVXState;
-
-		WriteXCR0(XCR0);
-	}
-
-
 	// Map the Core Complex pages 1:1 into virtual memory
 	// Okay, this doesn't do anything like that yet, but still...
 	MMU Memory;
@@ -1109,7 +747,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	// At this point we will be up and running with virtual memory, so their will be a clear different between Physical and Virtual addresses
 	
 	// Grab 64k for the hardware tree.
-	void * Temp = KernalPageAllocate(0x10000, KernalPageFlags::None);
+	void * Temp = KernalPageAllocate(0x10000, KernalPageFlags::None, "HW Tree");
 	memset(Temp, 0, 0x10000);
 	CoreComplex->HardwareComplex.Initilize(Temp, 0x10000);
 
@@ -1121,7 +759,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	// Step X: Create the Kernal's heap
 	// Get a range for our dynamic memory, starting at 2megs and asking for 16 meg	
-	uint64_t TempAddress = CoreComplex->PageMap.AllocateRange(0x200000, 0x1000000);
+	uint64_t TempAddress = CoreComplex->PageMap.AllocateRange(0x200000, 0x1000000, "Heap");
 
 	// Start it up with 16 byte blocks
 	CoreComplex->KernalHeap.SetupHeap(static_cast<uint32_t>(TempAddress), 0x1000000, 0x10);
@@ -1156,6 +794,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	m_InterruptControler.Initialize(&CoreComplex->IDTTable, reinterpret_cast<ACPI_TABLE_MADT *>(CoreComplex->ACPIComplex.GetTable("APIC")));
 
 	SetupPS2Keyboard();
+	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
 		
 	//KernalPrintf(" '%f'\n", fcos);
 
@@ -1164,7 +803,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	// Create the Idle Thread
 	KernalPrintf(" Setting up Threads...\n");
 	
-	CoreComplex->ThreadComplex = reinterpret_cast<ThreadInformation *>(CoreComplex->PageMap.AllocateRange(0, sizeof(ThreadInformation) + 0x8000));
+	CoreComplex->ThreadComplex = reinterpret_cast<ThreadInformation *>(CoreComplex->PageMap.AllocateRange(0, sizeof(ThreadInformation) + 0x8000, "Thread 1"));
 
 	KernalPrintf("  Thread Base: %08X\n", CoreComplex->ThreadComplex);
 
@@ -1196,7 +835,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	Stack::Push(ThreadListHead->SavedESP, reinterpret_cast<uint32_t>(ThreadRoot)); // IP
 	Stack::Push(ThreadListHead->SavedESP, 0); // The old BP
 
-	ThreadInformation * MyThread = reinterpret_cast<ThreadInformation *>(CoreComplex->PageMap.AllocateRange(0, sizeof(ThreadInformation) + 0x8000));
+	ThreadInformation * MyThread = reinterpret_cast<ThreadInformation *>(CoreComplex->PageMap.AllocateRange(0, sizeof(ThreadInformation) + 0x8000, "Thread 0"));
 
 	// Convert ourselves into a full thread
 	MyThread->RealAddress = reinterpret_cast<uintptr_t *>(MyThread);
@@ -1271,7 +910,7 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	char *argv[32];
 	int argc = _ConvertCommandLineToArgcArgv(CommandLine, argv, 31);
 
-	TextTerm.SetPauseFullScreen(true);
+	TextTerm.SetPauseFullScreen(false);
 	KernalPrintf(" Starting Monitor\n\n");
 	
 	while(KBBufferFirst != KBBufferLast)

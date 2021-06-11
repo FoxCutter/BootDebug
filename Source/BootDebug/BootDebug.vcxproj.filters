@@ -119,6 +119,9 @@
     <ClCompile Include="v86Mode.cpp">
       <Filter>Kernal\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PS2Keyboard.cpp">
+      <Filter>Drivers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RawTerminal.h">
@@ -230,6 +233,12 @@
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DriverBase.h">
+      <Filter>Kernal\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PS2Keyboard.h">
+      <Filter>Drivers</Filter>
+    </ClInclude>
+    <ClInclude Include="Keycodes.h">
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
   </ItemGroup>

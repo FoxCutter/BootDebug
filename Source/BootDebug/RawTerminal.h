@@ -23,6 +23,7 @@ private:
 	
 	int m_Row;
 	int m_Cols;
+	int m_Pitch;
 	unsigned short *m_ScreenBuffer;
 
 	int m_CurrentRow;

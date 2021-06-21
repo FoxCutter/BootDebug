@@ -100,6 +100,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalIncludeDirectories>..\StdLib\;..\ACPICA\include\</AdditionalIncludeDirectories>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -191,6 +192,7 @@
     <ClInclude Include="PCIBIOS.h" />
     <ClInclude Include="PEData.h" />
     <ClInclude Include="PS2Keyboard.h" />
+    <ClInclude Include="PS2ScanCodes.h" />
     <ClInclude Include="RawMemory.h" />
     <ClInclude Include="RawTerminal.h" />
     <ClInclude Include="Stack.h" />

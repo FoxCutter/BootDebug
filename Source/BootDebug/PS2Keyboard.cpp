@@ -1,148 +1,103 @@
 #include "PS2Keyboard.h"
-#include "Keycodes.h"
 #include <intrin.h>
-#include "LowLevel.h"
 #include "KernalLib.h"
+#include "Keycodes.h"
+#include "PS2ScanCodes.h"
 
-constexpr uint8_t ScanCodes[] =
+struct KeyCodeTranslationEntry
+{
+	uint8_t Value;
+	uint8_t Shift;
+};
+
+const KeyCodeTranslationEntry KeyCodeTranslationTable[] =
 {
 	// 0x00
-	KeyCode_Blank,			KeyCode_F9,				KeyCode_Blank,				KeyCode_F5,				KeyCode_F3,				KeyCode_F1,				KeyCode_F2,			KeyCode_F12,	
-	KeyCode_Blank,			KeyCode_F10,			KeyCode_F8,					KeyCode_F6,				KeyCode_F4,				KeyCode_Tab,			'`',				KeyCode_Blank,	
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+	{'\b'},				{'\t'},				{'\n'},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
 
 	// 0x10
-	KeyCode_Blank,			KeyCode_LeftAlt,		KeyCode_LeftShift,			KeyCode_Blank,			KeyCode_LeftCtrl,		'q',					'1',				KeyCode_Blank,
-	KeyCode_Blank,			KeyCode_Blank,			'z',						's',					'a',					'w',					'2',				KeyCode_Blank,
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+	{0x00},				{0x00},				{0x00},				{'\x1B'},			{0x00},				{0x00},				{0x00},				{0x00},
 
 	// 0x20
-	KeyCode_Blank,			'c',					'x',						'd',					'e',					'4',					'3',				KeyCode_Blank,
-	KeyCode_Blank,			' ',					'v',						'f',					't',					'r',					'5',				KeyCode_Blank,
+	{' '},				{'!'},				{'"'},				{'#'},				{'$'},				{'%'},				{'&'},				{'\'', '\"'},
+	{'('},				{')'},				{'*'},				{'+'},				{',', '<'},			{'-'},				{'.', '>'},			{'/', '?'},
 
 	// 0x30
-	KeyCode_Blank,			'n',					'b',						'h',					'g',					'y',					'6',				KeyCode_Blank,
-	KeyCode_Blank,			KeyCode_Blank,			'm',						'j',					'u',					'7',					'8',				KeyCode_Blank,
+	{'0', ')'},			{'1', '!'},			{'2', '@'},			{'3', '#'},			{'4', '$'},			{'5', '%'},			{'6', '^'},			{'7', '&'},
+	{'8', '*'},			{'9', '('},			{':'},				{';', ':'},			{'<'},				{'=', '+'},			{'>'},				{'?'},
 
 	// 0x40
-	KeyCode_Blank,			',',					'k',						'i',					'o',					'0',					'9',				KeyCode_Blank,
-	KeyCode_Blank,			'.',					'/',						'l',					';',					'p',					'-',				KeyCode_Blank,
+	{'@'},				{'A'},				{'B'},				{'C'},				{'D'},				{'E'},				{'F'},				{'G'},
+	{'H'},				{'I'},				{'J'},				{'K'},				{'L'},				{'M'},				{'N'},				{'O'},
 
 	// 0x50
-	KeyCode_Blank,			KeyCode_Blank,			'\'',						KeyCode_Blank,			'[',					'=',					KeyCode_Blank,		KeyCode_Blank,
-	KeyCode_CapsLock,		KeyCode_RightShift,		KeyCode_Enter,				']',					KeyCode_Blank,			'\\',					KeyCode_Blank,		KeyCode_Blank,
+	{'P'},				{'Q'},				{'R'},				{'S'},				{'T'},				{'U'},				{'V'},				{'W'},
+	{'X'},				{'Y'},				{'Z'},				{'[', '{'},			{'\\', '|'},		{']', '}'},			{'^'},				{'_'},
 
 	// 0x60
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,				KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Backspace,	KeyCode_Blank,
-	KeyCode_Blank,			KeyCode_Keypad_End,		KeyCode_Blank,				KeyCode_Keypad_Left,	KeyCode_Keypad_Home,	KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,
+	{'`', '~'},			{'a', 'A'},			{'b', 'B'},			{'c', 'C'},			{'d', 'D'},			{'e', 'E'},			{'f', 'F'},			{'g', 'G'},
+	{'h', 'H'},			{'i', 'I'},			{'j', 'J'},			{'k', 'K'},			{'l', 'L'},			{'m', 'M'},			{'n', 'N'},			{'o', 'O'},
 
 	// 0x70
-	KeyCode_Keypad_Insert,	KeyCode_Keypad_Delete,	KeyCode_Keypad_Down,		KeyCode_Keypad_Middle,	KeyCode_Keypad_Right,	KeyCode_Keypad_Up,		KeyCode_Escape,		KeyCode_NumberLock,
-	KeyCode_F11,			KeyCode_Keypad_Plus,	KeyCode_Keypad_PageDown,	KeyCode_Keypad_Dash,	KeyCode_Keypad_Star,	KeyCode_Keypad_PageUp,	KeyCode_ScrollLock,	KeyCode_Blank,
+	{'p', 'P'},			{'q', 'Q'},			{'r', 'R'},			{'s', 'S'},			{'t', 'T'},			{'u', 'U'},			{'v', 'V'},			{'w', 'W'},
+	{'x', 'X'},			{'y', 'Y'},			{'z', 'Z'},			{'{'},				{'|'},				{'}'},				{'~'},				{'\x7F'},
 
 	// 0x80
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,				KeyCode_F7,				KeyCode_SysRequest,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,				KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+
+	// 0x90
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+
+	// 0xA0
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+
+	// 0xB0
+	{(uint8_t)KeyCodes::KeyCode_Insert},	{(uint8_t)KeyCodes::KeyCode_End},		{(uint8_t)KeyCodes::KeyCode_Down},		{(uint8_t)KeyCodes::KeyCode_PageUp},	
+	{(uint8_t)KeyCodes::KeyCode_Left},		{0x00},									{(uint8_t)KeyCodes::KeyCode_Right},		{(uint8_t)KeyCodes::KeyCode_Home},
+	{(uint8_t)KeyCodes::KeyCode_Up},		{(uint8_t)KeyCodes::KeyCode_PageUp},	{(uint8_t)KeyCodes::KeyCode_Delete},	{'/'},				
+	{'*'},									{'-'},									{'+'},									{'\n'},
+
+	// 0xC0
+	{'0'},				{'1'},				{'2'},				{'3'},				{'4'},				{'5'},				{'6'},				{'7'},
+	{'8'},				{'9'},				{'.'},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+
+	// 0xD0
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+
+	// 0xE0
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+
+	// 0xF0
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
+	{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},				{0x00},
 };
 
-constexpr uint8_t ScanCodesE0[] =
+const KeyCodes NumlockMap[]
 {
-	// 0x00
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,				KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank, 		KeyCode_Blank,	
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,				KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,
-
-	// 0x10
-	KeyCode_MultiMedia,		KeyCode_RightAlt,		KeyCode_Blank,				KeyCode_Blank,			KeyCode_RightCtrl,		KeyCode_MultiMedia,		KeyCode_Blank,		KeyCode_Blank,
-	KeyCode_MultiMedia,		KeyCode_Blank,			KeyCode_Blank,				KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_LeftGUI,
-
-	// 0x20
-	KeyCode_MultiMedia,		KeyCode_MultiMedia,		KeyCode_Blank,				KeyCode_MultiMedia,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_RightGUI,
-	KeyCode_MultiMedia,		KeyCode_Blank,			KeyCode_Blank,				KeyCode_MultiMedia,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Apps,
-
-	// 0x30
-	KeyCode_MultiMedia,		KeyCode_Blank,			KeyCode_MultiMedia,			KeyCode_Blank,			KeyCode_MultiMedia,		KeyCode_Blank,			KeyCode_Blank,		KeyCode_Power,
-	KeyCode_MultiMedia,		KeyCode_Blank,			KeyCode_MultiMedia,			KeyCode_MultiMedia,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Sleep,
-
-	// 0x40
-	KeyCode_MultiMedia,		KeyCode_Blank,			KeyCode_Blank,				KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,
-	KeyCode_MultiMedia,		KeyCode_Blank,			KeyCode_Keypad_Slash,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_MultiMedia,		KeyCode_Blank,		KeyCode_Blank,
-
-	// 0x50
-	KeyCode_MultiMedia,		KeyCode_Blank,			KeyCode_Blank,				KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,	
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Keypad_Enter,		KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Wake,		KeyCode_Blank,
-
-	// 0x60
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,				KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,
-	KeyCode_Blank,			KeyCode_End,			KeyCode_Blank,				KeyCode_Left,			KeyCode_Home,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,
-
-	// 0x70
-	KeyCode_Insert,			KeyCode_Delete,			KeyCode_Down,				KeyCode_Blank,			KeyCode_Right,			KeyCode_Up,				KeyCode_Blank,		KeyCode_Pause,
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_PageDown,			KeyCode_Blank,			KeyCode_PrintScreen,	KeyCode_PageUp,			KeyCode_Break,		KeyCode_Blank,
-
-	// 0x80
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,				KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,	
-	KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,				KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,			KeyCode_Blank,		KeyCode_Blank,
-};
-
-// Maps a Keycode to a shifted Keycode
-constexpr uint8_t ShiftMap[]
-{
-	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	// 0x00
-	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	// 0x08
-	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	// 0x10
-	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	// 0x18
-	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	'\"',			// 0x20
-	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	'<',			KeyCode_Blank,	'>',			'?',			// 0x28
-	')',			'!',			'@',			'#',			'$',			'%',			'^',			'&',			// 0x30
-	'*',			'(',			KeyCode_Blank,	':',			'+',			KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	// 0x38
-	KeyCode_Blank,	'a',			'b',			'c',			'd',			'e',			'f',			'g',			// 0x40
-	'h',			'i',			'j',			'k',			'l',			'm',			'n',			'o',			// 0x48
-	'p',			'q',			'r',			's',			't',			'u',			'v',			'w',			// 0x50
-	'x',			'y',			'z',			'{',			'|',			'}',			KeyCode_Blank,	KeyCode_Blank,	// 0x58
-	KeyCode_Blank,	'A',			'B',			'C',			'D',			'E',			'F',			'G',			// 0x60
-	'H',			'I',			'J',			'K',			'L',			'M',			'N',			'O',			// 0x68
-	'P',			'Q',			'R',			'S',			'T',			'U',			'V',			'W',			// 0x70
-	'X',			'Y',			'Z',			KeyCode_Blank,	KeyCode_Blank,	KeyCode_Blank,	'~',			 KeyCode_Blank,	// 0x7F
-};
-
-constexpr uint8_t KeypadMap[]
-{
-	// New Key Code				New Charater Value
-	// Num Lock Off 
-	KeyCode_Keypad_Insert,		KeyCode_Insert,
-	KeyCode_Keypad_End,			KeyCode_End,
-	KeyCode_Keypad_Down,		KeyCode_Down,
-	KeyCode_Keypad_PageDown,	KeyCode_PageDown,
-	KeyCode_Keypad_Left,		KeyCode_Left,
-	KeyCode_Keypad_Middle,		KeyCode_Blank,
-	KeyCode_Keypad_Right,		KeyCode_Right,
-	KeyCode_Keypad_Home,		KeyCode_Home,
-	KeyCode_Keypad_Up,			KeyCode_Up,
-	KeyCode_Keypad_PageUp,		KeyCode_PageUp,
-	KeyCode_Keypad_Delete,		KeyCode_Delete,
-	KeyCode_Keypad_Slash,		'/',
-	KeyCode_Keypad_Star,		'*',
-	KeyCode_Keypad_Dash,		'-',
-	KeyCode_Keypad_Plus,		'+',
-	KeyCode_Keypad_Enter,		KeyCode_Enter,
-
-	// Num Lock On
-	KeyCode_Keypad_0,			'0',
-	KeyCode_Keypad_1,			'1',
-	KeyCode_Keypad_2,			'2',
-	KeyCode_Keypad_3,			'3',
-	KeyCode_Keypad_4,			'4',
-	KeyCode_Keypad_5,			'5',
-	KeyCode_Keypad_6,			'6',
-	KeyCode_Keypad_7,			'7',
-	KeyCode_Keypad_8,			'8',
-	KeyCode_Keypad_9,			'9',
-	KeyCode_Keypad_Period,		'.',
-	KeyCode_Keypad_Slash,		'/',
-	KeyCode_Keypad_Star,		'*',
-	KeyCode_Keypad_Dash,		'-',
-	KeyCode_Keypad_Plus,		'+',
-	KeyCode_Keypad_Enter,		KeyCode_Enter,
-
-};
+	KeyCodes::KeyCode_Keypad_0,
+	KeyCodes::KeyCode_Keypad_1,
+	KeyCodes::KeyCode_Keypad_2,
+	KeyCodes::KeyCode_Keypad_3,
+	KeyCodes::KeyCode_Keypad_4,
+	KeyCodes::KeyCode_Keypad_5,
+	KeyCodes::KeyCode_Keypad_6,
+	KeyCodes::KeyCode_Keypad_7,
+	KeyCodes::KeyCode_Keypad_8,
+	KeyCodes::KeyCode_Keypad_9,
+	KeyCodes::KeyCode_Keypad_Period,
+	KeyCodes::KeyCode_Keypad_Slash,
+	KeyCodes::KeyCode_Keypad_Star,
+	KeyCodes::KeyCode_Keypad_Dash,
+	KeyCodes::KeyCode_Keypad_Plus,
+	KeyCodes::KeyCode_Keypad_Enter,
+};		   
 
 enum PS2Commands : unsigned char
 {
@@ -203,7 +158,6 @@ enum PS2Bits : unsigned char
 	SystemFlag = 0x04,
 	ControllerCommand = 0x08,
 
-
 	TimeoutError = 0x40,
 	ParityError = 0x80,
 
@@ -228,6 +182,7 @@ enum PS2Bits : unsigned char
 }; 
 
 uint16_t KeyboardState;
+int ScanCodeSet;
 
 unsigned char GetData()
 {
@@ -260,21 +215,81 @@ void WriteCommand(unsigned char Command)
 unsigned char ReadCommand(unsigned char Command)
 {
 	WriteCommand(Command);
-	
-	return ReadData();
+	KernalSleep(10);
+	return GetData();
 }
 
 void WriteCommand(unsigned char Command, unsigned char Data)
 {
 	WriteCommand(Command);
+	KernalSleep(10);
+
 	WriteData(Data);
+	KernalSleep(10);
+}
+
+
+unsigned char SendKeyboardCommand(unsigned char Command)
+{
+	if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+		KernalPrintf("(%2.2X", Command);
+
+	unsigned char response = KeyboardResendLastByte;
+
+	int Count = 0;
+	while (response == KeyboardResendLastByte && Count < 5)
+	{
+		if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+			KernalPrintf(" $");
+
+		WriteData(Command);
+		KernalSleep(10);
+		
+		if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+			KernalPrintf("#");
+
+		while ((GetStatus() & OutputBufferFull) == 0)
+		{
+			if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+				KernalPrintf("_");
+
+			KernalWaitATick();
+		}
+
+		response = GetData();
+
+		if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+			KernalPrintf("%2.2X", response);
+
+		Count++;
+	}
+
+	if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+		KernalPrintf(")");
+
+	return response;
+}
+
+unsigned char SendKeyboardCommand(unsigned char Command, unsigned char Data)
+{
+	unsigned char response = SendKeyboardCommand(Command);
+	if (response == KeboardAck)
+	{
+		response = SendKeyboardCommand(Data);
+	}
+
+	return response;
 }
 
 void SetupPS2Keyboard()
 {
+	KeyboardState = KeyboardEcho;
+
 	// Disable everything
 	WriteCommand(DisableFirstPort);
+	KernalSleep(10);
 	WriteCommand(DisableSecondPort);
+	KernalSleep(10);
 
 	// Clear anything pending
 	unsigned char Temp = GetStatus();
@@ -287,7 +302,7 @@ void SetupPS2Keyboard()
 
 	// Self Test
 	Temp = ReadCommand(SelfTest);
-	//KernalPrintf(" KB Code: %02X\n", Temp);
+	KernalPrintf(" PS2 SelfTest: %02X\n", Temp);
 
 	// Turn on Primary Interrupt 
 	config |= EnableFirstPortInterrupt;
@@ -295,56 +310,68 @@ void SetupPS2Keyboard()
 	config &= ~EnableSecondPortInterrupt;
 
 	// Disable Translation
-	config &= ~FirstPortTranslation;
+	// config &= ~FirstPortTranslation;
 
 	WriteCommand(WriteConfiguration, config);
+	ScanCodeSet = 1;
 
-	// Clear the Keystate
-	KeyboardState = 0;
+	KernalPrintf(" KB Restart: ");
+	SendKeyboardCommand(KeyboardRestarteAndSelftest);
+	while ((GetStatus() & OutputBufferFull) == 0)
+		KernalWaitATick();
+
+	Temp = GetData();
+	KernalPrintf("%2.2X\n", Temp);
+
+	// SendKeyboardCommand(KeyboardScanCode, 2);
+
+	KernalPrintf(" KB ID: ");
+	SendKeyboardCommand(KeyboardIdentify);
+	while ((GetStatus() & OutputBufferFull) == 0)
+		KernalWaitATick();
+
+	Temp = GetData();
+	KernalPrintf("%2.2X ", Temp);
+
+	if (Temp == 0xAB)
+	{
+		KernalSleep(10);
+		while ((GetStatus() & OutputBufferFull) == 0)
+			KernalWaitATick();
+		Temp = GetData();
+
+		KernalPrintf("%2.2X", Temp);
+		if (Temp == 0x41)
+			ScanCodeSet = 1;
+	}
+
+	KernalPrintf("\n");
 
 	// Enable
 	WriteCommand(EnableFirstPort);
-}
+	KernalSleep(20);
 
-unsigned char TranslateKeyCode(uint8_t &KeyCode, uint16_t KeyState)
-{
-	unsigned char Value = KeyCode;
+	SendKeyboardCommand(KeyboardEnableScanning);
 
-	if ((KeyState & KeystateCapsLock) != 0 && (KeyCode >= KeyCode_a && KeyCode <= KeyCode_z))
+	// Sanity check that translation is off (because sometimes it's not)
+	config = 0;
+	config = ReadCommand(ReadConfiguration);
+	if (ScanCodeSet == 1 || (config & FirstPortTranslation) == FirstPortTranslation)
 	{
-		unsigned char NewValue = ShiftMap[KeyCode];
-		if (NewValue != KeyCode_Blank)
-		{
-			Value = NewValue;
-			KeyCode = NewValue;
-		}
+		ScanCodeSet = 1;
+		KernalPrintf(" Scancode Set 1 (config %2.2X)\n", config);
+
+		config |= FirstPortTranslation;
+		WriteCommand(WriteConfiguration, config);
 	}
-	
-	if ((KeyState & KeystateShift) != 0)
+	else
 	{
-		unsigned char NewValue = ShiftMap[KeyCode];
-		if (NewValue != KeyCode_Blank)
-		{
-			Value = NewValue;
-			KeyCode = NewValue;
-		}
+		ScanCodeSet = 2;
+		KernalPrintf(" Scancode Set 2 (config %2.2X)\n", config);
 	}
 
-	if (KeyCode >= KeyCode_Keypad_Insert && KeyCode <= KeyCode_Keypad_Enter)
-	{
-		int Index = 0;
-		if ((KeyState & KeystateNumLock) == KeystateNumLock || ((KeyState & KeystateShift) != 0))
-		{
-			Index = 16 * 2;
-		}
-
-		Index += (KeyCode - KeyCode_Keypad_Insert) * 2;
-
-		KeyCode = KeypadMap[Index];
-		Value = KeypadMap[Index + 1];
-	}
-
-	return Value;
+	// Clear the Keystate
+	KeyboardState = 0;
 }
 
 void UpdateKeyboardState(Keystates State, bool Break)
@@ -355,158 +382,268 @@ void UpdateKeyboardState(Keystates State, bool Break)
 		KeyboardState &= ~State;
 }
 
-extern void InsertKeyboardBuffer(uint8_t KeyCode, uint16_t KeyState, unsigned char Key);
+extern void InsertKeyboardBuffer(uint16_t ScanCode, uint8_t KeyCode, uint16_t KeyState, bool KeyUp, unsigned char Key);
 extern void SystemReset();
+
+bool ProcessKeyCode(KeyCodes &KeyCode, bool KeyUp)
+{
+	switch (KeyCode)
+	{
+	case KeyCodes::KeyCode_LeftShift:
+		UpdateKeyboardState(KeystateLeftShift, KeyUp);
+		KeyCode = KeyCodes::KeyCode_Blank;
+		break;
+
+	case KeyCodes::KeyCode_RightShift:
+		UpdateKeyboardState(KeystateRightShift, KeyUp);
+		KeyCode = KeyCodes::KeyCode_Blank;
+		break;
+
+	case KeyCodes::KeyCode_LeftCtrl:
+		UpdateKeyboardState(KeystateLeftCtrl, KeyUp);
+		KeyCode = KeyCodes::KeyCode_Blank;
+		break;
+
+	case KeyCodes::KeyCode_RightCtrl:
+		UpdateKeyboardState(KeystateRightCtrl, KeyUp);
+		KeyCode = KeyCodes::KeyCode_Blank;
+		break;
+
+	case KeyCodes::KeyCode_LeftAlt:
+		UpdateKeyboardState(KeystateLeftAlt, KeyUp);
+		KeyCode = KeyCodes::KeyCode_Blank;
+		break;
+
+	case KeyCodes::KeyCode_RightAlt:
+		UpdateKeyboardState(KeystateRightAlt, KeyUp);
+		KeyCode = KeyCodes::KeyCode_Blank;
+		break;
+
+	case KeyCodes::KeyCode_LeftGUI:
+		UpdateKeyboardState(KeystateLeftGUI, KeyUp);
+		KeyCode = KeyCodes::KeyCode_Blank;
+		break;
+
+	case KeyCodes::KeyCode_RightGUI:
+		UpdateKeyboardState(KeystateRightGUI, KeyUp);
+		KeyCode = KeyCodes::KeyCode_Blank;
+		break;
+
+		// CTRL-ALT-Backspace
+	case KeyCodes::KeyCode_Backspace:
+		if ((KeyboardState & KeystateCtrl) != 0 && (KeyboardState & KeystateAlt) != 0)
+		{
+			if (!KeyUp)
+				KeyboardState ^= KeystateEchoLock;
+
+			KeyCode = KeyCodes::KeyCode_Blank;
+		}
+		break;
+
+		// CTRL-ALT-Delete
+	case KeyCodes::KeyCode_Delete:
+		if ((KeyboardState & KeystateCtrl) != 0 && (KeyboardState & KeystateAlt) != 0)
+		{
+			KernalSetPauseFullScreen(false);
+			KernalPrintf("\nRebooting...\n");
+			SystemReset();
+			KeyCode = KeyCodes::KeyCode_Blank;
+		}
+		break;
+
+	case KeyCodes::KeyCode_NumberLock:
+		if (!KeyUp)
+		{
+			KeyboardState ^= KeystateNumLock;
+			//SendKeyboardCommand(KeyboardSetLED, KeyboardState & 0x07);
+		}
+		KeyCode = KeyCodes::KeyCode_Blank;
+		break;
+
+	case KeyCodes::KeyCode_CapsLock:
+		if (!KeyUp)
+		{
+			KeyboardState ^= KeystateCapsLock;
+			//SendKeyboardCommand(KeyboardSetLED, KeyboardState & 0x07);
+		}
+		KeyCode = KeyCodes::KeyCode_Blank;
+		break;
+
+	case KeyCodes::KeyCode_ScrollLock:
+		if (!KeyUp)
+		{
+			KeyboardState ^= KeystateScrollLock;
+			//SendKeyboardCommand(KeyboardSetLED, KeyboardState & 0x07);
+		}
+		KeyCode = KeyCodes::KeyCode_Blank;
+		break;
+
+	case KeyCodes::KeyCode_SysRequest:
+		if (!KeyUp)
+		{
+			KernalPrintf("\nSystem Request...\n");
+			KeyCode = KeyCodes::KeyCode_Blank;
+		}
+		break;
+	}
+
+	if (((KeyboardState & KeystateNumLock) == KeystateNumLock) && (KeyCode >= KeyCodes::KeyCode_Keypad_Insert && KeyCode <= KeyCodes::KeyCode_Keypad_Enter))
+	{
+		int Index = ((uint8_t)KeyCode - (uint8_t)KeyCodes::KeyCode_Keypad_Insert);
+		KeyCode = NumlockMap[Index];
+	}
+
+	if (KeyCode == KeyCodes::KeyCode_Blank)
+		return true;
+
+	return false;
+}
+
+unsigned char TranslateKeyCode(KeyCodes &KeyCode, uint16_t KeyState)
+{
+	unsigned char Value = 0;
+	KeyCodeTranslationEntry ScanCode = KeyCodeTranslationTable[(uint8_t)KeyCode];
+
+	if ((KeyState & KeystateCapsLock) != 0 && (KeyCode >= KeyCodes::KeyCode_a && KeyCode <= KeyCodes::KeyCode_z))
+	{
+		if ((KeyState & KeystateShift) == 0)
+		{
+			Value = ScanCode.Shift;
+		}
+		else
+		{
+			Value = ScanCode.Value;
+		}
+	}
+	else
+	{
+		if ((KeyState & KeystateShift) != 0 && ScanCode.Shift != 0x00)
+		{
+			Value = ScanCode.Shift;
+		}
+		else
+		{
+			Value = ScanCode.Value;
+		}
+	}
+
+	if (Value == 0)
+		Value = (uint8_t)KeyCode;
+
+	return Value;
+}
 
 void KeyboardInterrupt(InterruptContext * OldContext, uintptr_t * Data)
 {
 	if ((GetStatus() & OutputBufferFull) == 0)
 		return;
 
-	bool Break = false;
+	bool KeyUp = false;
 	bool E0 = false;
-	unsigned char ScanCode = ReadData();
-	uint8_t KeyCode = KeyCode_Blank;
 
-	if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
-		KernalPrintf("[%02X", ScanCode);
-
-	if (ScanCode == 0xE0)
-	{
-		E0 = true;
-		ScanCode = ReadData();
-
-		if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
-			KernalPrintf(" %02X", ScanCode);
-	}
-
-	if(ScanCode == 0xF0)
-	{
-		Break = true;
-		ScanCode = ReadData();
-
-		if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
-			KernalPrintf(" %02X", ScanCode);
-	}	
+	// Step 1: Covert the Scancode to a KeyCode
+	uint16_t ScanCode = GetData();
+	KeyCodes KeyCode = KeyCodes::KeyCode_Blank;
 	
-	if (ScanCode == 0xE1)
+	if (ScanCodeSet == 1)
 	{
-		unsigned char ScanCode2 = ReadData();
+		if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+			KernalPrintf("[");
+
+		if (ScanCode == 0xE0)
+		{
+			if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+				KernalPrintf("%02X ", ScanCode);
+
+			E0 = true;
+			ScanCode = ReadData();
+		}		
+		else if (ScanCode == 0xE1)
+		{
+			if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+				KernalPrintf("%02X ", ScanCode);
+
+			ScanCode = ReadData();
+		}
+
+		if ((ScanCode & 0x80) != 0)
+		{
+			KeyUp = true;
+			ScanCode = (ScanCode & 0x7F);
+
+			if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+				KernalPrintf("!");
+		}
 
 		if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
-			KernalPrintf(" %02X", ScanCode2);
+			KernalPrintf("%02X]", ScanCode);
+
+		if (ScanCode >= 0x90)
+			return;
+
+		// Get the keycode
+		if (!E0)
+			KeyCode = ScanCodeSet1[ScanCode];
+		else
+			KeyCode = ScanCodeSet1E0[ScanCode];
 	}
-
-	if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
-		KernalPrintf("] ");
-
-	// Get the keycode
-	if(!E0)
-		KeyCode = ScanCodes[ScanCode];
-	else 
-		KeyCode = ScanCodesE0[ScanCode];
-
-	// Handle anything that updates the keyboard state
-	switch (KeyCode)
+	else if (ScanCodeSet == 2)
 	{
-		case KeyCode_LeftShift:
-			UpdateKeyboardState(KeystateLeftShift, Break);
-			KeyCode = KeyCode_Blank;
-			break;
+		if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+			KernalPrintf("[");
 
-		case KeyCode_RightShift:
-			UpdateKeyboardState(KeystateRightShift, Break);
-			KeyCode = KeyCode_Blank;
-			break;
+		if (ScanCode == 0xE0)
+		{
+			if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+				KernalPrintf("%02X ", ScanCode);
 
-		case KeyCode_LeftCtrl:
-			UpdateKeyboardState(KeystateLeftCtrl, Break);
-			KeyCode = KeyCode_Blank;
-			break;
+			E0 = true;
+			ScanCode = ReadData();
+		}
+		else if (ScanCode == 0xE1)
+		{
+			if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+				KernalPrintf("%02X ", ScanCode);
 
-		case KeyCode_RightCtrl:
-			UpdateKeyboardState(KeystateRightCtrl, Break);
-			KeyCode = KeyCode_Blank;
-			break;
+			ScanCode = ReadData();
+		}
 
-		case KeyCode_LeftAlt:
-			UpdateKeyboardState(KeystateLeftAlt, Break);
-			KeyCode = KeyCode_Blank;
-			break;
+		if (ScanCode == 0xF0)
+		{
+			KeyUp = true;
+			ScanCode = ReadData();
 
-		case KeyCode_RightAlt:
-			UpdateKeyboardState(KeystateRightAlt, Break);
-			KeyCode = KeyCode_Blank;
-			break;
+			if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+				KernalPrintf("!");
+		}
 
-		case KeyCode_LeftGUI:
-			UpdateKeyboardState(KeystateLeftGUI, Break);
-			KeyCode = KeyCode_Blank;
-			break;
+		if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+			KernalPrintf("%02X]", ScanCode);
 
-		case KeyCode_RightGUI:
-			UpdateKeyboardState(KeystateRightGUI, Break);
-			KeyCode = KeyCode_Blank;
-			break;
+		if (ScanCode >= 0x90)
+			return;
 
-		// CTRL-ALT-Backspace
-		case KeyCode_Backspace:
-			if ((KeyboardState & KeystateCtrl) != 0 && (KeyboardState & KeystateAlt) != 0)
-			{
-				if(!Break)
-					KeyboardState ^= KeystateEchoLock;
-
-				KeyCode = KeyCode_Blank;
-			}
-			break;
-
-		// CTRL-ALT-Delete
-		case KeyCode_Delete:
-			if ((KeyboardState & KeystateCtrl) != 0 && (KeyboardState & KeystateAlt) != 0)
-			{
-				KernalSetPauseFullScreen(false);
-				KernalPrintf("\nRebooting...\n");
-				SystemReset();
-			}
-			break;
-
-		case KeyCode_NumberLock:
-			if(!Break)
-				KeyboardState ^= KeystateNumLock;
-			KeyCode = KeyCode_Blank;
-			break;
-
-		case KeyCode_CapsLock:
-			if (!Break)
-				KeyboardState ^= KeystateCapsLock;
-			KeyCode = KeyCode_Blank;
-			break;
-
-		case KeyCode_ScrollLock:
-			if (!Break)
-				KeyboardState ^= KeystateScrollLock;
-			KeyCode = KeyCode_Blank;
-			break;
-
-		case KeyCode_SysRequest:
-			if (!Break)
-			{
-				KernalPrintf("\nSystem Request...\n");
-				return;
-			}
-			break;
-
+		// Get the keycode
+		if (!E0)
+			KeyCode = ScanCodeSet2[ScanCode];
+		else
+			KeyCode = ScanCodeSet2E0[ScanCode];
 	}
 
-	if (KeyCode == KeyCode_Blank)
+	if (KeyCode == KeyCodes::KeyCode_Blank)
 		return;
-	
+
+	// Step 2: Process any speical keycodes
+	if (ProcessKeyCode(KeyCode, KeyUp))
+		return;
+
+	// Step 3: Convert the Keycode into the actuall display value
 	unsigned char InputValue = TranslateKeyCode(KeyCode, KeyboardState);
 
-	if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
-		KernalPrintf("{%2.2X}", InputValue);
+	//if ((KeyboardState & KeystateEchoLock) == KeystateEchoLock)
+	//	KernalPrintf("{%2.2X}", InputValue);
 
-	if(!Break)
-		InsertKeyboardBuffer(KeyCode, KeyboardState, InputValue);
+	// Step 4: Add it to the keyboard buffer
+	InsertKeyboardBuffer(E0 ? 0xE000 + ScanCode : ScanCode, (uint8_t) KeyCode, KeyboardState, KeyUp, InputValue);
 
 }

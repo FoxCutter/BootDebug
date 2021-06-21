@@ -291,8 +291,11 @@ volatile uint8_t KBBufferLast = 0;
 
 
 
-void InsertKeyboardBuffer(uint8_t /*KeyCode*/, uint16_t /*KeyState*/, unsigned char Key)
+void InsertKeyboardBuffer(uint16_t /*ScanCode*/, uint8_t /*KeyCode*/, uint16_t /*KeyState*/, bool KeyUp, unsigned char Key)
 {
+	if (KeyUp)
+		return;
+
 	if((KBBufferLast + 1) == KBBufferFirst || KBBufferFirst == 0 && (KBBufferLast + 1 == 32))
 	{
 		//printf("Full!");
@@ -793,9 +796,6 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	m_InterruptControler.Initialize(&CoreComplex->IDTTable, reinterpret_cast<ACPI_TABLE_MADT *>(CoreComplex->ACPIComplex.GetTable("APIC")));
 
-	SetupPS2Keyboard();
-	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
-		
 	//KernalPrintf(" '%f'\n", fcos);
 
 	CoreComplex->HardwareComplex.Add("KB", "PS/2 Keyboard");	
@@ -873,6 +873,9 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 	m_InterruptControler.SetIRQInterrupt(0x00, IntPriority::System, (InterruptCallbackPtr)ClockInterrupt);	
 
 	ASM_STI;
+
+	SetupPS2Keyboard();
+	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
 
 	MyTSS.SS0 = CoreComplex->DataSegment0;
 	MyTSS.ESP0 = 0x41004;

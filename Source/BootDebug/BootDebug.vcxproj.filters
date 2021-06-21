@@ -120,7 +120,7 @@
       <Filter>Kernal\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PS2Keyboard.cpp">
-      <Filter>Drivers</Filter>
+      <Filter>Drivers\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -235,11 +235,14 @@
     <ClInclude Include="DriverBase.h">
       <Filter>Kernal\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PS2Keyboard.h">
-      <Filter>Drivers</Filter>
-    </ClInclude>
     <ClInclude Include="Keycodes.h">
       <Filter>Kernal\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PS2Keyboard.h">
+      <Filter>Drivers\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PS2ScanCodes.h">
+      <Filter>Drivers\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

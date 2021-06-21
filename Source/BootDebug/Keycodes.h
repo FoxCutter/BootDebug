@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 // Displayable characters will map to their ANSII key codes, none display characters that dosn't have a matching ANSII code will get codes with the high bit set.
-enum KeyCodes : uint8_t
+enum class KeyCodes : uint8_t
 {
 	KeyCode_Blank = 0x00,
 
@@ -11,12 +11,114 @@ enum KeyCodes : uint8_t
 	KeyCode_Enter,
 	KeyCode_Escape = 0x1B,
 
-	KeyCode_Space = ' ',	// 0x20
-	KeyCode_0 = '0',		// 0x30
-	KeyCode_9 = '9',		// 0x39
-	KeyCode_a = 'a',		// 0x61
-	KeyCode_z = 'z',		// 0x7A
+	// 0x20
+	KeyCode_Space = ' ',	
+	KeyCode_ExclamationMark = '!',
+	KeyCode_QuotationMark = '\"',
+	KeyCode_NumberSign = '#',
+	KeyCode_DollarSign = '$',
+	KeyCode_PercentSign = '%',
+	KeyCode_Ampersand = '&',
+	KeyCode_Apostrophe = '\'',
+	KeyCode_LeftParenthesis = '(',
+	KeyCode_RightParenthesis = ')',
+	KeyCode_Star = '*',
+	KeyCode_Plus = '+',
+	KeyCode_Comma = ',',
+	KeyCode_Dash = '-',
+	KeyCode_Period = '.',
+	KeyCode_Slash = '/',
+	
+	// 0x30
+	KeyCode_0 = '0',		
+	KeyCode_1 = '1',
+	KeyCode_2 = '2',
+	KeyCode_3 = '3',
+	KeyCode_4 = '4',
+	KeyCode_5 = '5',
+	KeyCode_6 = '6',
+	KeyCode_7 = '7',
+	KeyCode_8 = '8',
+	KeyCode_9 = '9',		
+	KeyCode_Colon = ':',
+	KeyCode_Semicolon = ';',
+	KeyCode_LessThan = '<',
+	KeyCode_Equals = '=',
+	KeyCode_GreaterThan = '>',
+	KeyCode_QuestionMark = '?',
+	
+	// 0x40
+	KeyCode_AtSign = '@',
+	KeyCode_A = 'A',
+	KeyCode_B = 'B',
+	KeyCode_C = 'C',
+	KeyCode_D = 'D',
+	KeyCode_E = 'E',
+	KeyCode_F = 'F',
+	KeyCode_G = 'G',
+	KeyCode_H = 'H',
+	KeyCode_I = 'I',
+	KeyCode_J = 'J',
+	KeyCode_K = 'K',
+	KeyCode_L = 'L',
+	KeyCode_M = 'M',
+	KeyCode_N = 'N',
+	KeyCode_O = 'O',
+
+	// 0x50
+	KeyCode_P = 'P',
+	KeyCode_Q = 'Q',
+	KeyCode_R = 'R',
+	KeyCode_S = 'S',
+	KeyCode_T = 'T',
+	KeyCode_U = 'U',
+	KeyCode_V = 'V',
+	KeyCode_W = 'W',
+	KeyCode_X = 'X',
+	KeyCode_Y = 'Y',
+	KeyCode_Z = 'Z',
+	KeyCode_LeftSquareBracket = '[',
+	KeyCode_Backslash = '\\',
+	KeyCode_RightSquareBracket = ']',
+	KeyCode_Carret = '^',
+	KeyCode_Underline = '_',
+
+	// 0x60
+	KeyCode_Backtick = '`',
+	KeyCode_a = 'a',
+	KeyCode_b = 'b',
+	KeyCode_c = 'c',
+	KeyCode_d = 'd',
+	KeyCode_e = 'e',
+	KeyCode_f = 'f',
+	KeyCode_g = 'g',
+	KeyCode_h = 'h',
+	KeyCode_i = 'i',
+	KeyCode_j = 'j',
+	KeyCode_k = 'k',
+	KeyCode_l = 'l',
+	KeyCode_m = 'm',
+	KeyCode_n = 'n',
+	KeyCode_o = 'o',
+
+	// 0x70
+	KeyCode_p = 'p',
+	KeyCode_q = 'q',
+	KeyCode_r = 'r',
+	KeyCode_s = 's',
+	KeyCode_t = 't',
+	KeyCode_u = 'u',
+	KeyCode_v = 'v',
+	KeyCode_w = 'w',
+	KeyCode_x = 'x',
+	KeyCode_y = 'y',
+	KeyCode_z = 'z',			
+	KeyCode_LeftCurlyBacket = '{',
+	KeyCode_Pipe = '|',
+	KeyCode_RightCurlyBacket = '}',
+	KeyCode_Tilde = '~',
 	KeyCode_Delete = 0x7F,
+
 
 	KeyCode_Extended = 0x80, // Extended codes
 
@@ -89,14 +191,10 @@ enum KeyCodes : uint8_t
 	KeyCode_Keypad_9,						// 9 / PageUp
 	KeyCode_Keypad_Period,					// . / Delete
 
-
 	KeyCode_CapsLock = 0xD0,
 	KeyCode_NumberLock,
 	KeyCode_ScrollLock,
 	KeyCode_Apps,
-	KeyCode_Power,
-	KeyCode_Sleep,
-	KeyCode_Wake,
 	KeyCode_PrintScreen,
 	KeyCode_Pause,
 	KeyCode_Break,
@@ -109,24 +207,25 @@ enum KeyCodes : uint8_t
 
 enum Keystates : uint16_t
 {
-	KeystateLeftShift = 0x01,
-	KeystateRightShift = 0x02,
+	KeystateScrollLock = 0x01,
+	KeystateNumLock = 0x02,
+	KeystateCapsLock = 0x04,
+	KeystateEchoLock = 0x08,
+
+	KeystateLeftShift = 0x0100,
+	KeystateRightShift = 0x0200,
 	KeystateShift = KeystateLeftShift | KeystateRightShift,
 
-	KeystateLeftCtrl = 0x04,
-	KeystateRightCtrl = 0x08,
+	KeystateLeftCtrl = 0x0400,
+	KeystateRightCtrl = 0x0800,
 	KeystateCtrl = KeystateLeftCtrl | KeystateRightCtrl,
 
-	KeystateLeftAlt = 0x10,
-	KeystateRightAlt = 0x20,
+	KeystateLeftAlt = 0x1000,
+	KeystateRightAlt = 0x2000,
 	KeystateAlt = KeystateLeftAlt | KeystateRightAlt,
 
-	KeystateLeftGUI = 0x40,
-	KeystateRightGUI = 0x80,
+	KeystateLeftGUI = 0x4000,
+	KeystateRightGUI = 0x8000,
 	KeystateGUI = KeystateLeftGUI | KeystateRightGUI,
 
-	KeystateNumLock = 0x100,
-	KeystateScrollLock = 0x200,
-	KeystateCapsLock = 0x400,
-	KeystateEchoLock = 0x800,
 };

@@ -16,13 +16,15 @@ enum class KernalCode : uint32_t
 void * KernalAlloc(uint32_t Size);
 void KernalFree(void * Address);
 
-int KernalPrintf(const char * format, ...);
-int KernalSprintf(char * Dest, uint32_t cCount, const char * format, ...);
-int KernalVprintf(const char * format, va_list Args);
-int KernalPanic(KernalCode Error, const char * format, ...);
+int __cdecl KernalPrintf(const char * format, ...);
+int __cdecl KernalSprintf(char * Dest, uint32_t cCount, const char * format, ...);
+int __cdecl KernalVprintf(const char * format, va_list Args);
+int __cdecl KernalPanic(KernalCode Error, const char * format, ...);
 
 void KernalSetPauseFullScreen(bool Value);
 
+void KernalSleep(int Milliseconds);
+void KernalWaitATick();
 
 enum class KernalPageFlags
 {

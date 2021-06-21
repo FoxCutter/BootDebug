@@ -51,7 +51,7 @@ struct CoreComplexObj
 
 	ACPI ACPIComplex;
 
-	uint64_t TimePassed;
+	volatile uint64_t TimePassed;
 
 	static CoreComplexObj *GetComplex()
 	{

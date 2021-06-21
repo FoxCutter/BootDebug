@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <intrin.h>
 #include "CoreComplex.h"
 #include "KernalLib.h"
 #include "LowLevel.h"
@@ -24,7 +25,28 @@ void KernalSetPauseFullScreen(bool Value)
 	KernalTerminal->SetPauseFullScreen(Value);
 }
 
-int KernalSprintf(char * Dest, uint32_t cCount, const char * format, ...)
+
+void KernalWaitATick()
+{
+	uint64_t StartTime = CoreComplexObj::GetComplex()->TimePassed;
+
+	while (StartTime == CoreComplexObj::GetComplex()->TimePassed)
+	{
+		__halt();
+	}
+}
+
+void KernalSleep(int Milliseconds)
+{
+	uint64_t EndTime = CoreComplexObj::GetComplex()->TimePassed + (Milliseconds << 4);
+
+	while (CoreComplexObj::GetComplex()->TimePassed < EndTime)
+	{
+		__halt();
+	}
+}
+
+int __cdecl KernalSprintf(char * Dest, uint32_t cCount, const char * format, ...)
 {
     int retValue;
     va_list argptr;
@@ -36,7 +58,7 @@ int KernalSprintf(char * Dest, uint32_t cCount, const char * format, ...)
 	return retValue;	
 }
 
-int KernalPrintf(const char * format, ...)
+int __cdecl KernalPrintf(const char * format, ...)
 {
     int retValue;
 	char Buffer[STR_MAX];
@@ -51,7 +73,7 @@ int KernalPrintf(const char * format, ...)
     return retValue;
 }
 
-int KernalVprintf(const char * format, va_list Args)
+int __cdecl KernalVprintf(const char * format, va_list Args)
 {
     int retValue;
 	char Buffer[STR_MAX];
@@ -63,7 +85,7 @@ int KernalVprintf(const char * format, va_list Args)
     return retValue;
 }
 
-int KernalPanic(KernalCode Error, const char * format, ...)
+int __cdecl KernalPanic(KernalCode Error, const char * format, ...)
 {
 	KernalPrintf("\n\nKERNAL PANIC! Code: %08X\n   ", Error);
 	KernalPrintf(format);

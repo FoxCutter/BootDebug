@@ -21,6 +21,7 @@
 #include "Disassembler.h"
 
 #include "PEData.h"
+#include <intrin.h>
 
 MMU * MMUManager = nullptr;
 OpenHCI * USBManager = nullptr;
@@ -325,23 +326,23 @@ char * CPUIDFlags[] =
 	"",
 	"",
 	"AVX512_VP2INTERSECT",
-	"",
+	"SRBDS_CTRL",
 	"MD_CLEAR",
 	"",
 	"",
-	"",
-	"",
+	"TSX_FORCE_ABORT",
+	"SERIALIZE",
 	"Hybrid",
-	"",
+	"TSXLDTRK",
 	"",
 	"PCONFIG",
-	"",
+	"LBR",
 	"CET_IBT",
 	"",
+	"AMX-BF16",
 	"",
-	"",
-	"",
-	"",
+	"AMX-TILE",
+	"AMX-INT8",
 	"Indirect branch restricted speculation",
 	"Single thread indirect branch predictors",
 	"L1D_FLUSH",
@@ -1784,6 +1785,7 @@ void InfoCommand(CommandSet & Data)
 		puts("  HW:     Hardware Tree");
 		puts("  IDT:    Interrupt Discriptor Table");
 		puts("  IOAPIC: I/O APIC Information");
+		puts("  IRQ:    Current IRQ information");
 		puts("  MB:     Multiboot Data");
 		puts("  MEM:    Memory Map");
 		puts("  MMU:    Memory Manager Information");
@@ -1791,6 +1793,7 @@ void InfoCommand(CommandSet & Data)
 		puts("  PIC:    Interrupt Controler Information");
 		puts("  PIR:    PCI Interrupt Routing Table");
 		puts("  TI:     Thread Information");
+		puts("  TIME:   Elapsed Time");
 		puts("  USB:    USB1-OHCI information");
 
 		return;
@@ -1815,6 +1818,10 @@ void InfoCommand(CommandSet & Data)
 	else if (_stricmp("PIC", Data.ArgData[1]) == 0)
 	{
 		m_InterruptControler.DumpPIC();
+	}
+	else if (_stricmp("IRQ", Data.ArgData[1]) == 0)
+	{
+		m_InterruptControler.DumpIRQ();
 	}
 	else if (_stricmp("IDT", Data.ArgData[1]) == 0)
 	{
@@ -1857,11 +1864,7 @@ void InfoCommand(CommandSet & Data)
 	}
 	else if (_stricmp("TIME", Data.ArgData[1]) == 0)
 	{
-		ASM_CLI;
-
 		uint64_t TimePassed = CoreComplexObj::GetComplex()->TimePassed;	
-		
-		ASM_STI;
 
 		printf("Time Passed: %llu ms\n", TimePassed >> 4);
 
@@ -2187,7 +2190,7 @@ void InfoCommand(CommandSet & Data)
 	{
 		Registers Res;
 		if(Data.ArgCount == 2)
-		{
+		{		
 			ReadCPUID(0, 0, &Res);
 			uint32_t LeafCount = Res.EAX;
 			uint32_t ExtendedLeafCount = 0;

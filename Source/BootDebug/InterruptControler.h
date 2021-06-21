@@ -98,5 +98,6 @@ public:
 	void DumpPIC();
 	void DumpAPIC();
 	void DumpIOAPIC();
+	void DumpIRQ();
 };
 

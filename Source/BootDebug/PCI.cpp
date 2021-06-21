@@ -180,7 +180,32 @@ PCINameEntry DeviceNameList[] =
 	{0x118000, "Other Data Acquisition/Signal Processing Controller"},
 };
 
-
+char * Capabilities[] =
+{
+	"Null Capability", // 0x00
+	"Power Managment", // 0x01
+	"AGP", // 0x02
+	"VPD", // 0x03
+	"Slot Identification", // 0x04
+	"MSI", // 0x05
+	"CompactPCI Hotswap", // 0x06
+	"PCI-X", // 0x07
+	"HyperTransport", // 0x08
+	"Vendor Specific", // 0x09
+	"Debug Port", // 0x0A
+	"CompactPCI", // 0x0B
+	"PCI Hot-Plug", // 0x0C
+	"PCI Bridge Vender ID", // 0x0D
+	"AGP 8x", // 0x0E
+	"Secure Device", // 0x0F
+	
+	"PCI Express", // 0x10
+	"MSI-X", // 0x11
+	"Serial ATA Data/Index Configuration", // 0x12
+	"Advanced Features (AF)", // 0x13
+	"Enhanced Allocation", // 0x14
+	"Flattening Portal Bridge", // 0x15
+};
 
 PCINameEntry * FindPCIClassName(uint32_t ClassCode)
 {
@@ -498,7 +523,7 @@ bool PCI::DumpDevice(uint32_t DeviceID)
 			while(CapRegister != 00)
 			{
 				Val = ReadRegister(DeviceID, CapRegister);
-				KernalPrintf("    ID: %02X, Register: %02X\n",  Val & 0x000000FF, CapRegister);
+				KernalPrintf("    ID: %02X, Register: %02X - %s\n",  Val & 0x000000FF, CapRegister, Capabilities[Val & 0x000000FF]);
 			
 				CapRegister = (Val & 0x0000FF00) >> 8;
 			};		

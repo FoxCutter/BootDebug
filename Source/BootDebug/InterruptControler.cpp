@@ -822,4 +822,24 @@ void InterruptControler::DumpIOAPIC()
 	}
 }
 
+void InterruptControler::DumpIRQ()
+{
+	printf("Mode: %02X, Count: %08X\n", Mode, VectorCount);
+
+	for (uint32_t x = 0; x < VectorCount; x++)
+	{
+		printf("IRQ %02X (%02X) -> Int %02X", x, Mapping[x].Mapping, Mapping[x].Vector);
+		if (Mapping[x].VectorMode & 0x2000)
+			printf(" Low");
+		else
+			printf(" High");
+
+		if (Mapping[x].VectorMode & 0x8000)
+			printf(" Level");
+		else
+			printf(" Edge");
+
+		printf(" Callback: %8.8X Data: %8.8X\n", (intptr_t)Mapping[x].InterruptCallback, (intptr_t)Mapping[x].Data);
+	}
+}
 

@@ -1,5 +1,86 @@
 #include <stdint.h>
+#include <type_traits>
 #pragma once
+
+template<typename EnumType, std::enable_if_t<std::is_enum<EnumType>::value, bool> = true>
+constexpr EnumType operator | (EnumType lhs, EnumType rhs)
+{
+	using BaseType = std::underlying_type_t <EnumType>;
+	return static_cast<EnumType>(static_cast<BaseType>(lhs) | static_cast<BaseType>(rhs));
+}
+
+template<typename EnumType, std::enable_if_t<std::is_enum<EnumType>::value, bool> = true>
+constexpr EnumType operator & (EnumType lhs, EnumType rhs)
+{
+	using BaseType = std::underlying_type_t <EnumType>;
+	return static_cast<EnumType>(static_cast<BaseType>(lhs) & static_cast<BaseType>(rhs));
+}
+
+template<typename EnumType, std::enable_if_t<std::is_enum<EnumType>::value, bool> = true>
+constexpr EnumType operator ^ (EnumType lhs, EnumType rhs)
+{
+	using BaseType = std::underlying_type_t <EnumType>;
+	return static_cast<EnumType>(static_cast<BaseType>(lhs) ^ static_cast<BaseType>(rhs));
+}
+
+template<typename EnumType, std::enable_if_t<std::is_enum<EnumType>::value, bool> = true>
+constexpr EnumType operator ~ (EnumType lhs)
+{
+	using BaseType = std::underlying_type_t <EnumType>;
+	return static_cast<EnumType>(~static_cast<BaseType>(lhs));
+}
+
+template<typename EnumType, typename ShiftType, std::enable_if_t<std::is_enum<EnumType>::value, bool> = true>
+constexpr EnumType operator << (EnumType lhs, ShiftType rhs)
+{
+	using BaseType = std::underlying_type_t <EnumType>;
+	return static_cast<EnumType>(static_cast<BaseType>(lhs) << rhs);
+}
+
+template<typename EnumType, typename ShiftType, std::enable_if_t<std::is_enum<EnumType>::value, bool> = true>
+constexpr EnumType operator >> (EnumType lhs, ShiftType rhs)
+{
+	using BaseType = std::underlying_type_t <EnumType>;
+	return static_cast<EnumType>(static_cast<BaseType>(lhs) >> rhs);
+}
+
+
+
+template<typename EnumType, std::enable_if_t<std::is_enum<EnumType>::value, bool> = true>
+constexpr EnumType operator |= (EnumType &lhs, EnumType rhs)
+{
+	lhs = lhs | rhs;
+	return lhs;
+}
+
+template<typename EnumType, std::enable_if_t<std::is_enum<EnumType>::value, bool> = true>
+constexpr EnumType operator &= (EnumType &lhs, EnumType rhs)
+{
+	lhs = lhs & rhs;
+	return lhs;
+}
+
+template<typename EnumType, std::enable_if_t<std::is_enum<EnumType>::value, bool> = true>
+constexpr EnumType operator ^= (EnumType &lhs, EnumType rhs)
+{
+	lhs = lhs ^ rhs;
+	return lhs;
+}
+
+template<typename EnumType, typename ShiftType, std::enable_if_t<std::is_enum<EnumType>::value, bool> = true>
+constexpr EnumType operator <<= (EnumType &lhs, ShiftType rhs)
+{
+	lhs = lhs << rhs;
+	return lhs;
+}
+
+template<typename EnumType, typename ShiftType, std::enable_if_t<std::is_enum<EnumType>::value, bool> = true>
+constexpr EnumType operator >>= (EnumType &lhs, ShiftType rhs)
+{
+	lhs = lhs >> rhs;
+	return lhs;
+}
+
 
 // This header just holds a number of low level function declarations, they function themselves will more then likely be 
 // write in ASM.

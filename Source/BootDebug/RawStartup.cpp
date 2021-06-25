@@ -293,7 +293,7 @@ volatile uint8_t KBBufferLast = 0;
 
 void InsertKeyboardBuffer(uint16_t /*ScanCode*/, uint8_t /*KeyCode*/, uint16_t /*KeyState*/, bool KeyUp, unsigned char Key)
 {
-	if (KeyUp)
+	if (KeyUp || Key == 0)
 		return;
 
 	if((KBBufferLast + 1) == KBBufferFirst || KBBufferFirst == 0 && (KBBufferLast + 1 == 32))
@@ -488,13 +488,15 @@ MemoryPageMap BuildMemoryPageMap(MultiBootInfo &MBReader)
 	if(HighReserved % 0x1000 != 0)
 		HighReserved -= HighReserved % 0x1000;
 	
-	// And give it two extra pages for the MemoryInformation Poll
+	// And give it two extra pages for the MemoryInformation Pool
 	HighReserved -= 0x2000;
 	 
 	// Step 1c: Create the map
 	MemoryPageMap TempMap(HighReserved, PageCount);
 	
-	KernalPrintf("  Memory Map: %08X, Size %08X\n", HighReserved, MemoryMapSize * 0x1000);
+	uint32_t MemoryMapFullSize = (MemoryMapSize * 0x1000) + 0x2000;
+
+	KernalPrintf("  Memory Map: %08X, Size %08X\n", HighReserved, MemoryMapFullSize);
 
 	// Step 1d set the memory information from the MB data
 	MBReader.GetFirstMemoryEntry(CurrentEntry);
@@ -521,14 +523,14 @@ MemoryPageMap BuildMemoryPageMap(MultiBootInfo &MBReader)
 	TempMap.SetAllocatedMemory(0x0, 0x10000, ReservedMemory, "0 Page");
 	TempMap.SetAllocatedMemory(MB1Header.load_address, MB1Header.bss_end_address - MB1Header.load_address, AllocatedMemory, "Kernal");
 	TempMap.SetAllocatedMemory(reinterpret_cast<uint32_t>(MBReader.MBData), MBReader.HeaderLength, AllocatedMemory, "MultiBoot");
-	TempMap.SetAllocatedMemory(HighReserved, (MemoryMapSize * 0x1000) + 0x1000, AllocatedMemory, "Memory Map");
+	TempMap.SetAllocatedMemory(HighReserved, MemoryMapFullSize, AllocatedMemory, "Memory Map");
 
 	{
 		ModuleEntry CurrentModule;
 		if(MBReader.GetFirstModuleEntry(CurrentModule))
 		{
 			do {
-				TempMap.SetAllocatedMemory(CurrentModule.ModStart, CurrentModule.ModEnd - CurrentModule.ModStart, AllocatedMemory, "");
+				TempMap.SetAllocatedMemory(CurrentModule.ModStart, CurrentModule.ModEnd - CurrentModule.ModStart, AllocatedMemory, "Module");
 			} while(MBReader.GetNextModuleEntry(CurrentModule));
 		}
 	}
@@ -876,6 +878,8 @@ extern "C" void MultiBootMain(void *Address, uint32_t Magic)
 
 	SetupPS2Keyboard();
 	m_InterruptControler.SetIRQInterrupt(0x01, IntPriority::High, KeyboardInterrupt);
+	//SetupPS2Mouse();
+	//m_InterruptControler.SetIRQInterrupt(0x0C, IntPriority::High, MouseInterrupt);
 
 	MyTSS.SS0 = CoreComplex->DataSegment0;
 	MyTSS.ESP0 = 0x41004;
